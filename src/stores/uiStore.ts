@@ -1,0 +1,84 @@
+import { atom } from "nanostores";
+
+// ============================================
+// UI Store
+// Global UI state management
+// ============================================
+
+// Tab IDs - Added 'operar' for transaction form
+export type TabId = "contar" | "calcular" | "operar";
+
+// Active tab
+export const $activeTab = atom<TabId>("contar");
+
+// Modal/Drawer states
+export const $isSettingsOpen = atom<boolean>(false);
+export const $isSecurityModalOpen = atom<boolean>(false);
+export const $isHistoryDrawerOpen = atom<boolean>(false);
+
+// Pending CUP amount (from Counter → Transaction flow)
+export const $pendingCUP = atom<number | null>(null);
+
+// ============================================
+// Tab Actions
+// ============================================
+
+export function setActiveTab(tab: TabId) {
+  $activeTab.set(tab);
+}
+
+export function goToCounter() {
+  $activeTab.set("contar");
+}
+
+export function goToCalculator() {
+  $activeTab.set("calcular");
+}
+
+export function goToTransaction() {
+  $activeTab.set("operar");
+}
+
+/**
+ * Navigate to Transaction tab with pre-filled CUP amount
+ * Used when clicking "Use in Trade" from Counter
+ */
+export function useInTransaction(cupAmount: number) {
+  $pendingCUP.set(cupAmount);
+  $activeTab.set("operar");
+}
+
+/**
+ * Clear pending CUP (after it's been consumed by Transaction form)
+ */
+export function clearPendingCUP() {
+  $pendingCUP.set(null);
+}
+
+// ============================================
+// Modal/Drawer Actions
+// ============================================
+
+export function openSettings() {
+  $isSettingsOpen.set(true);
+}
+
+export function closeSettings() {
+  $isSettingsOpen.set(false);
+}
+
+export function openSecurityModal() {
+  $isSecurityModalOpen.set(true);
+}
+
+export function closeSecurityModal() {
+  $isSecurityModalOpen.set(false);
+}
+
+export function openHistoryDrawer() {
+  $isHistoryDrawerOpen.set(true);
+}
+
+export function closeHistoryDrawer() {
+  $isHistoryDrawerOpen.set(false);
+}

@@ -1,0 +1,152 @@
+import { atom } from "nanostores";
+import { DENOMINATIONS, type Denomination } from "../lib/constants";
+
+// ============================================
+// History Store
+// Transaction records with localStorage persistence
+// ============================================
+
+// Operation types
+export type OperationType = "BUY" | "SELL";
+
+// Supported currencies (including MLC)
+export type TransactionCurrency = "USD" | "EUR" | "CAD" | "MLC";
+
+// Transaction record interface
+export interface Transaction {
+  id: string;
+  date: string;
+  // New fields for proper transaction tracking
+  operationType: OperationType;
+  currency: TransactionCurrency;
+  amountForeign: number;
+  rate: number;
+  totalCUP: number;
+  // Legacy fields for backward compatibility with old records
+  conversions?: { USD: number; EUR: number; CAD: number };
+  ratesUsed?: Record<string, number>;
+  billCounts?: Record<Denomination, number>;
+}
+
+// LocalStorage key
+const STORAGE_KEY = "fulean2_transactions";
+
+// Load from localStorage (SSR-safe)
+function loadFromStorage(): Transaction[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+// Save to localStorage
+function saveToStorage(transactions: Transaction[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+// Transactions atom
+export const $transactions = atom<Transaction[]>(loadFromStorage());
+
+// Subscribe to changes and persist
+if (typeof window !== "undefined") {
+  $transactions.subscribe((value) => {
+    saveToStorage(value);
+  });
+}
+
+// ============================================
+// Actions
+// ============================================
+
+/**
+ * Generate unique ID
+ */
+function generateId(): string {
+  return `txn-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Save a new transaction (new format)
+ */
+export function saveTransaction(
+  operationType: OperationType,
+  currency: TransactionCurrency,
+  amountForeign: number,
+  rate: number,
+  totalCUP: number
+): Transaction {
+  const transaction: Transaction = {
+    id: generateId(),
+    date: new Date().toISOString(),
+    operationType,
+    currency,
+    amountForeign: Math.round(amountForeign * 100) / 100, // 2 decimal precision
+    rate: Math.round(rate),
+    totalCUP: Math.round(totalCUP),
+  };
+
+  const current = $transactions.get();
+  $transactions.set([transaction, ...current]);
+
+  return transaction;
+}
+
+/**
+ * Legacy save function (for backward compatibility)
+ * @deprecated Use saveTransaction with new parameters
+ */
+export function saveLegacyTransaction(
+  totalCUP: number,
+  conversions: { USD: number; EUR: number; CAD: number },
+  ratesUsed: Record<string, number>,
+  billCounts: Record<Denomination, number>
+): void {
+  const transaction: Transaction = {
+    id: generateId(),
+    date: new Date().toISOString(),
+    operationType: "SELL", // Legacy transactions assumed to be sales
+    currency: "USD",
+    amountForeign: conversions.USD,
+    rate: ratesUsed.USD || 320,
+    totalCUP: Math.round(totalCUP),
+    // Keep legacy fields
+    conversions,
+    ratesUsed,
+    billCounts,
+  };
+
+  const current = $transactions.get();
+  $transactions.set([transaction, ...current]);
+}
+
+/**
+ * Delete a transaction by ID
+ */
+export function deleteTransaction(id: string): void {
+  const current = $transactions.get();
+  $transactions.set(current.filter((t) => t.id !== id));
+}
+
+/**
+ * Clear all transaction history
+ */
+export function clearAllHistory(): void {
+  $transactions.set([]);
+}
+
+/**
+ * Get transactions count
+ */
+export function getTransactionCount(): number {
+  return $transactions.get().length;
+}
