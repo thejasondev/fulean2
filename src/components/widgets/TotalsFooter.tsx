@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { Eye, EyeOff, Trash2, ArrowRightLeft, Copy, Clock } from 'lucide-react';
+import { Eye, EyeOff, Trash2, ArrowRightLeft, Copy, Clock } from "lucide-react";
 import {
   $grandTotalCUP,
   $foreignTotals,
@@ -28,7 +28,6 @@ export function TotalsFooter() {
 
   // Keyboard/Focus State
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
 
   // Detect input focus to handle mobile keyboard
   useEffect(() => {
@@ -86,11 +85,11 @@ export function TotalsFooter() {
   // Display Values
   const displayTotal = privacyMode ? "••••" : formatNumber(grandTotal);
   const displayForeign = privacyMode
-    ? "•••• • •••• • ••••"
+    ? "•••• · •••• · ••••"
     : `${formatCurrency(foreignTotals.USD, "USD")} · ${formatCurrency(
         foreignTotals.EUR,
         "EUR"
-      )}`;
+      )} · ${formatCurrency(foreignTotals.CAD, "CAD")}`;
 
   // If keyboard/input is focused, we enter "Slim Mode"
   // Hiding actions to save space above the keyboard
@@ -140,10 +139,7 @@ export function TotalsFooter() {
         )}
       >
         {/* LEFT: Info Section */}
-        <div
-          className="flex flex-col min-w-0"
-          onClick={() => setShowDetails(!showDetails)}
-        >
+        <div className="flex flex-col min-w-0">
           {/* Main Total + Privacy Toggle */}
           <div className="flex items-center gap-2">
             <span
@@ -172,17 +168,14 @@ export function TotalsFooter() {
             </button>
           </div>
 
-          {/* Subtotals (Tiny Caption) */}
-          <div className="text-[10px] text-neutral-500 font-medium tracking-tight truncate mt-0.5 leading-none">
-            {showDetails ? (
-              <span className="text-xs text-neutral-300 animate-fade-in">
-                {formatCurrency(foreignTotals.CAD, "CAD")} • MLC pending...
-              </span>
-            ) : (
-              <span className={cn(privacyMode && "blur-sm")}>
-                {displayForeign}
-              </span>
+          {/* Subtotals: USD · EUR · CAD */}
+          <div
+            className={cn(
+              "text-[10px] text-neutral-500 font-medium tracking-tight truncate mt-0.5 leading-none",
+              privacyMode && "blur-sm"
             )}
+          >
+            {displayForeign}
           </div>
         </div>
 

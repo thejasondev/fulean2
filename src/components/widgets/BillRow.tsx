@@ -7,6 +7,7 @@ import { cn } from "../../lib/utils";
 import { BillIcon } from "../icons/BillIcon";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { useHaptic } from "../../hooks/useHaptic";
 
 // ============================================
 // BillRow Component
@@ -22,6 +23,7 @@ export function BillRow({ denomination }: BillRowProps) {
   const billCounts = useStore($billCounts);
   const count = billCounts?.[denomination] ?? 0;
   const subtotal = count * denomination;
+  const haptic = useHaptic();
 
   const handleCountChange = (value: string) => {
     // Parse and validate - only allow positive integers
@@ -32,11 +34,13 @@ export function BillRow({ denomination }: BillRowProps) {
 
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue) && numValue >= 0) {
+      haptic.light();
       setBillCount(denomination, numValue);
     }
   };
 
   const handleFajo = () => {
+    haptic.medium();
     addFajo(denomination);
   };
 

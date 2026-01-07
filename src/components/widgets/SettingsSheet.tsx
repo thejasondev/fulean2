@@ -1,15 +1,14 @@
 import { useStore } from "@nanostores/react";
-import { Plus, Minus } from "lucide-react";
-import {
-  $baseRates,
-  $spreads,
-  $effectiveRates,
-  setBaseRate,
-  setSpread,
-  resetSpreads,
-} from "../../stores/ratesStore";
+import { useStore as useNanoStore } from "@nanostores/react";
+import { $effectiveRates, setRate, resetRates } from "../../stores/ratesStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
-import { type Currency } from "../../lib/constants";
+import {
+  CURRENCIES,
+  CURRENCY_META,
+  CASH_CURRENCIES,
+  DIGITAL_CURRENCIES,
+  type Currency,
+} from "../../lib/constants";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
@@ -17,49 +16,69 @@ import { Button } from "../ui/Button";
 
 // ============================================
 // SettingsSheet Component
-// Rate and spread configuration
+// Grouped rate editing for 6 currencies
 // ============================================
 
-const CURRENCIES: { id: Currency; label: string; flag: string }[] = [
-  { id: "USD", label: "Dólar estadounidense", flag: "🇺🇸" },
-  { id: "EUR", label: "Euro", flag: "🇪🇺" },
-  { id: "CAD", label: "Dólar canadiense", flag: "🇨🇦" },
-];
+function RateCard({ currency }: { currency: Currency }) {
+  const rates = useStore($effectiveRates);
+  const meta = CURRENCY_META[currency];
+  const currentRate = rates[currency];
+
+  const handleRateChange = (value: string) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue > 0) {
+      setRate(currency, numValue);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "bg-neutral-900 rounded-xl p-3 border border-neutral-800",
+        "flex items-center gap-3"
+      )}
+    >
+      {/* Currency Icon */}
+      <div
+        className={cn(
+          "w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0",
+          meta.category === "digital" ? "bg-purple-500/10" : "bg-emerald-500/10"
+        )}
+      >
+        {meta.flag}
+      </div>
+
+      {/* Currency Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-white text-sm">{currency}</span>
+          {meta.category === "digital" && (
+            <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+              DIG
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-neutral-500 truncate">{meta.name}</span>
+      </div>
+
+      {/* Rate Input */}
+      <div className="w-24 shrink-0">
+        <Input
+          type="number"
+          value={currentRate}
+          onChange={(e) => handleRateChange(e.target.value)}
+          size="sm"
+          numericOnly
+          className="text-center font-bold tabular-nums text-emerald-400"
+          min={1}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function SettingsSheet() {
   const isOpen = useStore($isSettingsOpen) ?? false;
-  const baseRates = useStore($baseRates) ?? { USD: 320, EUR: 335, CAD: 280 };
-  const spreads = useStore($spreads) ?? { USD: 0, EUR: 0, CAD: 0 };
-  const effectiveRates = useStore($effectiveRates) ?? {
-    USD: 320,
-    EUR: 335,
-    CAD: 280,
-  };
-
-  const handleBaseRateChange = (currency: Currency, value: string) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue) && numValue > 0) {
-      setBaseRate(currency, numValue);
-    }
-  };
-
-  const handleSpreadChange = (currency: Currency, delta: number) => {
-    const current = spreads[currency] || 0;
-    setSpread(currency, current + delta);
-  };
-
-  const handleSpreadInput = (currency: Currency, value: string) => {
-    // Allow negative numbers
-    const cleaned = value.replace(/[^0-9-]/g, "");
-    if (cleaned === "" || cleaned === "-") {
-      setSpread(currency, 0);
-      return;
-    }
-    const numValue = parseInt(cleaned, 10);
-    if (!isNaN(numValue)) {
-      setSpread(currency, numValue);
-    }
-  };
 
   return (
     <Modal
@@ -68,111 +87,50 @@ export function SettingsSheet() {
       title="Configurar Tasas"
       size="md"
     >
-      <div className="p-5 space-y-5">
+      <div className="p-5 space-y-4">
         {/* Explanation */}
-        <div className="bg-neutral-950/50 rounded-xl p-4 border border-neutral-800/40">
+        <div className="bg-neutral-950/50 rounded-xl p-3 border border-neutral-800/40">
           <p className="text-sm text-neutral-300 font-medium">
-            Tasa Efectiva = Tasa Base + Margen
+            Edita las tasas de cambio manualmente
           </p>
           <p className="text-xs text-neutral-500 mt-1">
-            Usa el margen para ajustar según si compras (-) o vendes (+).
+            Los valores se guardan automáticamente.
           </p>
         </div>
 
-        {/* Rate Cards */}
-        {CURRENCIES.map((curr) => (
-          <div
-            key={curr.id}
-            className={cn(
-              "bg-neutral-900 rounded-xl p-4",
-              "border border-neutral-800"
-            )}
-          >
-            {/* Currency Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-2xl">{curr.flag}</span>
-              <div>
-                <div className="font-semibold text-white">{curr.id}</div>
-                <div className="text-xs text-neutral-500">{curr.label}</div>
-              </div>
-            </div>
-
-            {/* Base Rate */}
-            <div className="mb-4">
-              <label className="block text-xs text-neutral-500 mb-1.5 font-medium">
-                Tasa Base
-              </label>
-              <Input
-                type="number"
-                value={baseRates[curr.id]}
-                onChange={(e) => handleBaseRateChange(curr.id, e.target.value)}
-                size="md"
-                numericOnly
-                className="text-center font-bold tabular-nums"
-                min={1}
-              />
-            </div>
-
-            {/* Spread */}
-            <div className="mb-4">
-              <label className="block text-xs text-neutral-500 mb-1.5 font-medium">
-                Margen (+/-)
-              </label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => handleSpreadChange(curr.id, -5)}
-                  className="w-12 h-12 p-0"
-                  aria-label="Reducir margen"
-                >
-                  <Minus className="w-5 h-5" />
-                </Button>
-
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={spreads[curr.id]}
-                  onChange={(e) => handleSpreadInput(curr.id, e.target.value)}
-                  size="md"
-                  className={cn(
-                    "text-center font-bold tabular-nums flex-1",
-                    spreads[curr.id] > 0 && "text-emerald-400",
-                    spreads[curr.id] < 0 && "text-red-400"
-                  )}
-                />
-
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={() => handleSpreadChange(curr.id, 5)}
-                  className="w-12 h-12 p-0"
-                  aria-label="Aumentar margen"
-                >
-                  <Plus className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Effective Rate Preview */}
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
-              <span className="text-sm text-neutral-500 font-medium">
-                Tasa Efectiva
-              </span>
-              <span className="text-xl font-bold text-emerald-400 tabular-nums money-glow">
-                {effectiveRates[curr.id]} CUP
-              </span>
-            </div>
+        {/* Cash Currencies */}
+        <div>
+          <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            Efectivo
           </div>
-        ))}
+          <div className="space-y-2">
+            {CASH_CURRENCIES.map((currency) => (
+              <RateCard key={currency} currency={currency} />
+            ))}
+          </div>
+        </div>
+
+        {/* Digital Currencies */}
+        <div>
+          <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-purple-500" />
+            Digital
+          </div>
+          <div className="space-y-2">
+            {DIGITAL_CURRENCIES.map((currency) => (
+              <RateCard key={currency} currency={currency} />
+            ))}
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">
-          <Button variant="secondary" onClick={resetSpreads} className="flex-1">
+          <Button variant="secondary" onClick={resetRates} className="flex-1">
             Resetear
           </Button>
           <Button variant="primary" onClick={closeSettings} className="flex-1">
-            Guardar
+            Listo
           </Button>
         </div>
       </div>

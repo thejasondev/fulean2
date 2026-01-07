@@ -1,123 +1,186 @@
 import { atom, computed } from "nanostores";
-import { DEFAULT_RATES, type Currency } from "../lib/constants";
+import { CURRENCIES, DEFAULT_RATES, type Currency } from "../lib/constants";
 
 // ============================================
-// Rates Store
-// Manages exchange rates with Base Rate + Spread logic
+// Rates Store - Local Vault
+// Fully local-first persistence, no API calls
 // ============================================
 
-// Rate mode: API (read-only) or Manual (editable)
-export type RateMode = "api" | "manual";
+const STORAGE_KEY = "fulean2_rates";
 
-// Base rates (before spread adjustment)
+// Offline state (for UI indicator)
+export const $isOffline = atom<boolean>(false);
+
+// Base rates per currency
 export const $baseRates = atom<Record<Currency, number>>({ ...DEFAULT_RATES });
 
-// Spread/margin for each currency (can be positive or negative)
-export const $spreads = atom<Record<Currency, number>>({
-  USD: 0,
-  EUR: 0,
-  CAD: 0,
-});
-
-// Current rate mode
-export const $rateMode = atom<RateMode>("api");
-
-// Loading state for API simulation
+// Loading state (for UI feedback during save)
 export const $isLoadingRates = atom<boolean>(false);
 
 // Last update timestamp
 export const $lastUpdate = atom<Date>(new Date());
 
 // ============================================
-// Computed: Effective Rates (Base + Spread)
-// This is what the entire app uses for calculations
+// LocalStorage Helpers
 // ============================================
-export const $effectiveRates = computed(
-  [$baseRates, $spreads],
-  (baseRates, spreads) => {
-    // Handle SSR where values might be undefined
-    const safeBaseRates = baseRates || DEFAULT_RATES;
-    const safeSpreads = spreads || { USD: 0, EUR: 0, CAD: 0 };
-
-    return {
-      USD: Math.max(1, safeBaseRates.USD + safeSpreads.USD),
-      EUR: Math.max(1, safeBaseRates.EUR + safeSpreads.EUR),
-      CAD: Math.max(1, safeBaseRates.CAD + safeSpreads.CAD),
-    };
+function saveRatesToStorage(rates: Record<Currency, number>) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ rates, timestamp: Date.now() })
+    );
+  } catch {
+    console.warn("Failed to save rates to localStorage");
   }
-);
+}
 
-// Legacy alias for backward compatibility
+function loadRatesFromStorage(): Record<Currency, number> | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const { rates } = JSON.parse(stored);
+      // Validate that all currencies exist
+      const isValid = CURRENCIES.every((c) => typeof rates[c] === "number");
+      if (isValid) return rates;
+    }
+  } catch {
+    console.warn("Failed to load rates from localStorage");
+  }
+  return null;
+}
+
+// ============================================
+// Computed: Effective Rates
+// Currently same as base rates (no spread logic)
+// ============================================
+export const $effectiveRates = computed([$baseRates], (baseRates) => {
+  const safeRates = baseRates || DEFAULT_RATES;
+  // Ensure all currencies have valid values
+  const result: Record<Currency, number> = {} as Record<Currency, number>;
+  for (const currency of CURRENCIES) {
+    result[currency] = Math.max(
+      1,
+      safeRates[currency] || DEFAULT_RATES[currency]
+    );
+  }
+  return result;
+});
+
+// Legacy alias
 export const $rates = $effectiveRates;
 
 // ============================================
 // Actions
 // ============================================
 
-export function setBaseRate(currency: Currency, value: number) {
+/**
+ * Set rate for a specific currency
+ * Immediately persists to localStorage
+ */
+export function setRate(currency: Currency, value: number) {
   const validValue = Math.max(1, Math.floor(value));
-  $baseRates.set({
-    ...$baseRates.get(),
-    [currency]: validValue,
-  });
+  const newRates = { ...$baseRates.get(), [currency]: validValue };
+  $baseRates.set(newRates);
   $lastUpdate.set(new Date());
+  saveRatesToStorage(newRates);
 }
 
-export function setSpread(currency: Currency, value: number) {
-  // Spread can be negative (for buying) or positive (for selling)
-  const validValue = Math.floor(value);
-  $spreads.set({
-    ...$spreads.get(),
-    [currency]: validValue,
-  });
+/**
+ * Set all rates at once
+ */
+export function setAllRates(rates: Partial<Record<Currency, number>>) {
+  const currentRates = $baseRates.get();
+  const newRates = { ...currentRates };
+
+  for (const [currency, value] of Object.entries(rates)) {
+    if (
+      CURRENCIES.includes(currency as Currency) &&
+      typeof value === "number"
+    ) {
+      newRates[currency as Currency] = Math.max(1, Math.floor(value));
+    }
+  }
+
+  $baseRates.set(newRates);
   $lastUpdate.set(new Date());
+  saveRatesToStorage(newRates);
 }
 
-export function setAllSpreads(spread: number) {
-  const validValue = Math.floor(spread);
-  $spreads.set({
-    USD: validValue,
-    EUR: validValue,
-    CAD: validValue,
-  });
+/**
+ * Reset all rates to defaults
+ */
+export function resetRates() {
+  $baseRates.set({ ...DEFAULT_RATES });
   $lastUpdate.set(new Date());
+  saveRatesToStorage({ ...DEFAULT_RATES });
 }
 
-export function resetSpreads() {
-  $spreads.set({ USD: 0, EUR: 0, CAD: 0 });
-  $lastUpdate.set(new Date());
-}
-
-export function toggleRateMode() {
-  $rateMode.set($rateMode.get() === "api" ? "manual" : "api");
-}
-
-export function setRateMode(mode: RateMode) {
-  $rateMode.set(mode);
-}
-
-// Simulate API fetch (updates base rates with slight variation)
-export async function refreshRates() {
+/**
+ * Simulate refresh (just triggers a visual feedback)
+ * No actual API call - we're fully local now
+ */
+export async function refreshRates(): Promise<{ offline: boolean }> {
   $isLoadingRates.set(true);
 
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Brief delay for visual feedback
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
-  // Simulate slight rate variations (±5%)
-  const variation = () => 1 + (Math.random() - 0.5) * 0.1;
-
-  $baseRates.set({
-    USD: Math.round(DEFAULT_RATES.USD * variation()),
-    EUR: Math.round(DEFAULT_RATES.EUR * variation()),
-    CAD: Math.round(DEFAULT_RATES.CAD * variation()),
-  });
-
-  $lastUpdate.set(new Date());
   $isLoadingRates.set(false);
+  return { offline: false };
 }
 
-// Get current effective rate for a specific currency
+/**
+ * Get current effective rate for a specific currency
+ */
 export function getEffectiveRate(currency: Currency): number {
   const rates = $effectiveRates.get();
   return rates?.[currency] ?? DEFAULT_RATES[currency];
+}
+
+/**
+ * Initialize rates from localStorage on app load
+ * If no stored rates, save defaults immediately
+ */
+export function initializeRates() {
+  const storedRates = loadRatesFromStorage();
+
+  if (storedRates) {
+    $baseRates.set(storedRates);
+  } else {
+    // First time - save defaults to storage
+    saveRatesToStorage({ ...DEFAULT_RATES });
+  }
+
+  // Set up online/offline listeners
+  if (typeof window !== "undefined") {
+    $isOffline.set(!navigator.onLine);
+
+    window.addEventListener("online", () => {
+      $isOffline.set(false);
+    });
+
+    window.addEventListener("offline", () => {
+      $isOffline.set(true);
+    });
+  }
+}
+
+// ============================================
+// Legacy exports for backward compatibility
+// ============================================
+export const $spreads = atom<Record<Currency, number>>({
+  USD: 0,
+  EUR: 0,
+  CAD: 0,
+  MLC: 0,
+  CLASICA: 0,
+  ZELLE: 0,
+});
+
+export function setSpread(currency: Currency, value: number) {
+  // No-op for now, keeping for compatibility
+}
+
+export function setBaseRate(currency: Currency, value: number) {
+  setRate(currency, value);
 }

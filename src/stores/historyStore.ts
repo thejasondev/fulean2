@@ -9,8 +9,14 @@ import { DENOMINATIONS, type Denomination } from "../lib/constants";
 // Operation types
 export type OperationType = "BUY" | "SELL";
 
-// Supported currencies (including MLC)
-export type TransactionCurrency = "USD" | "EUR" | "CAD" | "MLC";
+// Supported currencies (the 6 pillars)
+export type TransactionCurrency =
+  | "USD"
+  | "EUR"
+  | "CAD"
+  | "MLC"
+  | "CLASICA"
+  | "ZELLE";
 
 // Transaction record interface
 export interface Transaction {

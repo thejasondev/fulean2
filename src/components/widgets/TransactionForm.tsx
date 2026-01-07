@@ -1,18 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  Calculator,
-  Check,
-  X,
-} from "lucide-react";
-import {
-  $pendingCUP,
-  clearPendingCUP,
-  goToCalculator,
-  useInTransaction,
-} from "../../stores/uiStore";
+import { ArrowDownLeft, ArrowUpRight, Check } from "lucide-react";
+import { $pendingCUP, clearPendingCUP } from "../../stores/uiStore";
 import { $effectiveRates } from "../../stores/ratesStore";
 import {
   saveTransaction,
@@ -23,23 +12,23 @@ import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import {
+  CURRENCIES,
+  CURRENCY_META,
+  CASH_CURRENCIES,
+  DIGITAL_CURRENCIES,
+  type Currency,
+} from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
 
 // ============================================
 // TransactionForm Component
-// Dedicated form for recording operations
+// Dedicated form for recording operations with 6 currencies
 // ============================================
-
-const CURRENCIES: { id: TransactionCurrency; label: string; flag: string }[] = [
-  { id: "USD", label: "USD", flag: "🇺🇸" },
-  { id: "EUR", label: "EUR", flag: "🇪🇺" },
-  { id: "CAD", label: "CAD", flag: "🇨🇦" },
-  { id: "MLC", label: "MLC", flag: "💳" },
-];
 
 export function TransactionForm() {
   const pendingCUP = useStore($pendingCUP);
-  const rates = useStore($effectiveRates) ?? { USD: 320, EUR: 335, CAD: 280 };
+  const rates = useStore($effectiveRates);
   const { toast } = useToast();
 
   // Form State
@@ -51,40 +40,28 @@ export function TransactionForm() {
 
   // Initial load handling
   useEffect(() => {
-    // If arriving with pending CUP (from Counter)
     if (pendingCUP !== null) {
-      setOperation("BUY"); // Assuming we have CUP to BUY foreign currency
+      setOperation("BUY");
       setTotalCUP(pendingCUP.toString());
 
-      // Auto-calculate foreign amount based on current rate
-      const currentRate = rates[currency === "MLC" ? "USD" : currency] || 320; // Fallback for MLC (uses USD rate usually, or need to add MLC to ratesStore)
-      // Actually MLC usually tracks USD closely or has its own.
-      // For now let's use USD rate for MLC if not in store, or just keep it empty?
-      // ratesStore only has USD, EUR, CAD. Let's use USD for MLC default or 270.
-      // Let's stick to using the store rate or current input rate.
-
+      const currentRate = rates[currency] || 320;
       setRate(currentRate.toString());
       const foreign = pendingCUP / currentRate;
       setAmountForeign(foreign.toFixed(2));
 
-      // Clear pending so it doesn't reset on future renders
       clearPendingCUP();
     } else if (!rate) {
-      // Initialize rate if empty
-      const r = rates[currency === "MLC" ? "USD" : currency] || 320;
+      const r = rates[currency] || 320;
       setRate(r.toString());
     }
-  }, [pendingCUP, currency, rates]); // careful with dependencies
+  }, [pendingCUP]);
 
-  // When currency changes, update rate if it hasn't been manually touched too much?
-  // Better: always update rate to store default when switching currency, UNLESS user is editing?
-  // Let's just update it.
+  // Handle currency change
   const handleCurrencyChange = (newCurr: TransactionCurrency) => {
     setCurrency(newCurr);
-    const newRate = rates[newCurr === "MLC" ? "USD" : newCurr] || 300;
+    const newRate = rates[newCurr] || 300;
     setRate(newRate.toString());
 
-    // Recalculate totals
     if (amountForeign) {
       const foreign = parseFloat(amountForeign) || 0;
       setTotalCUP(Math.round(foreign * newRate).toString());
@@ -186,27 +163,47 @@ export function TransactionForm() {
         </button>
       </div>
 
-      {/* Currency Selector */}
+      {/* Currency Selector - 3x2 Grid */}
       <div className="mb-6">
         <label className="block text-xs text-neutral-500 font-medium mb-2 uppercase tracking-wide">
           Moneda
         </label>
-        <div className="grid grid-cols-4 gap-2">
-          {CURRENCIES.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => handleCurrencyChange(c.id)}
-              className={cn(
-                "flex flex-col items-center justify-center p-2 rounded-xl border transition-all duration-200",
-                currency === c.id
-                  ? cn(theme.bg, theme.border, theme.text, "border-opacity-50")
-                  : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700"
-              )}
-            >
-              <span className="text-xl mb-1">{c.flag}</span>
-              <span className="text-xs font-bold">{c.id}</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-2">
+          {CURRENCIES.map((currencyCode) => {
+            const meta = CURRENCY_META[currencyCode];
+            const isSelected = currency === currencyCode;
+            const isDigital = meta.category === "digital";
+
+            return (
+              <button
+                key={currencyCode}
+                onClick={() =>
+                  handleCurrencyChange(currencyCode as TransactionCurrency)
+                }
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200",
+                  isSelected
+                    ? cn(
+                        theme.bg,
+                        theme.border,
+                        theme.text,
+                        "border-opacity-50"
+                      )
+                    : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                )}
+              >
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-lg">{meta.flag}</span>
+                  {isDigital && (
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                      DIG
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs font-bold">{currencyCode}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
