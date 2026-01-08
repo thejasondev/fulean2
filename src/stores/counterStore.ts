@@ -49,16 +49,25 @@ export const $grandTotalCUP = computed($billCounts, (counts) => {
 export const $foreignTotals = computed(
   [$grandTotalCUP, $effectiveRates],
   (cupTotal, rates) => {
-    // SSR safety
-    const safeRates = rates || { USD: 320, EUR: 335, CAD: 280 };
+    // SSR safety - default rates for all 6 currencies
+    const safeRates = rates || {
+      USD: 320,
+      EUR: 335,
+      CAD: 280,
+      MLC: 275,
+      CLASICA: 250,
+      ZELLE: 310,
+    };
     const safeCupTotal = cupTotal ?? 0;
 
-    // Division may introduce floating point - keep raw for calculations
-    // Formatting handles display precision
+    // Calculate conversions for all 6 currencies
     return {
       USD: safeRates.USD > 0 ? safeCupTotal / safeRates.USD : 0,
       EUR: safeRates.EUR > 0 ? safeCupTotal / safeRates.EUR : 0,
       CAD: safeRates.CAD > 0 ? safeCupTotal / safeRates.CAD : 0,
+      MLC: safeRates.MLC > 0 ? safeCupTotal / safeRates.MLC : 0,
+      CLASICA: safeRates.CLASICA > 0 ? safeCupTotal / safeRates.CLASICA : 0,
+      ZELLE: safeRates.ZELLE > 0 ? safeCupTotal / safeRates.ZELLE : 0,
     };
   }
 );

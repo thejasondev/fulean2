@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useStore } from "@nanostores/react";
-import { Eye, EyeOff, Trash2, ArrowRightLeft, Copy, Clock } from "lucide-react";
+import { Eye, EyeOff, Trash2, Copy, Clock } from "lucide-react";
 import {
   $grandTotalCUP,
   $foreignTotals,
@@ -13,23 +13,70 @@ import { confirm } from "../../stores/confirmStore";
 import { formatNumber, formatCurrency } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { useToast } from "../ui/Toast";
+import { useHaptic } from "../../hooks/useHaptic";
 import { Button } from "../ui/Button";
 
 // ============================================
-// TotalsFooter Component (Refactored)
-// Compact Floating Bar with Keyboard Awareness
+// TotalsFooter Component
+// Smart Compact with Currency Carousel
 // ============================================
+
+// All 6 currencies in the carousel
+const CAROUSEL_CURRENCIES = [
+  "USD",
+  "EUR",
+  "CAD",
+  "MLC",
+  "CLASICA",
+  "ZELLE",
+] as const;
+type CarouselCurrency = (typeof CAROUSEL_CURRENCIES)[number];
 
 export function TotalsFooter() {
   const grandTotal = useStore($grandTotalCUP) ?? 0;
-  const foreignTotals = useStore($foreignTotals) ?? { USD: 0, EUR: 0, CAD: 0 };
+  const foreignTotals = useStore($foreignTotals) ?? {
+    USD: 0,
+    EUR: 0,
+    CAD: 0,
+    MLC: 0,
+    CLASICA: 0,
+    ZELLE: 0,
+  };
   const privacyMode = useStore($privacyMode) ?? false;
   const { toast } = useToast();
+  const haptic = useHaptic();
 
   // Keyboard/Focus State
   const [isInputFocused, setIsInputFocused] = useState(false);
 
-  // Detect input focus to handle mobile keyboard
+  // Currency Carousel State
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Carousel auto-rotation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCarouselIndex((prev) => (prev + 1) % CAROUSEL_CURRENCIES.length);
+        setIsAnimating(false);
+      }, 200); // Animation duration
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Manual carousel switch on tap
+  const handleCarouselTap = useCallback(() => {
+    haptic.light();
+    setIsAnimating(true);
+    setTimeout(() => {
+      setCarouselIndex((prev) => (prev + 1) % CAROUSEL_CURRENCIES.length);
+      setIsAnimating(false);
+    }, 150);
+  }, [haptic]);
+
+  // Detect input focus for slim mode
   useEffect(() => {
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
@@ -37,13 +84,10 @@ export function TotalsFooter() {
         setIsInputFocused(true);
       }
     };
-    const handleBlur = () => {
-      setIsInputFocused(false);
-    };
+    const handleBlur = () => setIsInputFocused(false);
 
     window.addEventListener("focus", handleFocus, true);
     window.addEventListener("blur", handleBlur, true);
-
     return () => {
       window.removeEventListener("focus", handleFocus, true);
       window.removeEventListener("blur", handleBlur, true);
@@ -52,6 +96,7 @@ export function TotalsFooter() {
 
   const handleCopy = async () => {
     if (grandTotal === 0) return;
+    haptic.light();
     try {
       await navigator.clipboard.writeText(grandTotal.toString());
       toast.success("Total copiado");
@@ -65,6 +110,7 @@ export function TotalsFooter() {
       toast.warning("No hay monto para operar");
       return;
     }
+    haptic.medium();
     useInTransaction(grandTotal);
   };
 
@@ -77,6 +123,7 @@ export function TotalsFooter() {
       variant: "danger",
     });
     if (confirmed) {
+      haptic.heavy();
       clearAll();
       toast.info("Conteo limpiado");
     }
@@ -84,15 +131,13 @@ export function TotalsFooter() {
 
   // Display Values
   const displayTotal = privacyMode ? "••••" : formatNumber(grandTotal);
-  const displayForeign = privacyMode
-    ? "•••• · •••• · ••••"
-    : `${formatCurrency(foreignTotals.USD, "USD")} · ${formatCurrency(
-        foreignTotals.EUR,
-        "EUR"
-      )} · ${formatCurrency(foreignTotals.CAD, "CAD")}`;
+  const currentCurrency = CAROUSEL_CURRENCIES[carouselIndex];
+  const currentForeignValue = foreignTotals[currentCurrency] || 0;
+  const displayCarousel = privacyMode
+    ? "••••"
+    : formatCurrency(currentForeignValue, currentCurrency);
 
-  // If keyboard/input is focused, we enter "Slim Mode"
-  // Hiding actions to save space above the keyboard
+  // Slim Mode (keyboard visible)
   if (isInputFocused) {
     return (
       <div
@@ -109,9 +154,9 @@ export function TotalsFooter() {
           </span>
         </div>
         <button
-          onMouseDown={(e) => e.preventDefault()} // Prevent stealing focus
+          onMouseDown={(e) => e.preventDefault()}
           onClick={togglePrivacyMode}
-          className="text-neutral-500 p-1"
+          className="text-neutral-500 p-2"
         >
           {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
@@ -122,29 +167,27 @@ export function TotalsFooter() {
   return (
     <footer
       className={cn(
-        // Floating Positioning
         "fixed bottom-4 left-4 right-4 z-50",
-        "safe-bottom", // respect safe area margins
+        "safe-bottom",
         "transition-all duration-300 ease-out"
       )}
     >
       <div
         className={cn(
-          // Card Shape & Style
           "rounded-2xl shadow-xl shadow-black/50",
           "bg-neutral-900/90 backdrop-blur-xl",
           "border border-white/10",
           "p-3",
-          "flex items-center justify-between gap-3"
+          "flex items-center gap-3"
         )}
       >
-        {/* LEFT: Info Section */}
-        <div className="flex flex-col min-w-0">
-          {/* Main Total + Privacy Toggle */}
-          <div className="flex items-center gap-2">
+        {/* LEFT CLUSTER: Total + Carousel */}
+        <div className="flex flex-col min-w-0 flex-1">
+          {/* Main Total Row */}
+          <div className="flex items-center gap-1.5">
             <span
               className={cn(
-                "text-lg font-bold tabular-nums leading-none",
+                "text-xl font-bold tabular-nums leading-none",
                 grandTotal > 0 && !privacyMode
                   ? "text-emerald-400"
                   : "text-neutral-400",
@@ -152,59 +195,68 @@ export function TotalsFooter() {
               )}
             >
               {displayTotal}
-              <span className="text-xs text-neutral-500 font-normal ml-1">
-                CUP
-              </span>
             </span>
+            <span className="text-xs text-neutral-500 font-medium">CUP</span>
 
+            {/* Privacy Toggle - Inline with total */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                haptic.light();
                 togglePrivacyMode();
               }}
-              className="text-neutral-600 hover:text-neutral-400 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-600 hover:text-neutral-400 hover:bg-white/5 transition-colors ml-1"
+              aria-label="Modo privado"
             >
               {privacyMode ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
           </div>
 
-          {/* Subtotals: USD · EUR · CAD */}
-          <div
+          {/* Currency Carousel - Fixed Height */}
+          <button
+            onClick={handleCarouselTap}
             className={cn(
-              "text-[10px] text-neutral-500 font-medium tracking-tight truncate mt-0.5 leading-none",
-              privacyMode && "blur-sm"
+              "h-4 overflow-hidden text-left", // Fixed height prevents jumping
+              "mt-0.5"
             )}
           >
-            {displayForeign}
-          </div>
+            <div
+              className={cn(
+                "text-[11px] text-neutral-500 font-medium tabular-nums transition-all duration-200",
+                privacyMode && "blur-sm",
+                isAnimating && "opacity-0 -translate-y-2"
+              )}
+            >
+              {displayCarousel}
+            </div>
+          </button>
         </div>
 
-        {/* RIGHT: Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Icon Actions */}
+        {/* DIVIDER */}
+        <div className="w-px h-10 bg-white/10 shrink-0" />
+
+        {/* RIGHT CLUSTER: Actions */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* History */}
           <button
-            onClick={openHistoryDrawer}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-neutral-400 hover:bg-white/5 transition-colors"
+            onClick={() => {
+              haptic.light();
+              openHistoryDrawer();
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Historial"
           >
-            <Clock size={18} />
+            <Clock size={20} />
           </button>
 
-          <div className="w-px h-6 bg-white/10 mx-0.5"></div>
-
+          {/* Clear */}
           <button
             onClick={handleClear}
             disabled={grandTotal === 0}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-neutral-400 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-full text-neutral-400 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-30 transition-colors"
+            aria-label="Limpiar"
           >
-            <Trash2 size={18} />
-          </button>
-
-          <button
-            onClick={handleCopy}
-            disabled={grandTotal === 0}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors"
-          >
-            <Copy size={18} />
+            <Trash2 size={20} />
           </button>
 
           {/* Primary Action */}
@@ -213,7 +265,7 @@ export function TotalsFooter() {
             onClick={handleUseInTrade}
             disabled={grandTotal === 0}
             className={cn(
-              "ml-1 rounded-full px-4 h-9 font-semibold text-sm shadow-lg shadow-emerald-500/20",
+              "rounded-full px-5 h-10 font-bold text-sm shadow-lg shadow-emerald-500/20",
               "bg-emerald-500 hover:bg-emerald-400 text-neutral-950"
             )}
           >

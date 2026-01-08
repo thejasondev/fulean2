@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ToastProvider } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { RatesDashboard } from "../widgets/RatesDashboard";
@@ -6,7 +7,8 @@ import { TotalsFooter } from "../widgets/TotalsFooter";
 import { SettingsSheet } from "../widgets/SettingsSheet";
 import { SecurityModal } from "../widgets/SecurityModal";
 import { HistoryDrawer } from "../widgets/HistoryDrawer";
-
+import { ClientViewModal } from "../widgets/ClientViewModal";
+import { initializeRates } from "../../stores/ratesStore";
 // ============================================
 // App Component
 // Single React tree with all providers
@@ -14,6 +16,11 @@ import { HistoryDrawer } from "../widgets/HistoryDrawer";
 // ============================================
 
 export function App() {
+  // Initialize rates from localStorage on mount
+  useEffect(() => {
+    initializeRates();
+  }, []);
+
   return (
     <ToastProvider>
       <div className="flex flex-col min-h-dvh">
@@ -30,6 +37,7 @@ export function App() {
         <SettingsSheet />
         <SecurityModal />
         <HistoryDrawer />
+        <ClientViewModal />
       </div>
 
       {/* Confirm Dialog (global) */}

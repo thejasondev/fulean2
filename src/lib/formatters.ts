@@ -29,22 +29,25 @@ export function formatCUP(amount: unknown): string {
 }
 
 /**
- * Format a number as foreign currency (USD, EUR, CAD)
+ * Format a number as foreign currency (all 6 supported currencies)
  * Uses 2 decimal places for foreign currencies
  */
 export function formatCurrency(
   amount: unknown,
-  currency: "USD" | "EUR" | "CAD"
+  currency: "USD" | "EUR" | "CAD" | "MLC" | "CLASICA" | "ZELLE"
 ): string {
   const safeAmount = safeNumber(amount);
   const symbols: Record<string, string> = {
     USD: "$",
     EUR: "€",
     CAD: "C$",
+    MLC: "M$",
+    CLASICA: "₵",
+    ZELLE: "Z$",
   };
 
   return (
-    symbols[currency] +
+    (symbols[currency] || "") +
     new Intl.NumberFormat("es-CU", {
       style: "decimal",
       minimumFractionDigits: 2,

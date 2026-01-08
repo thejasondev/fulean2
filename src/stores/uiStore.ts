@@ -82,3 +82,29 @@ export function openHistoryDrawer() {
 export function closeHistoryDrawer() {
   $isHistoryDrawerOpen.set(false);
 }
+
+// Client View Modal (customer-facing display)
+export const $isClientViewOpen = atom<boolean>(false);
+export const $clientViewData = atom<{
+  foreignAmount: number;
+  foreignCurrency: string;
+  cupAmount: number;
+  rate: number;
+  operation: "BUY" | "SELL";
+} | null>(null);
+
+export function openClientView(data: {
+  foreignAmount: number;
+  foreignCurrency: string;
+  cupAmount: number;
+  rate: number;
+  operation: "BUY" | "SELL";
+}) {
+  $clientViewData.set(data);
+  $isClientViewOpen.set(true);
+}
+
+export function closeClientView() {
+  $isClientViewOpen.set(false);
+  $clientViewData.set(null);
+}

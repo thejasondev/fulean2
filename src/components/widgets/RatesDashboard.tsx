@@ -1,7 +1,9 @@
 import { useStore } from "@nanostores/react";
 import { RefreshCw, Settings, Shield, WifiOff } from "lucide-react";
 import {
-  $effectiveRates,
+  $buyRates,
+  $sellRates,
+  $spreads,
   $isLoadingRates,
   $isOffline,
   refreshRates,
@@ -13,22 +15,27 @@ import { Button } from "../ui/Button";
 
 // ============================================
 // RatesDashboard Component
-// Compact Ticker with 6 Currency Cards
+// Shows Buy/Sell rates for each currency
 // ============================================
 
 function RateTickerCard({
   currency,
-  rate,
+  buyRate,
+  sellRate,
+  spread,
   isLoading,
   onClick,
 }: {
   currency: Currency;
-  rate: number;
+  buyRate: number;
+  sellRate: number;
+  spread: number;
   isLoading: boolean;
   onClick: () => void;
 }) {
   const meta = CURRENCY_META[currency];
   const isDigital = meta.category === "digital";
+  const hasSpread = spread > 0;
 
   return (
     <button
@@ -36,7 +43,7 @@ function RateTickerCard({
       className={cn(
         "snap-start shrink-0",
         "flex flex-col justify-between",
-        "w-[100px] h-full p-2.5",
+        "w-[105px] h-full p-2.5",
         "bg-neutral-900/50 backdrop-blur-sm",
         "border border-white/5 rounded-xl",
         "transition-all duration-200 active:scale-95",
@@ -51,8 +58,6 @@ function RateTickerCard({
             {currency}
           </span>
         </div>
-
-        {/* Category Badge */}
         {isDigital && (
           <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
             DIG
@@ -60,25 +65,34 @@ function RateTickerCard({
         )}
       </div>
 
-      {/* Row 2: Rate */}
-      <div className="text-xl font-bold text-white tabular-nums tracking-tight leading-none">
-        {isLoading ? (
-          <div className="h-6 w-12 bg-neutral-800 rounded animate-pulse" />
-        ) : (
-          rate
-        )}
+      {/* Row 2: Buy/Sell Rates */}
+      <div className="flex items-baseline gap-1">
+        <span className="text-lg font-bold text-emerald-400 tabular-nums leading-none">
+          {isLoading ? "-" : buyRate}
+        </span>
+        <span className="text-neutral-600">/</span>
+        <span className="text-lg font-bold text-amber-400 tabular-nums leading-none">
+          {isLoading ? "-" : sellRate}
+        </span>
       </div>
 
-      {/* Row 3: Label */}
-      <div className="text-[9px] font-medium text-neutral-500 leading-none mt-1 truncate">
-        {meta.name}
+      {/* Row 3: Spread indicator */}
+      <div className="flex items-center justify-between mt-1">
+        <span className="text-[9px] text-neutral-500">{meta.name}</span>
+        {hasSpread && (
+          <span className="text-[9px] font-bold text-emerald-400 tabular-nums">
+            +{spread}
+          </span>
+        )}
       </div>
     </button>
   );
 }
 
 export function RatesDashboard() {
-  const effectiveRates = useStore($effectiveRates);
+  const buyRates = useStore($buyRates);
+  const sellRates = useStore($sellRates);
+  const spreads = useStore($spreads);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
 
@@ -106,7 +120,7 @@ export function RatesDashboard() {
               <span
                 className={cn(
                   "font-sans font-extrabold text-xl md:text-2xl tracking-tighter",
-                  "bg-gradient-to-tr from-emerald-400 to-green-300 bg-clip-text text-transparent",
+                  "bg-linear-to-tr from-emerald-400 to-green-300 bg-clip-text text-transparent",
                   "drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]"
                 )}
               >
@@ -114,7 +128,6 @@ export function RatesDashboard() {
               </span>
             </a>
 
-            {/* Offline Indicator */}
             {isOffline && (
               <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
                 <WifiOff size={12} className="text-amber-400" />
@@ -156,19 +169,26 @@ export function RatesDashboard() {
           </div>
         </div>
 
-        {/* Horizontal Ticker Scroll - All 6 Currencies */}
+        {/* Rate Legend */}
+        <div className="flex items-center gap-2 pr-4 mb-2 text-[10px]">
+          <span className="text-emerald-400">Compra</span>
+          <span className="text-neutral-600">/</span>
+          <span className="text-amber-400">Venta</span>
+        </div>
+
+        {/* Horizontal Ticker Scroll */}
         <div className="flex gap-2 overflow-x-auto snap-x pb-3 pr-4 -mb-3 scrollbar-hide">
           {CURRENCIES.map((currency) => (
             <RateTickerCard
               key={currency}
               currency={currency}
-              rate={effectiveRates[currency]}
+              buyRate={buyRates[currency]}
+              sellRate={sellRates[currency]}
+              spread={spreads[currency]}
               isLoading={isLoading}
               onClick={openSettings}
             />
           ))}
-
-          {/* Spacer for right padding in scroll view */}
           <div className="w-1 shrink-0" />
         </div>
       </div>

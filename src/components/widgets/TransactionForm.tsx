@@ -1,8 +1,19 @@
 import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { ArrowDownLeft, ArrowUpRight, Check } from "lucide-react";
-import { $pendingCUP, clearPendingCUP } from "../../stores/uiStore";
-import { $effectiveRates } from "../../stores/ratesStore";
+import { ArrowDownLeft, ArrowUpRight, Check, Eye } from "lucide-react";
+import {
+  $pendingCUP,
+  clearPendingCUP,
+  openClientView,
+  goToCounter,
+} from "../../stores/uiStore";
+import { clearAll } from "../../stores/counterStore";
+import {
+  $buyRates,
+  $sellRates,
+  getRateForOperation,
+  calculateProfit,
+} from "../../stores/ratesStore";
 import {
   saveTransaction,
   type OperationType,
@@ -12,24 +23,22 @@ import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
-import {
-  CURRENCIES,
-  CURRENCY_META,
-  CASH_CURRENCIES,
-  DIGITAL_CURRENCIES,
-  type Currency,
-} from "../../lib/constants";
+import { ProfitPill } from "../ui/ProfitPill";
+import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
+import { useHaptic } from "../../hooks/useHaptic";
 
 // ============================================
 // TransactionForm Component
-// Dedicated form for recording operations with 6 currencies
+// Uses Buy/Sell rates based on operation type
 // ============================================
 
 export function TransactionForm() {
   const pendingCUP = useStore($pendingCUP);
-  const rates = useStore($effectiveRates);
+  const buyRates = useStore($buyRates);
+  const sellRates = useStore($sellRates);
   const { toast } = useToast();
+  const haptic = useHaptic();
 
   // Form State
   const [operation, setOperation] = useState<OperationType>("BUY");
@@ -38,28 +47,48 @@ export function TransactionForm() {
   const [rate, setRate] = useState<string>("");
   const [totalCUP, setTotalCUP] = useState<string>("");
 
+  // Get the appropriate rate based on operation
+  const getRate = (curr: Currency, op: OperationType) => {
+    return getRateForOperation(curr, op);
+  };
+
+  // Calculate projected profit
+  const foreignAmount = parseFloat(amountForeign) || 0;
+  const profit = calculateProfit(currency as Currency, foreignAmount);
+
   // Initial load handling
   useEffect(() => {
     if (pendingCUP !== null) {
       setOperation("BUY");
       setTotalCUP(pendingCUP.toString());
 
-      const currentRate = rates[currency] || 320;
+      const currentRate = getRate(currency as Currency, "BUY");
       setRate(currentRate.toString());
       const foreign = pendingCUP / currentRate;
       setAmountForeign(foreign.toFixed(2));
 
       clearPendingCUP();
     } else if (!rate) {
-      const r = rates[currency] || 320;
+      const r = getRate(currency as Currency, operation);
       setRate(r.toString());
     }
   }, [pendingCUP]);
 
+  // Update rate when operation changes
+  useEffect(() => {
+    const newRate = getRate(currency as Currency, operation);
+    setRate(newRate.toString());
+
+    if (amountForeign) {
+      const foreign = parseFloat(amountForeign) || 0;
+      setTotalCUP(Math.round(foreign * newRate).toString());
+    }
+  }, [operation]);
+
   // Handle currency change
   const handleCurrencyChange = (newCurr: TransactionCurrency) => {
     setCurrency(newCurr);
-    const newRate = rates[newCurr] || 300;
+    const newRate = getRate(newCurr as Currency, operation);
     setRate(newRate.toString());
 
     if (amountForeign) {
@@ -108,11 +137,17 @@ export function TransactionForm() {
 
     saveTransaction(operation, currency, foreign, r, cup);
 
+    // Clear the counter (reset bill counts to 0)
+    clearAll();
+
     toast.success("Operación registrada exitosamente");
 
     // Reset form
     setAmountForeign("");
     setTotalCUP("");
+
+    // Navigate back to counter tab
+    goToCounter();
   };
 
   // Theme colors based on operation
@@ -288,20 +323,52 @@ export function TransactionForm() {
         </div>
       </div>
 
-      {/* Submit Button */}
-      <Button
-        size="lg"
-        onClick={handleSubmit}
-        className={cn(
-          "w-full font-bold text-lg shadow-xl",
-          operation === "BUY"
-            ? "bg-emerald-500 hover:bg-emerald-600"
-            : "bg-amber-500 hover:bg-amber-600"
+      {/* Profit Pill - Shows only when there's spread and amount */}
+      {foreignAmount > 0 && profit > 0 && (
+        <div className="flex items-center justify-center mb-4">
+          <ProfitPill profit={profit} />
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3">
+        {/* Show to Client Button */}
+        {foreignAmount > 0 && parseFloat(totalCUP) > 0 && (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => {
+              haptic.medium();
+              openClientView({
+                foreignAmount,
+                foreignCurrency: currency,
+                cupAmount: parseFloat(totalCUP),
+                rate: parseFloat(rate),
+                operation,
+              });
+            }}
+            className="flex-1 font-bold"
+          >
+            <Eye className="w-5 h-5 mr-2" />
+            Mostrar
+          </Button>
         )}
-      >
-        <Check className="w-6 h-6 mr-2" />
-        {operation === "BUY" ? "Registrar Compra" : "Registrar Venta"}
-      </Button>
+
+        {/* Submit Button */}
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          className={cn(
+            "flex-1 font-bold text-lg shadow-xl",
+            operation === "BUY"
+              ? "bg-emerald-500 hover:bg-emerald-600"
+              : "bg-amber-500 hover:bg-amber-600"
+          )}
+        >
+          <Check className="w-6 h-6 mr-2" />
+          {operation === "BUY" ? "Registrar" : "Registrar"}
+        </Button>
+      </div>
     </div>
   );
 }
