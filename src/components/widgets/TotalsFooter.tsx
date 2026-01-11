@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useStore } from "@nanostores/react";
-import { Eye, EyeOff, Trash2, Copy, Clock } from "lucide-react";
+import { Eye, EyeOff, Trash2, Clock, ArrowRightLeft } from "lucide-react";
 import {
   $grandTotalCUP,
   $foreignTotals,
@@ -259,18 +259,20 @@ export function TotalsFooter() {
             <Trash2 size={20} />
           </button>
 
-          {/* Primary Action */}
-          <Button
-            size="sm"
+          {/* Primary Action - Icon only for mobile space efficiency */}
+          <button
             onClick={handleUseInTrade}
             disabled={grandTotal === 0}
             className={cn(
-              "rounded-full px-5 h-10 font-bold text-sm shadow-lg shadow-emerald-500/20",
-              "bg-emerald-500 hover:bg-emerald-400 text-neutral-950"
+              "w-12 h-12 flex items-center justify-center rounded-full",
+              "shadow-lg shadow-emerald-500/20 transition-all duration-200",
+              "bg-emerald-500 hover:bg-emerald-400 text-neutral-950",
+              "disabled:opacity-30 disabled:shadow-none"
             )}
+            aria-label="Operar"
           >
-            Operar
-          </Button>
+            <ArrowRightLeft size={22} strokeWidth={2.5} />
+          </button>
         </div>
       </div>
     </footer>

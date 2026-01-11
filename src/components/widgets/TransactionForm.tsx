@@ -181,7 +181,7 @@ export function TransactionForm() {
           )}
         >
           <ArrowDownLeft className="w-4 h-4" />
-          COMPRAR (Entra Divisa)
+          Compra
         </button>
         <button
           onClick={() => setOperation("SELL")}
@@ -194,7 +194,7 @@ export function TransactionForm() {
           )}
         >
           <ArrowUpRight className="w-4 h-4" />
-          VENDER (Sale Divisa)
+          Venta
         </button>
       </div>
 
