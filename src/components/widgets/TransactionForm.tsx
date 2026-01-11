@@ -168,6 +168,9 @@ export function TransactionForm() {
 
   return (
     <div className="flex flex-col h-full bg-neutral-950 p-4 overflow-y-auto pb-32">
+      <label className="block text-sm text-neutral-500 mb-2 font-medium">
+        Tipo de operación
+      </label>
       {/* Segmented Control */}
       <div className="flex p-1 bg-neutral-900 rounded-xl mb-6 border border-neutral-800">
         <button
@@ -200,7 +203,7 @@ export function TransactionForm() {
 
       {/* Currency Selector - 3x2 Grid */}
       <div className="mb-6">
-        <label className="block text-xs text-neutral-500 font-medium mb-2 uppercase tracking-wide">
+        <label className="block text-sm text-neutral-500 mb-2 font-medium">
           Moneda
         </label>
         <div className="grid grid-cols-3 gap-2">

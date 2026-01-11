@@ -1,9 +1,11 @@
 import { atom, computed } from "nanostores";
 import { CURRENCIES, DEFAULT_RATES, type Currency } from "../lib/constants";
+import { fetchElToqueRates, type ElToqueRates } from "../lib/eltoque-api";
 
 // ============================================
 // Rates Store - Buy/Sell Rate System
 // Each currency has buyRate and sellRate
+// El Toque rates are kept as informational reference
 // ============================================
 
 const STORAGE_KEY = "fulean2_rates";
@@ -22,6 +24,13 @@ export const $isLoadingRates = atom<boolean>(false);
 
 // Last update timestamp
 export const $lastUpdate = atom<Date>(new Date());
+
+// ============================================
+// El Toque Reference Rates (Informational Only)
+// ============================================
+export const $elToqueRates = atom<ElToqueRates | null>(null);
+export const $isLoadingElToque = atom<boolean>(false);
+export const $elToqueError = atom<string | null>(null);
 
 // ============================================
 // LocalStorage Helpers
@@ -174,13 +183,43 @@ export function resetSpreads() {
 }
 
 /**
- * Simulate refresh
+ * Load El Toque rates (informational reference only)
+ * Does NOT modify user's buy/sell rates
+ */
+export async function loadElToqueRates(): Promise<boolean> {
+  $isLoadingElToque.set(true);
+  $elToqueError.set(null);
+
+  try {
+    const rates = await fetchElToqueRates();
+
+    if (rates) {
+      $elToqueRates.set(rates);
+      $isLoadingElToque.set(false);
+      return true;
+    } else {
+      $elToqueError.set("No se pudieron obtener las tasas");
+      $isLoadingElToque.set(false);
+      return false;
+    }
+  } catch (error) {
+    $elToqueError.set("Error de conexión");
+    $isLoadingElToque.set(false);
+    return false;
+  }
+}
+
+/**
+ * Refresh all rates (fetches El Toque reference)
  */
 export async function refreshRates(): Promise<{ offline: boolean }> {
   $isLoadingRates.set(true);
-  await new Promise((resolve) => setTimeout(resolve, 300));
+
+  // Fetch El Toque rates for reference
+  await loadElToqueRates();
+
   $isLoadingRates.set(false);
-  return { offline: false };
+  return { offline: $isOffline.get() };
 }
 
 /**

@@ -1,21 +1,26 @@
+import { useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { RefreshCw, Settings, Shield, WifiOff } from "lucide-react";
+import { RefreshCw, Settings, Shield, WifiOff, Zap } from "lucide-react";
 import {
   $buyRates,
   $sellRates,
   $spreads,
   $isLoadingRates,
   $isOffline,
+  $elToqueRates,
+  $isLoadingElToque,
   refreshRates,
+  loadElToqueRates,
 } from "../../stores/ratesStore";
 import { openSettings, openSecurityModal } from "../../stores/uiStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+import { formatLastUpdate } from "../../lib/eltoque-api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 
 // ============================================
 // RatesDashboard Component
-// Shows Buy/Sell rates for each currency
+// Shows Buy/Sell rates + El Toque reference
 // ============================================
 
 function RateTickerCard({
@@ -23,6 +28,7 @@ function RateTickerCard({
   buyRate,
   sellRate,
   spread,
+  elToqueRate,
   isLoading,
   onClick,
 }: {
@@ -30,6 +36,7 @@ function RateTickerCard({
   buyRate: number;
   sellRate: number;
   spread: number;
+  elToqueRate?: number;
   isLoading: boolean;
   onClick: () => void;
 }) {
@@ -76,9 +83,18 @@ function RateTickerCard({
         </span>
       </div>
 
-      {/* Row 3: Spread indicator */}
+      {/* Row 3: El Toque Reference or Spread */}
       <div className="flex items-center justify-between mt-1">
-        <span className="text-[9px] text-neutral-500">{meta.name}</span>
+        {elToqueRate ? (
+          <div className="flex items-center gap-1">
+            <Zap size={8} className="text-blue-400" />
+            <span className="text-[9px] text-blue-400 tabular-nums font-bold">
+              {elToqueRate}
+            </span>
+          </div>
+        ) : (
+          <span className="text-[9px] text-neutral-500">{meta.name}</span>
+        )}
         {hasSpread && (
           <span className="text-[9px] font-bold text-emerald-400 tabular-nums">
             +{spread}
@@ -89,12 +105,42 @@ function RateTickerCard({
   );
 }
 
+// El Toque Info Banner
+function ElToqueBanner() {
+  const elToqueRates = useStore($elToqueRates);
+  const isLoading = useStore($isLoadingElToque);
+
+  if (!elToqueRates && !isLoading) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 border-b border-blue-500/20">
+      <Zap size={12} className="text-blue-400" />
+      <span className="text-[10px] text-blue-400 font-medium">
+        {isLoading
+          ? "Cargando El Toque..."
+          : `El Toque: ${formatLastUpdate(
+              elToqueRates?.lastUpdate || new Date()
+            )}`}
+      </span>
+      <span className="text-[10px] text-blue-400/60">
+        • Referencia mercado informal
+      </span>
+    </div>
+  );
+}
+
 export function RatesDashboard() {
   const buyRates = useStore($buyRates);
   const sellRates = useStore($sellRates);
   const spreads = useStore($spreads);
+  const elToqueRates = useStore($elToqueRates);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
+
+  // Load El Toque rates on mount
+  useEffect(() => {
+    loadElToqueRates();
+  }, []);
 
   return (
     <header
@@ -144,6 +190,7 @@ export function RatesDashboard() {
               size="sm"
               onClick={refreshRates}
               className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
+              title="Actualizar tasas"
             >
               <RefreshCw
                 size={14}
@@ -155,6 +202,7 @@ export function RatesDashboard() {
               size="sm"
               onClick={openSecurityModal}
               className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
+              title="Seguridad"
             >
               <Shield size={14} />
             </Button>
@@ -163,6 +211,7 @@ export function RatesDashboard() {
               size="sm"
               onClick={openSettings}
               className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
+              title="Configuración"
             >
               <Settings size={14} />
             </Button>
@@ -174,6 +223,13 @@ export function RatesDashboard() {
           <span className="text-emerald-400">Compra</span>
           <span className="text-neutral-600">/</span>
           <span className="text-amber-400">Venta</span>
+          {elToqueRates && (
+            <>
+              <span className="text-neutral-600 ml-2">•</span>
+              <Zap size={10} className="text-blue-400" />
+              <span className="text-blue-400">El Toque</span>
+            </>
+          )}
         </div>
 
         {/* Horizontal Ticker Scroll */}
@@ -185,6 +241,7 @@ export function RatesDashboard() {
               buyRate={buyRates[currency]}
               sellRate={sellRates[currency]}
               spread={spreads[currency]}
+              elToqueRate={elToqueRates?.[currency]}
               isLoading={isLoading}
               onClick={openSettings}
             />

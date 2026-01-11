@@ -1,12 +1,15 @@
 import { useStore } from "@nanostores/react";
-import { RotateCcw, TrendingUp } from "lucide-react";
+import { RotateCcw, TrendingUp, Zap, RefreshCw } from "lucide-react";
 import {
   $buyRates,
   $sellRates,
   $spreads,
+  $elToqueRates,
+  $isLoadingElToque,
   setBuyRate,
   setSellRate,
   resetRates,
+  loadElToqueRates,
 } from "../../stores/ratesStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
 import {
@@ -20,21 +23,24 @@ import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { useHaptic } from "../../hooks/useHaptic";
 
 // ============================================
 // SettingsSheet Component
-// Buy/Sell rate editing with spread display
+// Buy/Sell rate editing with El Toque reference
 // ============================================
 
 function RateRow({ currency }: { currency: Currency }) {
   const buyRates = useStore($buyRates);
   const sellRates = useStore($sellRates);
   const spreads = useStore($spreads);
+  const elToqueRates = useStore($elToqueRates);
 
   const meta = CURRENCY_META[currency];
   const buyRate = buyRates[currency];
   const sellRate = sellRates[currency];
   const spread = spreads[currency];
+  const elToqueRate = elToqueRates?.[currency];
 
   const handleBuyChange = (value: string) => {
     const numValue = parseInt(value, 10);
@@ -66,15 +72,27 @@ function RateRow({ currency }: { currency: Currency }) {
           )}
         </div>
 
-        {/* Spread Badge */}
-        {spread > 0 && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-            <TrendingUp size={12} className="text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-400 tabular-nums">
-              +{spread}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* El Toque Reference */}
+          {elToqueRate && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+              <Zap size={10} className="text-blue-400" />
+              <span className="text-[10px] font-bold text-blue-400 tabular-nums">
+                {elToqueRate}
+              </span>
+            </div>
+          )}
+
+          {/* Spread Badge */}
+          {spread > 0 && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <TrendingUp size={12} className="text-emerald-400" />
+              <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                +{spread}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Buy/Sell Inputs */}
@@ -114,6 +132,14 @@ function RateRow({ currency }: { currency: Currency }) {
 
 export function SettingsSheet() {
   const isOpen = useStore($isSettingsOpen) ?? false;
+  const isLoadingElToque = useStore($isLoadingElToque);
+  const elToqueRates = useStore($elToqueRates);
+  const haptic = useHaptic();
+
+  const handleRefreshElToque = () => {
+    haptic.medium();
+    loadElToqueRates();
+  };
 
   return (
     <Modal
@@ -129,6 +155,38 @@ export function SettingsSheet() {
           <p className="text-xs text-neutral-500 mt-1">
             Define las tasas a las que compras y vendes cada moneda.
           </p>
+        </div>
+
+        {/* El Toque Reference Section */}
+        <div className="bg-blue-500/5 rounded-xl p-3 border border-blue-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap size={16} className="text-blue-400" />
+              <div>
+                <p className="text-sm text-blue-400 font-bold">El Toque</p>
+                <p className="text-[10px] text-blue-400/60">
+                  Referencia mercado informal
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshElToque}
+              className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
+              title="Actualizar El Toque"
+            >
+              <RefreshCw
+                size={14}
+                className={cn(isLoadingElToque && "animate-spin")}
+              />
+            </Button>
+          </div>
+          {elToqueRates && (
+            <p className="text-[10px] text-blue-400/60 mt-2">
+              Usa estos valores como guía para ajustar tus tasas
+            </p>
+          )}
         </div>
 
         {/* Cash Currencies */}
