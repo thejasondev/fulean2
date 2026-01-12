@@ -7,8 +7,8 @@ import AstroPWA from "@vite-pwa/astro";
 
 // https://astro.build/config
 export default defineConfig({
-  // Static site generation for optimal performance
-  output: "static",
+  // Hybrid mode: static by default, SSR where needed (API routes)
+  output: "hybrid",
 
   // Vercel adapter
   adapter: vercel(),

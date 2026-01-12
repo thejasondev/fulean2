@@ -6,6 +6,9 @@ import type { APIRoute } from "astro";
 // Hides API token from client
 // ============================================
 
+// Disable prerendering - this route must run on the server
+export const prerender = false;
+
 const ELTOQUE_API_URL = "https://tasas.eltoque.com/v1/trmi";
 
 export const GET: APIRoute = async () => {
