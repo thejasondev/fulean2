@@ -273,19 +273,22 @@ export function TotalsFooter() {
             <Trash2 size={20} />
           </button>
 
-          {/* Primary Action - Icon only for mobile space efficiency */}
+          {/* Primary Action - Responsive: icon on mobile, text on desktop */}
           <button
             onClick={handleUseInTrade}
             disabled={grandTotal === 0}
             className={cn(
-              "w-12 h-12 flex items-center justify-center rounded-full",
+              "flex items-center justify-center gap-2 rounded-full",
               "shadow-lg shadow-emerald-500/20 transition-all duration-200",
-              "bg-emerald-500 hover:bg-emerald-400 text-neutral-950",
-              "disabled:opacity-30 disabled:shadow-none"
+              "bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold",
+              "disabled:opacity-30 disabled:shadow-none",
+              // Size: circle on mobile, pill on desktop
+              "w-12 h-12 md:w-auto md:h-11 md:px-5"
             )}
             aria-label="Operar"
           >
-            <ArrowRightLeft size={22} strokeWidth={2.5} />
+            <ArrowRightLeft size={20} strokeWidth={2.5} />
+            <span className="hidden md:inline text-sm">Operar</span>
           </button>
         </div>
       </div>

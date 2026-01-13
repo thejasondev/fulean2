@@ -32,6 +32,65 @@ export const $elToqueRates = atom<ElToqueRates | null>(null);
 export const $isLoadingElToque = atom<boolean>(false);
 export const $elToqueError = atom<string | null>(null);
 
+// Manual El Toque rates for currencies not in API (CAD, ZELLE, CLASICA)
+const MANUAL_ELTOQUE_KEY = "fulean2_manual_eltoque";
+type ManualElToqueCurrency = "CAD" | "ZELLE" | "CLASICA";
+
+const defaultManualRates: Record<ManualElToqueCurrency, number> = {
+  CAD: 280,
+  ZELLE: 310,
+  CLASICA: 250,
+};
+
+function loadManualElToqueRates(): Record<ManualElToqueCurrency, number> {
+  if (typeof window === "undefined") return { ...defaultManualRates };
+  try {
+    const stored = localStorage.getItem(MANUAL_ELTOQUE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...defaultManualRates, ...parsed };
+    }
+  } catch {
+    // Ignore
+  }
+  return { ...defaultManualRates };
+}
+
+export const $manualElToqueRates = atom<Record<ManualElToqueCurrency, number>>(
+  loadManualElToqueRates()
+);
+
+/**
+ * Set manual El Toque rate for a currency not provided by API
+ */
+export function setManualElToqueRate(
+  currency: ManualElToqueCurrency,
+  value: number
+) {
+  const validValue = Math.max(1, Math.floor(value));
+  const current = $manualElToqueRates.get();
+  const updated = { ...current, [currency]: validValue };
+  $manualElToqueRates.set(updated);
+
+  // Persist to localStorage
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(MANUAL_ELTOQUE_KEY, JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+/**
+ * Check if a currency uses manual El Toque rate
+ */
+export function isManualElToqueCurrency(
+  currency: string
+): currency is ManualElToqueCurrency {
+  return ["CAD", "ZELLE", "CLASICA"].includes(currency);
+}
+
 // ============================================
 // LocalStorage Helpers
 // ============================================

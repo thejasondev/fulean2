@@ -107,11 +107,16 @@ function ToastContainer({
   return (
     <div
       className={cn(
-        "fixed top-4 left-1/2 -translate-x-1/2 z-[200]",
+        "fixed left-1/2 -translate-x-1/2 z-[200]",
         "flex flex-col gap-2",
         "w-full max-w-sm px-4",
         "pointer-events-none"
       )}
+      style={{
+        // Use safe-area-inset-top for iPhone notch/Dynamic Island
+        // Falls back to 16px (top-4) on devices without safe areas
+        top: "calc(env(safe-area-inset-top, 0px) + 16px)",
+      }}
       aria-live="polite"
       aria-label="Notificaciones"
     >

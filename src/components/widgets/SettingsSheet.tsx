@@ -1,13 +1,16 @@
 import { useStore } from "@nanostores/react";
-import { RotateCcw, TrendingUp, Zap, RefreshCw } from "lucide-react";
+import { RotateCcw, TrendingUp, Zap, RefreshCw, Pencil } from "lucide-react";
 import {
   $buyRates,
   $sellRates,
   $spreads,
   $elToqueRates,
   $isLoadingElToque,
+  $manualElToqueRates,
   setBuyRate,
   setSellRate,
+  setManualElToqueRate,
+  isManualElToqueCurrency,
   resetRates,
   loadElToqueRates,
 } from "../../stores/ratesStore";
@@ -35,12 +38,18 @@ function RateRow({ currency }: { currency: Currency }) {
   const sellRates = useStore($sellRates);
   const spreads = useStore($spreads);
   const elToqueRates = useStore($elToqueRates);
+  const manualElToqueRates = useStore($manualElToqueRates);
 
   const meta = CURRENCY_META[currency];
   const buyRate = buyRates[currency];
   const sellRate = sellRates[currency];
   const spread = spreads[currency];
-  const elToqueRate = elToqueRates?.[currency];
+
+  // Check if this currency uses manual El Toque rate
+  const isManual = isManualElToqueCurrency(currency);
+  const elToqueRate = isManual
+    ? manualElToqueRates[currency as "CAD" | "ZELLE" | "CLASICA"]
+    : elToqueRates?.[currency];
 
   const handleBuyChange = (value: string) => {
     const numValue = parseInt(value, 10);
@@ -53,6 +62,13 @@ function RateRow({ currency }: { currency: Currency }) {
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue) && numValue > 0) {
       setSellRate(currency, numValue);
+    }
+  };
+
+  const handleManualElToqueChange = (value: string) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue > 0 && isManual) {
+      setManualElToqueRate(currency as "CAD" | "ZELLE" | "CLASICA", numValue);
     }
   };
 
@@ -73,15 +89,26 @@ function RateRow({ currency }: { currency: Currency }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* El Toque Reference */}
-          {elToqueRate && (
+          {/* El Toque Reference - Editable for manual currencies */}
+          {isManual ? (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
+              <Pencil size={10} className="text-purple-400" />
+              <input
+                type="number"
+                value={elToqueRate || 0}
+                onChange={(e) => handleManualElToqueChange(e.target.value)}
+                className="w-12 bg-transparent text-[10px] font-bold text-purple-400 tabular-nums text-center outline-none"
+                min={1}
+              />
+            </div>
+          ) : elToqueRate ? (
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
               <Zap size={10} className="text-blue-400" />
               <span className="text-[10px] font-bold text-blue-400 tabular-nums">
                 {elToqueRate}
               </span>
             </div>
-          )}
+          ) : null}
 
           {/* Spread Badge */}
           {spread > 0 && (

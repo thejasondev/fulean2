@@ -5,8 +5,8 @@ import { atom } from "nanostores";
 // Global UI state management
 // ============================================
 
-// Tab IDs - Added 'operar' for transaction form
-export type TabId = "contar" | "calcular" | "operar";
+// Tab IDs - 4 main tabs
+export type TabId = "contar" | "calcular" | "operar" | "reportes";
 
 // Active tab
 export const $activeTab = atom<TabId>("contar");
@@ -37,6 +37,10 @@ export function goToCalculator() {
 
 export function goToTransaction() {
   $activeTab.set("operar");
+}
+
+export function goToReports() {
+  $activeTab.set("reportes");
 }
 
 /**

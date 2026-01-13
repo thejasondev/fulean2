@@ -22,12 +22,16 @@ export type TransactionCurrency =
 export interface Transaction {
   id: string;
   date: string;
-  // New fields for proper transaction tracking
+  // Core transaction fields
   operationType: OperationType;
   currency: TransactionCurrency;
   amountForeign: number;
   rate: number;
   totalCUP: number;
+  // Profit tracking (NEW)
+  profitCUP?: number; // Spread × amountForeign (potential profit from this transaction)
+  cupImpact?: number; // + for SELL (CUP received), - for BUY (CUP paid)
+  spreadUsed?: number; // Sell rate - Buy rate at transaction time
   // Legacy fields for backward compatibility with old records
   conversions?: { USD: number; EUR: number; CAD: number };
   ratesUsed?: Record<string, number>;
@@ -82,15 +86,27 @@ function generateId(): string {
 }
 
 /**
- * Save a new transaction (new format)
+ * Save a new transaction with profit tracking
  */
 export function saveTransaction(
   operationType: OperationType,
   currency: TransactionCurrency,
   amountForeign: number,
   rate: number,
-  totalCUP: number
+  totalCUP: number,
+  spreadUsed?: number // Optional: sellRate - buyRate for profit calculation
 ): Transaction {
+  // Calculate profit and capital impact
+  // IMPORTANT: Profit is only realized on SELL operations
+  // BUY = acquire currency (no profit yet, just potential)
+  // SELL = dispose currency (profit = spread × amount)
+  const profitCUP =
+    operationType === "SELL" && spreadUsed
+      ? Math.round(spreadUsed * amountForeign)
+      : 0;
+  const cupImpact =
+    operationType === "BUY" ? -Math.round(totalCUP) : Math.round(totalCUP);
+
   const transaction: Transaction = {
     id: generateId(),
     date: new Date().toISOString(),
@@ -99,6 +115,9 @@ export function saveTransaction(
     amountForeign: Math.round(amountForeign * 100) / 100, // 2 decimal precision
     rate: Math.round(rate),
     totalCUP: Math.round(totalCUP),
+    profitCUP,
+    cupImpact,
+    spreadUsed: spreadUsed ? Math.round(spreadUsed) : undefined,
   };
 
   const current = $transactions.get();

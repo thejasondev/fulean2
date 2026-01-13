@@ -1,6 +1,13 @@
 import { useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { RefreshCw, Settings, Shield, WifiOff, Zap } from "lucide-react";
+import {
+  RefreshCw,
+  Settings,
+  Shield,
+  WifiOff,
+  Zap,
+  Pencil,
+} from "lucide-react";
 import {
   $buyRates,
   $sellRates,
@@ -9,6 +16,8 @@ import {
   $isOffline,
   $elToqueRates,
   $isLoadingElToque,
+  $manualElToqueRates,
+  isManualElToqueCurrency,
   refreshRates,
   loadElToqueRates,
 } from "../../stores/ratesStore";
@@ -29,6 +38,7 @@ function RateTickerCard({
   sellRate,
   spread,
   elToqueRate,
+  isManual,
   isLoading,
   onClick,
 }: {
@@ -37,6 +47,7 @@ function RateTickerCard({
   sellRate: number;
   spread: number;
   elToqueRate?: number;
+  isManual?: boolean;
   isLoading: boolean;
   onClick: () => void;
 }) {
@@ -87,8 +98,17 @@ function RateTickerCard({
       <div className="flex items-center justify-between mt-1">
         {elToqueRate ? (
           <div className="flex items-center gap-1">
-            <Zap size={8} className="text-blue-400" />
-            <span className="text-[9px] text-blue-400 tabular-nums font-bold">
+            {isManual ? (
+              <Pencil size={8} className="text-purple-400" />
+            ) : (
+              <Zap size={8} className="text-blue-400" />
+            )}
+            <span
+              className={cn(
+                "text-[9px] tabular-nums font-bold",
+                isManual ? "text-purple-400" : "text-blue-400"
+              )}
+            >
               {elToqueRate}
             </span>
           </div>
@@ -134,6 +154,7 @@ export function RatesDashboard() {
   const sellRates = useStore($sellRates);
   const spreads = useStore($spreads);
   const elToqueRates = useStore($elToqueRates);
+  const manualElToqueRates = useStore($manualElToqueRates);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
 
@@ -147,11 +168,11 @@ export function RatesDashboard() {
       className={cn(
         "sticky top-0 z-40",
         "bg-neutral-950/85 backdrop-blur-xl",
-        "border-b border-neutral-800/60",
-        "safe-top"
+        "border-b border-neutral-800/60"
       )}
     >
-      <div className="py-3 pl-4">
+      {/* Inner container with safe-area padding */}
+      <div className="safe-top py-3 pl-4">
         {/* Top Row: Brand + Actions */}
         <div className="flex items-center justify-between pr-4 mb-3">
           <div className="flex items-center gap-2">
@@ -234,18 +255,27 @@ export function RatesDashboard() {
 
         {/* Horizontal Ticker Scroll */}
         <div className="flex gap-2 overflow-x-auto snap-x pb-3 pr-4 -mb-3 scrollbar-hide">
-          {CURRENCIES.map((currency) => (
-            <RateTickerCard
-              key={currency}
-              currency={currency}
-              buyRate={buyRates[currency]}
-              sellRate={sellRates[currency]}
-              spread={spreads[currency]}
-              elToqueRate={elToqueRates?.[currency]}
-              isLoading={isLoading}
-              onClick={openSettings}
-            />
-          ))}
+          {CURRENCIES.map((currency) => {
+            // Use manual rate for CAD, ZELLE, CLASICA; API rate for others
+            const isManual = isManualElToqueCurrency(currency);
+            const elToqueRate = isManual
+              ? manualElToqueRates[currency as "CAD" | "ZELLE" | "CLASICA"]
+              : elToqueRates?.[currency];
+
+            return (
+              <RateTickerCard
+                key={currency}
+                currency={currency}
+                buyRate={buyRates[currency]}
+                sellRate={sellRates[currency]}
+                spread={spreads[currency]}
+                elToqueRate={elToqueRate}
+                isManual={isManual}
+                isLoading={isLoading}
+                onClick={openSettings}
+              />
+            );
+          })}
           <div className="w-1 shrink-0" />
         </div>
       </div>

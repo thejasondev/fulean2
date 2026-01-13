@@ -1,14 +1,15 @@
 import { useStore } from "@nanostores/react";
-import { Calculator, Hash, ArrowRightLeft } from "lucide-react";
+import { Calculator, Hash, ArrowRightLeft, BarChart3 } from "lucide-react";
 import { $activeTab, setActiveTab, type TabId } from "../../stores/uiStore";
 import { Tabs, TabPanel } from "../ui/Tabs";
 import { MoneyCounter } from "./MoneyCounter";
 import { CalculatorTab } from "./CalculatorTab";
 import { TransactionForm } from "./TransactionForm";
+import { ReportsTab } from "./ReportsTab";
 
 // ============================================
 // AppTabs Component
-// Main tab wrapper containing Counter, Calculator, and Transaction Form
+// Main tab wrapper with 4 tabs
 // ============================================
 
 const TABS = [
@@ -24,8 +25,13 @@ const TABS = [
   },
   {
     id: "calcular" as TabId,
-    label: "Calculadora",
+    label: "Calcular",
     icon: <Calculator className="w-4 h-4" />,
+  },
+  {
+    id: "reportes" as TabId,
+    label: "Reportes",
+    icon: <BarChart3 className="w-4 h-4" />,
   },
 ];
 
@@ -53,6 +59,10 @@ export function AppTabs() {
 
         <TabPanel id="calcular" activeTab={activeTab}>
           <CalculatorTab />
+        </TabPanel>
+
+        <TabPanel id="reportes" activeTab={activeTab}>
+          <ReportsTab />
         </TabPanel>
       </div>
     </div>

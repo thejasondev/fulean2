@@ -59,69 +59,6 @@ function formatDate(isoString: string): string {
   });
 }
 
-// Volume Summary Component
-function VolumeSummary({ transactions }: { transactions: Transaction[] }) {
-  // Calculate volume by currency for BUY and SELL
-  const volumeByCurrency: Record<string, { buy: number; sell: number }> = {};
-
-  transactions.forEach((txn) => {
-    const currency = txn.currency || "USD";
-    const amount = txn.amountForeign || txn.conversions?.USD || 0;
-
-    if (!volumeByCurrency[currency]) {
-      volumeByCurrency[currency] = { buy: 0, sell: 0 };
-    }
-
-    if (txn.operationType === "BUY") {
-      volumeByCurrency[currency].buy += amount;
-    } else {
-      volumeByCurrency[currency].sell += amount;
-    }
-  });
-
-  const currencies = Object.keys(volumeByCurrency);
-  if (currencies.length === 0) return null;
-
-  return (
-    <div className="bg-neutral-900 rounded-xl p-4 border border-neutral-800 mb-4">
-      <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-3">
-        Volumen Total
-      </div>
-      <div className="space-y-2">
-        {currencies.map((currency) => {
-          const meta = CURRENCY_META[currency as Currency];
-          const { buy, sell } = volumeByCurrency[currency];
-          return (
-            <div
-              key={currency}
-              className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{meta?.flag || "💵"}</span>
-                <span className="font-bold text-white">{currency}</span>
-              </div>
-              <div className="flex items-center gap-4 text-sm tabular-nums">
-                <div className="text-right">
-                  <span className="text-neutral-500">Compra: </span>
-                  <span className="text-emerald-400 font-bold">
-                    {formatNumber(buy)}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-neutral-500">Venta: </span>
-                  <span className="text-amber-400 font-bold">
-                    {formatNumber(sell)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function TransactionCard({
   transaction,
   onDelete,
@@ -407,9 +344,6 @@ export function HistoryDrawer() {
             </div>
           ) : (
             <>
-              {/* Volume Summary - Single source of truth */}
-              <VolumeSummary transactions={transactions} />
-
               {/* Stats & Actions Row */}
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sm text-neutral-500">

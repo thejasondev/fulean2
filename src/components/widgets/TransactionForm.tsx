@@ -8,6 +8,7 @@ import {
   goToCounter,
 } from "../../stores/uiStore";
 import { clearAll } from "../../stores/counterStore";
+import { recordCapitalMovement } from "../../stores/capitalStore";
 import {
   $buyRates,
   $sellRates,
@@ -23,7 +24,6 @@ import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
-import { ProfitPill } from "../ui/ProfitPill";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
 import { useHaptic } from "../../hooks/useHaptic";
@@ -135,7 +135,18 @@ export function TransactionForm() {
       return;
     }
 
-    saveTransaction(operation, currency, foreign, r, cup);
+    // Calculate spread for profit tracking
+    const buyRate = buyRates[currency] ?? 0;
+    const sellRate = sellRates[currency] ?? 0;
+    const spread = sellRate - buyRate;
+
+    // Save transaction with spread for profit calculation
+    const txn = saveTransaction(operation, currency, foreign, r, cup, spread);
+
+    // Record capital movement
+    // BUY = you pay CUP (money out)
+    // SELL = you receive CUP (money in)
+    recordCapitalMovement(operation === "BUY" ? "OUT" : "IN", cup, txn.id);
 
     // Clear the counter (reset bill counts to 0)
     clearAll();
@@ -325,13 +336,6 @@ export function TransactionForm() {
           </div>
         </div>
       </div>
-
-      {/* Profit Pill - Shows only when there's spread and amount */}
-      {foreignAmount > 0 && profit > 0 && (
-        <div className="flex items-center justify-center mb-4">
-          <ProfitPill profit={profit} />
-        </div>
-      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3">

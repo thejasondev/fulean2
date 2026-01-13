@@ -63,7 +63,8 @@ export function Tabs({ tabs, activeTab, onChange }: TabsProps) {
                 {tab.icon}
               </span>
             )}
-            <span>{tab.label}</span>
+            {/* Label hidden on mobile, visible on md+ */}
+            <span className="hidden md:inline">{tab.label}</span>
           </button>
         );
       })}
