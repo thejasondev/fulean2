@@ -1,10 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useStore } from "@nanostores/react";
-import { Eye, EyeOff, Trash2, Clock, ArrowRightLeft } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Trash2,
+  Clock,
+  ArrowRightLeft,
+  ArrowDownLeft,
+  ArrowUpRight,
+} from "lucide-react";
 import {
   $grandTotalCUP,
   $foreignTotals,
   $privacyMode,
+  $counterOperation,
   togglePrivacyMode,
   clearAll,
 } from "../../stores/counterStore";
@@ -43,6 +52,7 @@ export function TotalsFooter() {
     ZELLE: 0,
   };
   const privacyMode = useStore($privacyMode) ?? false;
+  const operation = useStore($counterOperation);
   const { toast } = useToast();
   const haptic = useHaptic();
 
@@ -133,9 +143,13 @@ export function TotalsFooter() {
   const displayTotal = privacyMode ? "••••" : formatNumber(grandTotal);
   const currentCurrency = CAROUSEL_CURRENCIES[carouselIndex];
   const currentForeignValue = foreignTotals[currentCurrency] || 0;
+  const operationLabel = operation === "BUY" ? "Compra" : "Venta";
   const displayCarousel = privacyMode
     ? "••••"
-    : formatCurrency(currentForeignValue, currentCurrency);
+    : `${operationLabel} • ${formatCurrency(
+        currentForeignValue,
+        currentCurrency
+      )}`;
 
   // Slim Mode (keyboard visible)
   if (isInputFocused) {

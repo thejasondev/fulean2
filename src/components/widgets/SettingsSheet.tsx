@@ -215,8 +215,8 @@ export function SettingsSheet() {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-2 sticky bottom-0 bg-neutral-950 pb-1">
+        {/* Actions - Fixed Footer */}
+        <div className="flex gap-3 pt-4 mt-4 border-t border-neutral-800">
           <Button
             variant="secondary"
             onClick={resetRates}

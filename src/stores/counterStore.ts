@@ -1,11 +1,14 @@
 import { atom, computed } from "nanostores";
 import { DENOMINATIONS, type Denomination } from "../lib/constants";
-import { $effectiveRates } from "./ratesStore";
+import { $buyRates, $sellRates } from "./ratesStore";
 
 // ============================================
 // Counter Store
-// Bill counting state with input validation
+// Bill counting state with Buy/Sell operation
 // ============================================
+
+// Operation type for counter
+export type CounterOperation = "BUY" | "SELL";
 
 // Bill counts for each denomination
 type BillCounts = Record<Denomination, number>;
@@ -17,6 +20,9 @@ const initialCounts: BillCounts = DENOMINATIONS.reduce(
 
 // Current bill counts
 export const $billCounts = atom<BillCounts>({ ...initialCounts });
+
+// Current operation (affects which rate is used for conversion)
+export const $counterOperation = atom<CounterOperation>("BUY");
 
 // Privacy mode (blur totals)
 export const $privacyMode = atom<boolean>(false);
@@ -44,13 +50,14 @@ export const $grandTotalCUP = computed($billCounts, (counts) => {
   }, 0);
 });
 
-// Computed: totals in foreign currencies
-// NOTE: nanostores v1.1.0 passes values directly, not as array
+// Computed: totals in foreign currencies based on current operation
+// BUY = customer gives you foreign, you give CUP → use buyRate
+// SELL = you give foreign, customer gives CUP → use sellRate
 export const $foreignTotals = computed(
-  [$grandTotalCUP, $effectiveRates],
-  (cupTotal, rates) => {
+  [$grandTotalCUP, $buyRates, $sellRates, $counterOperation],
+  (cupTotal, buyRates, sellRates, operation) => {
     // SSR safety - default rates for all 6 currencies
-    const safeRates = rates || {
+    const defaultRates = {
       USD: 320,
       EUR: 335,
       CAD: 280,
@@ -58,19 +65,37 @@ export const $foreignTotals = computed(
       CLASICA: 250,
       ZELLE: 310,
     };
+
+    // Use buy or sell rates based on operation
+    const rates =
+      operation === "BUY"
+        ? buyRates || defaultRates
+        : sellRates || defaultRates;
+
     const safeCupTotal = cupTotal ?? 0;
 
     // Calculate conversions for all 6 currencies
     return {
-      USD: safeRates.USD > 0 ? safeCupTotal / safeRates.USD : 0,
-      EUR: safeRates.EUR > 0 ? safeCupTotal / safeRates.EUR : 0,
-      CAD: safeRates.CAD > 0 ? safeCupTotal / safeRates.CAD : 0,
-      MLC: safeRates.MLC > 0 ? safeCupTotal / safeRates.MLC : 0,
-      CLASICA: safeRates.CLASICA > 0 ? safeCupTotal / safeRates.CLASICA : 0,
-      ZELLE: safeRates.ZELLE > 0 ? safeCupTotal / safeRates.ZELLE : 0,
+      USD: rates.USD > 0 ? safeCupTotal / rates.USD : 0,
+      EUR: rates.EUR > 0 ? safeCupTotal / rates.EUR : 0,
+      CAD: rates.CAD > 0 ? safeCupTotal / rates.CAD : 0,
+      MLC: rates.MLC > 0 ? safeCupTotal / rates.MLC : 0,
+      CLASICA: rates.CLASICA > 0 ? safeCupTotal / rates.CLASICA : 0,
+      ZELLE: rates.ZELLE > 0 ? safeCupTotal / rates.ZELLE : 0,
     };
   }
 );
+
+// ============================================
+// Actions
+// ============================================
+
+/**
+ * Set counter operation (BUY or SELL)
+ */
+export function setCounterOperation(operation: CounterOperation) {
+  $counterOperation.set(operation);
+}
 
 // ============================================
 // Actions (with input validation)
