@@ -1,6 +1,12 @@
 {
-  "name": "Fulean2",
+  "name": "Fulean2 - Contador de Efectivo Cubano",
   "short_name": "Fulean2",
+  "description": "Aplicación para contar efectivo CUP y convertir a USD, EUR, CAD, MLC y ZELLE con tasas El Toque",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait",
+  "categories": ["finance", "utilities"],
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",

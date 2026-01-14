@@ -3,10 +3,14 @@ import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 import vercel from "@astrojs/vercel";
+import sitemap from "@astrojs/sitemap";
 import AstroPWA from "@vite-pwa/astro";
 
 // https://astro.build/config
 export default defineConfig({
+  // Site URL for canonical URLs and sitemap
+  site: "https://fulean2.vercel.app",
+
   // Static output with on-demand rendering for API routes (Astro 5+)
   output: "static",
 
@@ -15,6 +19,12 @@ export default defineConfig({
 
   integrations: [
     react(),
+    // Sitemap generation
+    sitemap({
+      changefreq: "daily",
+      priority: 1.0,
+      lastmod: new Date(),
+    }),
     AstroPWA({
       registerType: "autoUpdate",
       workbox: {
@@ -36,10 +46,15 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: "Fulean2 - Contador de Efectivo",
+        name: "Fulean2 - Contador de Efectivo Cubano",
         short_name: "Fulean2",
         description:
-          "Aplicación móvil para contar efectivo CUP y convertir divisas",
+          "Aplicación para contar efectivo CUP y convertir a USD, EUR, CAD, MLC y ZELLE con tasas El Toque",
+        lang: "es",
+        start_url: "/",
+        scope: "/",
+        orientation: "portrait",
+        categories: ["finance", "utilities"],
         theme_color: "#0a0a0a",
         background_color: "#0a0a0a",
         display: "standalone",

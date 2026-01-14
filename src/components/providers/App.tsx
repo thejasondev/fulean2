@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { ToastProvider } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { RatesDashboard } from "../widgets/RatesDashboard";
@@ -9,6 +10,7 @@ import { SecurityModal } from "../widgets/SecurityModal";
 import { HistoryDrawer } from "../widgets/HistoryDrawer";
 import { ClientViewModal } from "../widgets/ClientViewModal";
 import { initializeRates } from "../../stores/ratesStore";
+
 // ============================================
 // App Component
 // Single React tree with all providers
@@ -42,6 +44,9 @@ export function App() {
 
       {/* Confirm Dialog (global) */}
       <ConfirmDialog />
+
+      {/* Vercel Analytics */}
+      <Analytics />
     </ToastProvider>
   );
 }

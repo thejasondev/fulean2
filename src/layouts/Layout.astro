@@ -1,9 +1,17 @@
 ---
 interface Props {
   title?: string;
+  description?: string;
 }
 
-const { title = "Fulean2 - Contador de Efectivo" } = Astro.props;
+const { 
+  title = "Fulean2 - Contador de Efectivo Cubano | Conversor CUP",
+  description = "Aplicación para contar efectivo CUP y convertir a USD, EUR, CAD, MLC y ZELLE. Tasas de cambio El Toque en tiempo real. Diseñada para casas de cambio en Cuba."
+} = Astro.props;
+
+const siteUrl = "https://fulean2.vercel.app";
+const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+const ogImage = `${siteUrl}/og-image.png`;
 ---
 
 <!doctype html>
@@ -11,7 +19,38 @@ const { title = "Fulean2 - Contador de Efectivo" } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-    <meta name="description" content="Aplicación móvil para contar efectivo CUP y convertir a USD, EUR y CAD" />
+    
+    <!-- Primary Meta Tags -->
+    <title>{title}</title>
+    <meta name="title" content={title} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    
+    <!-- Google Search Console Verification -->
+    <meta name="google-site-verification" content="A7BT_C6ClgkaWHA9brgG3v0v7gG-1NeclQ6jCfvQF8U" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content="es_CU" />
+    <meta property="og:site_name" content="Fulean2" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content={canonicalURL} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    
+    <!-- Geo Tags (Cuba) -->
+    <meta name="geo.region" content="CU" />
+    <meta name="geo.placename" content="Cuba" />
+    
+    <!-- Keywords -->
+    <meta name="keywords" content="contador efectivo cuba, tasa cambio cuba, el toque, cup a usd, conversor mlc, cambio dolar cuba, fuleando, casa de cambio cuba" />
     
     <!-- Theme & PWA -->
     <meta name="theme-color" content="#0a0a0a" />
@@ -19,7 +58,6 @@ const { title = "Fulean2 - Contador de Efectivo" } = Astro.props;
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Fulean2" />
     
-    <!-- Favicon -->
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -30,7 +68,35 @@ const { title = "Fulean2 - Contador de Efectivo" } = Astro.props;
     <!-- Generator -->
     <meta name="generator" content={Astro.generator} />
     
-    <title>{title}</title>
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Fulean2",
+      "alternateName": "Fulean 2",
+      "description": "Aplicación para contar efectivo CUP y convertir a USD, EUR, CAD, MLC y ZELLE con tasas El Toque",
+      "url": "https://fulean2.vercel.app",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "browserRequirements": "Requires JavaScript",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "thejasondev"
+      },
+      "inLanguage": "es",
+      "potentialAction": {
+        "@type": "UseAction",
+        "target": "https://fulean2.vercel.app"
+      },
+      "screenshot": "https://fulean2.vercel.app/og-image.png"
+    }
+    </script>
   </head>
   <body class="bg-neutral-950 text-neutral-300 min-h-dvh flex flex-col antialiased">
     <slot />
