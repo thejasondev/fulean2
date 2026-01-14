@@ -351,6 +351,7 @@ function VolumeSummary() {
     }
   });
 
+  // Show all currencies with transactions (historical data - not filtered by visibility)
   const currencies = Object.keys(volumeByCurrency);
   if (currencies.length === 0) return null;
 
@@ -434,6 +435,7 @@ function CurrencyInventory() {
       inventory[currency].bought - inventory[currency].sold;
   });
 
+  // Show all currencies with transactions (historical data - not filtered by visibility)
   const currencies = Object.keys(inventory);
   if (currencies.length === 0) return null;
 

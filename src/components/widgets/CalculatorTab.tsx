@@ -7,6 +7,10 @@ import {
   getRateForOperation,
 } from "../../stores/ratesStore";
 import {
+  $visibleCurrencies,
+  $visibleDenominations,
+} from "../../stores/visibilityStore";
+import {
   CURRENCIES,
   CURRENCY_META,
   DENOMINATIONS,
@@ -32,6 +36,8 @@ const DENOMINATION_OPTIONS = DENOMINATIONS;
 export function CalculatorTab() {
   const buyRates = useStore($buyRates) ?? {};
   const sellRates = useStore($sellRates) ?? {};
+  const visibleCurrencies = useStore($visibleCurrencies);
+  const visibleDenominations = useStore($visibleDenominations);
   const haptic = useHaptic();
 
   const [amount, setAmount] = useState<string>("");
@@ -58,7 +64,7 @@ export function CalculatorTab() {
     let remaining = cup;
     const result: { denom: Denomination; count: number; subtotal: number }[] =
       [];
-    let bills = 0;
+    let billCount = 0;
 
     for (const denom of activeDenoms) {
       if (remaining >= denom) {
@@ -66,34 +72,24 @@ export function CalculatorTab() {
         const subtotal = count * denom;
         result.push({ denom, count, subtotal });
         remaining -= subtotal;
-        bills += count;
+        billCount += count;
       }
     }
 
     return {
       cupAmount: cup,
       breakdown: result,
-      totalBills: bills,
+      totalBills: billCount,
       remainder: remaining,
     };
   }, [amount, currentRate, selectedDenoms]);
 
-  const handleAmountChange = (value: string) => {
-    const cleaned = value.replace(/[^0-9.]/g, "");
-    const parts = cleaned.split(".");
-    if (parts.length > 2) return;
-    if (parts[1] && parts[1].length > 2) return;
-    setAmount(cleaned);
-  };
-
-  const handleClear = () => {
-    setAmount("");
-  };
-
+  // Toggle denomination filter
   const toggleDenom = (denom: Denomination) => {
     haptic.light();
     const newSet = new Set(selectedDenoms);
     if (newSet.has(denom)) {
+      // Don't allow deselecting all
       if (newSet.size > 1) {
         newSet.delete(denom);
       }
@@ -129,7 +125,7 @@ export function CalculatorTab() {
                 : "text-neutral-500 hover:text-neutral-300"
             )}
           >
-            <ArrowDownLeft className="w-4 h-4" />
+            <ArrowDownLeft size={16} />
             Compra
           </button>
           <button
@@ -145,7 +141,7 @@ export function CalculatorTab() {
                 : "text-neutral-500 hover:text-neutral-300"
             )}
           >
-            <ArrowUpRight className="w-4 h-4" />
+            <ArrowUpRight size={16} />
             Venta
           </button>
         </div>
@@ -157,7 +153,7 @@ export function CalculatorTab() {
           Moneda
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {CURRENCIES.slice(0, 6).map((curr) => {
+          {visibleCurrencies.map((curr) => {
             const meta = CURRENCY_META[curr];
             const isActive = currency === curr;
             return (
@@ -198,155 +194,130 @@ export function CalculatorTab() {
             type="text"
             inputMode="decimal"
             value={amount}
-            onChange={(e) => handleAmountChange(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9.]/g, "");
+              setAmount(val);
+            }}
             placeholder="0.00"
             size="lg"
-            className="text-center pr-16"
+            className={cn(
+              "text-center text-2xl font-bold",
+              operation === "BUY" ? "text-emerald-400" : "text-amber-400"
+            )}
           />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 font-semibold">
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">
             {currency}
-          </span>
+          </div>
         </div>
-        <div className="text-xs text-neutral-500 mt-1 text-center">
-          Tasa: 1 {currency} = {currentRate} CUP
+      </div>
+
+      {/* Rate Display */}
+      <div className="flex items-center justify-between px-3 py-2 mb-4 bg-neutral-900/50 rounded-xl border border-neutral-800">
+        <span className="text-sm text-neutral-500">Tasa aplicada</span>
+        <div className="flex items-center gap-2">
           <span
             className={cn(
-              "ml-2 font-bold",
+              "text-lg font-bold tabular-nums",
               operation === "BUY" ? "text-emerald-400" : "text-amber-400"
             )}
           >
-            ({operation === "BUY" ? "Compra" : "Venta"})
+            {currentRate}
           </span>
+          <span className="text-neutral-500 text-sm">CUP</span>
         </div>
       </div>
 
-      {/* Denomination Filter */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-sm text-neutral-500 font-medium">
-            Billetes disponibles
-          </label>
-          <button
-            onClick={selectAllDenoms}
-            className="text-xs text-emerald-400 hover:text-emerald-300"
-          >
-            Todos
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {DENOMINATION_OPTIONS.map((denom) => {
-            const isActive = selectedDenoms.has(denom);
-            return (
-              <button
-                key={denom}
-                onClick={() => toggleDenom(denom)}
-                className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-bold",
-                  "border transition-all duration-200",
-                  isActive
-                    ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
-                    : "bg-neutral-900 border-neutral-800 text-neutral-600 hover:text-neutral-400"
-                )}
-              >
-                {formatNumber(denom)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Conversion Result */}
+      {/* CUP Result */}
       {cupAmount > 0 && (
-        <div
-          className={cn(
-            "bg-neutral-900 rounded-2xl p-4 mb-4",
-            "border border-neutral-800",
-            "animate-fade-in"
-          )}
-        >
-          <div className="flex items-center justify-center gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-white tabular-nums">
-                {amount} {currency}
-              </div>
-              <div className="text-xs text-neutral-500 tabular-nums">
-                @ {currentRate} CUP
-              </div>
+        <div className="mb-4 p-4 bg-neutral-900 rounded-2xl border border-neutral-800">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm text-neutral-500">Total en CUP</span>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-white tabular-nums">
+                {formatNumber(cupAmount)}
+              </span>
+              <span className="text-neutral-400">CUP</span>
             </div>
+          </div>
 
-            <ArrowRight
-              className={cn(
-                "w-6 h-6 shrink-0",
-                operation === "BUY" ? "text-emerald-400" : "text-amber-400"
+          {/* Denomination Filter */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-neutral-500">Billetes a usar:</span>
+              {selectedDenoms.size < DENOMINATIONS.length && (
+                <button
+                  onClick={selectAllDenoms}
+                  className="text-xs text-blue-400 hover:text-blue-300"
+                >
+                  Todos
+                </button>
               )}
-            />
-
-            <div>
-              <div
-                className={cn(
-                  "text-2xl font-bold tabular-nums money-glow",
-                  operation === "BUY" ? "text-emerald-400" : "text-amber-400"
-                )}
-              >
-                {formatNumber(cupAmount)} CUP
-              </div>
-              <div className="text-xs text-neutral-500">equivalente</div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {DENOMINATION_OPTIONS.map((denom) => {
+                const isSelected = selectedDenoms.has(denom);
+                return (
+                  <button
+                    key={denom}
+                    onClick={() => toggleDenom(denom)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs font-bold transition-all",
+                      isSelected
+                        ? "bg-white/10 text-white border border-white/20"
+                        : "bg-neutral-800/50 text-neutral-500 border border-neutral-700"
+                    )}
+                  >
+                    {denom}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Bill Breakdown */}
-      {breakdown.length > 0 && (
-        <div className="bg-neutral-900 rounded-2xl p-4 border border-neutral-800 mb-4">
-          <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-3">
-            Desglose de Billetes
-          </div>
-          <div className="space-y-2">
-            {breakdown.map(({ denom, count, subtotal }) => (
-              <div
-                key={denom}
-                className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-16 text-lg font-bold text-white tabular-nums">
-                    ${formatNumber(denom)}
-                  </span>
-                  <span className="text-neutral-500">×</span>
-                  <span className="text-lg font-bold text-emerald-400 tabular-nums">
-                    {count}
+          {/* Breakdown */}
+          {breakdown.length > 0 && (
+            <div className="space-y-1.5 pt-3 border-t border-neutral-800">
+              {breakdown.map(({ denom, count, subtotal }) => (
+                <div
+                  key={denom}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-neutral-400">${denom}</span>
+                    <span className="text-neutral-600">×</span>
+                    <span className="font-bold text-white">{count}</span>
+                  </div>
+                  <span className="text-neutral-400 tabular-nums">
+                    {formatNumber(subtotal)}
                   </span>
                 </div>
-                <span className="text-neutral-400 tabular-nums">
-                  = {formatNumber(subtotal)} CUP
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
 
-          {/* Summary */}
-          <div className="mt-3 pt-3 border-t border-neutral-700 flex items-center justify-between">
-            <div className="text-sm text-neutral-500">
-              Total:{" "}
-              <span className="text-white font-bold">
-                {totalBills} billetes
-              </span>
-            </div>
-            {remainder > 0 && (
-              <div className="text-sm text-amber-400">
-                Resto: {formatNumber(remainder)} CUP
+              {/* Summary row */}
+              <div className="flex items-center justify-between pt-2 mt-2 border-t border-neutral-800">
+                <span className="text-xs text-neutral-500">
+                  {totalBills} billete{totalBills !== 1 ? "s" : ""}
+                </span>
+                {remainder > 0 && (
+                  <span className="text-xs text-amber-400">
+                    +{formatNumber(remainder)} suelto
+                  </span>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Clear Button */}
-      {amount && (
-        <div className="mt-4">
-          <Button variant="secondary" onClick={handleClear} className="w-full">
-            Limpiar
-          </Button>
+      {/* Empty State */}
+      {cupAmount === 0 && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-neutral-900 flex items-center justify-center">
+            <ArrowRight className="w-8 h-8 text-neutral-600" />
+          </div>
+          <p className="text-neutral-500 text-sm">
+            Ingresa una cantidad para calcular
+          </p>
         </div>
       )}
     </div>

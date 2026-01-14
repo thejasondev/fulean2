@@ -22,6 +22,7 @@ import {
   loadElToqueRates,
 } from "../../stores/ratesStore";
 import { openSettings, openSecurityModal } from "../../stores/uiStore";
+import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatLastUpdate } from "../../lib/eltoque-api";
 import { cn } from "../../lib/utils";
@@ -155,6 +156,7 @@ export function RatesDashboard() {
   const spreads = useStore($spreads);
   const elToqueRates = useStore($elToqueRates);
   const manualElToqueRates = useStore($manualElToqueRates);
+  const visibleCurrencies = useStore($visibleCurrencies);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
 
@@ -255,7 +257,7 @@ export function RatesDashboard() {
 
         {/* Horizontal Ticker Scroll */}
         <div className="flex gap-2 overflow-x-auto snap-x pb-3 pr-4 -mb-3 scrollbar-hide">
-          {CURRENCIES.map((currency) => {
+          {visibleCurrencies.map((currency) => {
             // Use manual rate for CAD, ZELLE, CLASICA; API rate for others
             const isManual = isManualElToqueCurrency(currency);
             const elToqueRate = isManual

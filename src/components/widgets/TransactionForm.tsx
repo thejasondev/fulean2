@@ -24,6 +24,7 @@ import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
 import { useHaptic } from "../../hooks/useHaptic";
@@ -37,6 +38,7 @@ export function TransactionForm() {
   const pendingCUP = useStore($pendingCUP);
   const buyRates = useStore($buyRates);
   const sellRates = useStore($sellRates);
+  const visibleCurrencies = useStore($visibleCurrencies);
   const { toast } = useToast();
   const haptic = useHaptic();
 
@@ -212,13 +214,13 @@ export function TransactionForm() {
         </button>
       </div>
 
-      {/* Currency Selector - 3x2 Grid */}
+      {/* Currency Selector - Grid */}
       <div className="mb-6">
         <label className="block text-sm text-neutral-500 mb-2 font-medium">
           Moneda
         </label>
         <div className="grid grid-cols-3 gap-2">
-          {CURRENCIES.map((currencyCode) => {
+          {visibleCurrencies.map((currencyCode) => {
             const meta = CURRENCY_META[currencyCode];
             const isSelected = currency === currencyCode;
             const isDigital = meta.category === "digital";

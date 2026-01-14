@@ -1,5 +1,13 @@
 import { useStore } from "@nanostores/react";
-import { RotateCcw, TrendingUp, Zap, RefreshCw, Pencil } from "lucide-react";
+import {
+  RotateCcw,
+  TrendingUp,
+  Zap,
+  RefreshCw,
+  Pencil,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import {
   $buyRates,
   $sellRates,
@@ -14,13 +22,21 @@ import {
   resetRates,
   loadElToqueRates,
 } from "../../stores/ratesStore";
+import {
+  $visibleDenominations,
+  $visibleCurrencies,
+  toggleDenomination,
+  toggleCurrency,
+} from "../../stores/visibilityStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
 import {
   CURRENCIES,
+  DENOMINATIONS,
   CURRENCY_META,
   CASH_CURRENCIES,
   DIGITAL_CURRENCIES,
   type Currency,
+  type Denomination,
 } from "../../lib/constants";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
@@ -157,6 +173,97 @@ function RateRow({ currency }: { currency: Currency }) {
   );
 }
 
+// Visibility Customization Section
+function VisibilitySection() {
+  const visibleDenominations = useStore($visibleDenominations);
+  const visibleCurrencies = useStore($visibleCurrencies);
+  const haptic = useHaptic();
+
+  const handleDenomToggle = (denom: Denomination) => {
+    haptic.light();
+    toggleDenomination(denom);
+  };
+
+  const handleCurrencyToggle = (currency: Currency) => {
+    haptic.light();
+    toggleCurrency(currency);
+  };
+
+  return (
+    <div className="pt-4 mt-4 border-t border-neutral-800 space-y-4">
+      {/* Section Header */}
+      <div className="flex items-center gap-2">
+        <Eye size={14} className="text-neutral-500" />
+        <span className="text-xs text-neutral-500 font-bold uppercase tracking-wide">
+          Personalización
+        </span>
+      </div>
+
+      {/* Denominations */}
+      <div>
+        <span className="block text-[10px] text-neutral-500 mb-2 font-medium">
+          Billetes visibles
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {DENOMINATIONS.map((denom) => {
+            const isVisible = visibleDenominations.includes(denom);
+            const isOnlyOne = visibleDenominations.length === 1 && isVisible;
+            return (
+              <button
+                key={denom}
+                onClick={() => handleDenomToggle(denom)}
+                disabled={isOnlyOne}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
+                  "border",
+                  isVisible
+                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                    : "bg-neutral-900 border-neutral-700 text-neutral-500",
+                  isOnlyOne && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {denom}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Currencies */}
+      <div>
+        <span className="block text-[10px] text-neutral-500 mb-2 font-medium">
+          Monedas visibles
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {CURRENCIES.map((currency) => {
+            const meta = CURRENCY_META[currency];
+            const isVisible = visibleCurrencies.includes(currency);
+            const isOnlyOne = visibleCurrencies.length === 1 && isVisible;
+            return (
+              <button
+                key={currency}
+                onClick={() => handleCurrencyToggle(currency)}
+                disabled={isOnlyOne}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
+                  "border flex items-center gap-1.5",
+                  isVisible
+                    ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
+                    : "bg-neutral-900 border-neutral-700 text-neutral-500",
+                  isOnlyOne && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <span>{meta.flag}</span>
+                <span>{currency}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsSheet() {
   const isOpen = useStore($isSettingsOpen) ?? false;
   const isLoadingElToque = useStore($isLoadingElToque);
@@ -241,6 +348,9 @@ export function SettingsSheet() {
             ))}
           </div>
         </div>
+
+        {/* Visibility Customization */}
+        <VisibilitySection />
 
         {/* Actions - Fixed Footer */}
         <div className="flex gap-3 pt-4 mt-4 border-t border-neutral-800">

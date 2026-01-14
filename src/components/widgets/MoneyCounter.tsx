@@ -1,10 +1,10 @@
 import { useStore } from "@nanostores/react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
-import { DENOMINATIONS } from "../../lib/constants";
 import {
   $counterOperation,
   setCounterOperation,
 } from "../../stores/counterStore";
+import { $visibleDenominations } from "../../stores/visibilityStore";
 import { cn } from "../../lib/utils";
 import { BillRow } from "./BillRow";
 import { useHaptic } from "../../hooks/useHaptic";
@@ -16,6 +16,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 
 export function MoneyCounter() {
   const operation = useStore($counterOperation);
+  const visibleDenominations = useStore($visibleDenominations);
   const haptic = useHaptic();
 
   const handleOperationChange = (op: "BUY" | "SELL") => {
@@ -71,9 +72,9 @@ export function MoneyCounter() {
         </div>
       </div>
 
-      {/* Bill Rows - 12px gap (3 × 4px base unit) */}
+      {/* Bill Rows - Only visible denominations */}
       <div className="space-y-3">
-        {DENOMINATIONS.map((denomination) => (
+        {visibleDenominations.map((denomination) => (
           <BillRow key={denomination} denomination={denomination} />
         ))}
       </div>
