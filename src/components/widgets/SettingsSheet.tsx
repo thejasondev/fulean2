@@ -267,13 +267,16 @@ function VisibilitySection() {
   );
 }
 
-// Donation Section Component
+// Donation Section Component - Bank Card Transfer
 function DonationSection() {
   const [customAmount, setCustomAmount] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Your phone number for receiving donations (Transfermóvil)
-  const RECIPIENT_PHONE = "+5353118193";
+  // Your BANK CARD number for receiving donations (NOT phone)
+  // This is the 16-digit card number from your tarjeta RED/MLC
+  const CARD_NUMBER = "9234 0699 9301 9516";
+  const CARD_NUMBER_CLEAN = CARD_NUMBER.replace(/\s/g, "");
 
   const presetAmounts = [250, 500, 1000];
 
@@ -289,14 +292,21 @@ function DonationSection() {
 
   const finalAmount = selectedAmount || parseInt(customAmount) || 0;
 
-  // Generate Transfermóvil USSD code for transfer
-  // Format: tel:*444*45# opens Transfermóvil transfer menu
-  // Users then manually enter recipient and amount
+  const handleCopyCard = async () => {
+    try {
+      await navigator.clipboard.writeText(CARD_NUMBER_CLEAN);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: select text
+    }
+  };
+
+  // Open Transfermóvil bank transfer menu
+  // *444*45# opens the transfer section (user must be authenticated)
   const handleDonate = () => {
     if (finalAmount < 50) return;
-
-    // Open phone dialer with Transfermóvil code
-    // *444*45# is the transfer menu in Transfermóvil
+    // Open phone dialer with Transfermóvil bank transfer code
     window.location.href = "tel:*444*45%23";
   };
 
@@ -312,6 +322,29 @@ function DonationSection() {
           <p className="text-xs text-neutral-500">
             Tu donación mantiene la app gratis
           </p>
+        </div>
+      </div>
+
+      {/* Card Number Display - Easy to copy */}
+      <div className="bg-neutral-950 rounded-xl p-3 mb-4 border border-neutral-800">
+        <p className="text-[10px] text-neutral-500 uppercase mb-1">
+          Transferir a tarjeta:
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-mono font-bold text-white tracking-wider">
+            {CARD_NUMBER}
+          </span>
+          <button
+            onClick={handleCopyCard}
+            className={cn(
+              "px-3 py-1 rounded-lg text-xs font-bold transition-all",
+              copied
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-neutral-800 text-neutral-400 hover:text-white"
+            )}
+          >
+            {copied ? "✓ Copiado" : "Copiar"}
+          </button>
         </div>
       </div>
 
@@ -365,10 +398,20 @@ function DonationSection() {
           : "Selecciona un monto (min. 50 CUP)"}
       </button>
 
-      {/* Info */}
-      <p className="text-[10px] text-neutral-600 text-center mt-3">
-        Se abrirá Transfermóvil. Transfiere a: {RECIPIENT_PHONE}
-      </p>
+      {/* Instructions */}
+      <div className="mt-3 p-3 bg-neutral-950 rounded-lg border border-neutral-800">
+        <p className="text-[10px] text-neutral-500 leading-relaxed">
+          <strong className="text-neutral-400">Pasos:</strong>
+          <br />
+          1. Copia el número de tarjeta
+          <br />
+          2. Toca el botón para abrir Transfermóvil
+          <br />
+          3. Autentícate si es necesario (*444*40*02#)
+          <br />
+          4. Transfiere el monto a la tarjeta copiada
+        </p>
+      </div>
     </div>
   );
 }
