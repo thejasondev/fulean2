@@ -1,5 +1,14 @@
 import { atom } from "nanostores";
-import { DENOMINATIONS, type Denomination } from "../lib/constants";
+import {
+  DENOMINATIONS,
+  type Denomination,
+  type Currency,
+} from "../lib/constants";
+import {
+  addInventoryLot,
+  consumeInventoryLots,
+  getAverageCost,
+} from "./inventoryStore";
 
 // ============================================
 // History Store
@@ -28,11 +37,15 @@ export interface Transaction {
   amountForeign: number;
   rate: number;
   totalCUP: number;
-  // Profit tracking (NEW)
-  profitCUP?: number; // Spread × amountForeign (potential profit from this transaction)
+  // FIFO Profit tracking (NEW - precise calculation)
+  costBasis?: number; // Actual cost from FIFO lots (for SELL only)
+  realProfitCUP?: number; // totalCUP - costBasis (actual profit)
+  lotsConsumed?: string[]; // IDs of inventory lots used
+  // Legacy fields (still supported)
+  profitCUP?: number; // Old: Spread × amountForeign (estimate)
   cupImpact?: number; // + for SELL (CUP received), - for BUY (CUP paid)
   spreadUsed?: number; // Sell rate - Buy rate at transaction time
-  // Legacy fields for backward compatibility with old records
+  // Backward compatibility
   conversions?: { USD: number; EUR: number; CAD: number };
   ratesUsed?: Record<string, number>;
   billCounts?: Record<Denomination, number>;
@@ -48,14 +61,15 @@ function loadFromStorage(): Transaction[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
   } catch {
     return [];
   }
 }
 
 // Save to localStorage
-function saveToStorage(transactions: Transaction[]): void {
+function saveToStorage(transactions: Transaction[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
@@ -64,14 +78,12 @@ function saveToStorage(transactions: Transaction[]): void {
   }
 }
 
-// Transactions atom
+// Transaction store
 export const $transactions = atom<Transaction[]>(loadFromStorage());
 
-// Subscribe to changes and persist
+// Subscribe to persist on changes
 if (typeof window !== "undefined") {
-  $transactions.subscribe((value) => {
-    saveToStorage(value);
-  });
+  $transactions.subscribe(saveToStorage);
 }
 
 // ============================================
@@ -86,7 +98,10 @@ function generateId(): string {
 }
 
 /**
- * Save a new transaction with profit tracking
+ * Save a new transaction with FIFO profit tracking
+ *
+ * BUY: Creates inventory lot at the purchase rate
+ * SELL: Consumes inventory lots (FIFO) and calculates real profit
  */
 export function saveTransaction(
   operationType: OperationType,
@@ -94,28 +109,65 @@ export function saveTransaction(
   amountForeign: number,
   rate: number,
   totalCUP: number,
-  spreadUsed?: number // Optional: sellRate - buyRate for profit calculation
+  spreadUsed?: number // Optional: for legacy/estimated profit
 ): Transaction {
-  // Calculate profit and capital impact
-  // IMPORTANT: Profit is only realized on SELL operations
-  // BUY = acquire currency (no profit yet, just potential)
-  // SELL = dispose currency (profit = spread × amount)
-  const profitCUP =
+  const txnId = generateId();
+
+  let costBasis: number | undefined;
+  let realProfitCUP: number | undefined;
+  let lotsConsumed: string[] | undefined;
+
+  // Legacy estimated profit (based on current spread)
+  const estimatedProfit =
     operationType === "SELL" && spreadUsed
       ? Math.round(spreadUsed * amountForeign)
       : 0;
+
+  if (operationType === "BUY") {
+    // Create inventory lot at purchase rate
+    addInventoryLot(currency as Currency, amountForeign, rate, txnId);
+  } else {
+    // SELL: Consume lots using FIFO and calculate real profit
+    const consumption = consumeInventoryLots(
+      currency as Currency,
+      amountForeign
+    );
+
+    if (consumption) {
+      // We have inventory to consume - calculate real profit
+      costBasis = consumption.totalCost;
+      realProfitCUP = Math.round(totalCUP) - costBasis;
+      lotsConsumed = consumption.lotsConsumed;
+    } else {
+      // No inventory (selling without prior purchase) - use average or 0
+      const avgCost = getAverageCost(currency as Currency);
+      if (avgCost > 0) {
+        costBasis = Math.round(amountForeign * avgCost);
+        realProfitCUP = Math.round(totalCUP) - costBasis;
+      } else {
+        // No inventory history - fall back to estimated profit
+        realProfitCUP = estimatedProfit;
+      }
+    }
+  }
+
   const cupImpact =
     operationType === "BUY" ? -Math.round(totalCUP) : Math.round(totalCUP);
 
   const transaction: Transaction = {
-    id: generateId(),
+    id: txnId,
     date: new Date().toISOString(),
     operationType,
     currency,
-    amountForeign: Math.round(amountForeign * 100) / 100, // 2 decimal precision
+    amountForeign: Math.round(amountForeign * 100) / 100,
     rate: Math.round(rate),
     totalCUP: Math.round(totalCUP),
-    profitCUP,
+    // FIFO-based profit (accurate)
+    costBasis,
+    realProfitCUP,
+    lotsConsumed,
+    // Legacy profit (estimate)
+    profitCUP: operationType === "SELL" ? realProfitCUP ?? estimatedProfit : 0,
     cupImpact,
     spreadUsed: spreadUsed ? Math.round(spreadUsed) : undefined,
   };

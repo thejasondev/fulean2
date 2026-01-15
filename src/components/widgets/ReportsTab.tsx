@@ -9,6 +9,9 @@ import {
   Edit3,
   Check,
   RotateCcw,
+  AlertTriangle,
+  Calculator,
+  BarChart3,
 } from "lucide-react";
 import {
   $initialCapital,
@@ -21,6 +24,14 @@ import {
   resetCapital,
 } from "../../stores/capitalStore";
 import { $transactions } from "../../stores/historyStore";
+import { $sellRates } from "../../stores/ratesStore";
+import {
+  $rateHistory,
+  recordRateSnapshot,
+  getRateHistoryForCurrency,
+  getCurrencyTrend,
+  $hasRateHistory,
+} from "../../stores/rateHistoryStore";
 import { formatNumber } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -28,11 +39,66 @@ import { Input } from "../ui/Input";
 import { confirm } from "../../stores/confirmStore";
 import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
-import { CURRENCY_META, type Currency } from "../../lib/constants";
+import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+import { useEffect } from "react";
 
 // ============================================
 // ReportsTab Component
-// Capital Management + Profit Tracking
+// Capital Management + Investment Metrics
+// ============================================
+
+// Liquidity Alert Component
+function LiquidityAlert() {
+  const initialCapital = useStore($initialCapital);
+  const currentBalance = useStore($currentBalance);
+
+  // Don't show if no initial capital set
+  if (initialCapital <= 0) return null;
+
+  const liquidityPercent = (currentBalance / initialCapital) * 100;
+  const isLow = liquidityPercent < 20 && liquidityPercent >= 10;
+  const isCritical = liquidityPercent < 10;
+
+  // Don't show if liquidity is fine
+  if (!isLow && !isCritical) return null;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl p-4 border flex items-start gap-3",
+        isCritical
+          ? "bg-red-500/10 border-red-500/30"
+          : "bg-amber-500/10 border-amber-500/30"
+      )}
+    >
+      <AlertTriangle
+        className={cn(
+          "w-5 h-5 shrink-0 mt-0.5",
+          isCritical ? "text-red-400" : "text-amber-400"
+        )}
+      />
+      <div>
+        <p
+          className={cn(
+            "text-sm font-bold",
+            isCritical ? "text-red-400" : "text-amber-400"
+          )}
+        >
+          {isCritical ? "⚠️ Liquidez crítica" : "Liquidez baja"}
+        </p>
+        <p className="text-xs text-neutral-400 mt-1">
+          Solo {liquidityPercent.toFixed(0)}% del capital en CUP (
+          {formatNumber(currentBalance)} CUP).
+          {isCritical
+            ? " Considera vender divisas urgentemente."
+            : " Considera vender algunas divisas."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Capital Card Component
 // ============================================
 
 // Capital Card Component
@@ -146,7 +212,7 @@ function CapitalCard() {
         <div className="bg-neutral-950 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <ArrowDownLeft size={12} className="text-emerald-400" />
-            <span className="text-xs text-neutral-500">Gastado (Compras)</span>
+            <span className="text-xs text-neutral-500">(Compras)</span>
           </div>
           <span className="text-sm font-bold text-emerald-400 tabular-nums">
             -{formatNumber(totalOut)} CUP
@@ -155,7 +221,7 @@ function CapitalCard() {
         <div className="bg-neutral-950 rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <ArrowUpRight size={12} className="text-amber-400" />
-            <span className="text-xs text-neutral-500">Recibido (Ventas)</span>
+            <span className="text-xs text-neutral-500">(Ventas)</span>
           </div>
           <span className="text-sm font-bold text-amber-400 tabular-nums">
             +{formatNumber(totalIn)} CUP
@@ -206,6 +272,10 @@ function CapitalCard() {
 function ProfitSummary() {
   const transactions = useStore($transactions);
 
+  // Helper to get profit (uses realProfitCUP if available, falls back to profitCUP)
+  const getProfit = (t: (typeof transactions)[0]) =>
+    t.realProfitCUP ?? t.profitCUP ?? 0;
+
   // Calculate profits by time period
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -214,20 +284,17 @@ function ProfitSummary() {
 
   const profitToday = transactions
     .filter((t) => new Date(t.date) >= today)
-    .reduce((sum, t) => sum + (t.profitCUP || 0), 0);
+    .reduce((sum, t) => sum + getProfit(t), 0);
 
   const profitWeek = transactions
     .filter((t) => new Date(t.date) >= weekAgo)
-    .reduce((sum, t) => sum + (t.profitCUP || 0), 0);
+    .reduce((sum, t) => sum + getProfit(t), 0);
 
   const profitMonth = transactions
     .filter((t) => new Date(t.date) >= monthAgo)
-    .reduce((sum, t) => sum + (t.profitCUP || 0), 0);
+    .reduce((sum, t) => sum + getProfit(t), 0);
 
-  const profitTotal = transactions.reduce(
-    (sum, t) => sum + (t.profitCUP || 0),
-    0
-  );
+  const profitTotal = transactions.reduce((sum, t) => sum + getProfit(t), 0);
 
   // Count operations by type for each period
   const todayTransactions = transactions.filter(
@@ -258,8 +325,10 @@ function ProfitSummary() {
           <TrendingUp className="w-5 h-5 text-amber-400" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Ganancias Estimadas</h3>
-          <p className="text-xs text-neutral-500">Basado en spread × monto</p>
+          <h3 className="text-sm font-bold text-white">Ganancias Reales</h3>
+          <p className="text-xs text-neutral-500">
+            Basado en costo real (FIFO)
+          </p>
         </div>
       </div>
 
@@ -328,63 +397,125 @@ function ProfitSummary() {
   );
 }
 
-// Currency Inventory Component - Shows available currency to sell
-function CurrencyInventory() {
+// Portfolio Card - Unified inventory + valuation
+function PortfolioCard() {
   const transactions = useStore($transactions);
+  const sellRates = useStore($sellRates);
 
-  // Calculate inventory: Bought - Sold = Available
-  const inventory: Record<
+  // Calculate portfolio data per currency
+  const portfolio: Record<
     string,
-    { bought: number; sold: number; available: number }
+    {
+      bought: number;
+      sold: number;
+      available: number;
+      totalCost: number;
+      currentValue: number;
+      unrealizedGain: number;
+      gainPercent: number;
+    }
   > = {};
 
   transactions.forEach((txn) => {
     const currency = txn.currency || "USD";
     const amount = txn.amountForeign || 0;
 
-    if (!inventory[currency]) {
-      inventory[currency] = { bought: 0, sold: 0, available: 0 };
+    if (!portfolio[currency]) {
+      portfolio[currency] = {
+        bought: 0,
+        sold: 0,
+        available: 0,
+        totalCost: 0,
+        currentValue: 0,
+        unrealizedGain: 0,
+        gainPercent: 0,
+      };
     }
 
     if (txn.operationType === "BUY") {
-      inventory[currency].bought += amount;
+      portfolio[currency].bought += amount;
+      portfolio[currency].totalCost += txn.totalCUP;
     } else {
-      inventory[currency].sold += amount;
+      portfolio[currency].sold += amount;
     }
   });
 
-  // Calculate available for each currency
-  Object.keys(inventory).forEach((currency) => {
-    inventory[currency].available =
-      inventory[currency].bought - inventory[currency].sold;
+  // Calculate valuations
+  let totalPortfolioValue = 0;
+  let totalPortfolioCost = 0;
+
+  Object.keys(portfolio).forEach((currency) => {
+    const p = portfolio[currency];
+    p.available = p.bought - p.sold;
+
+    if (p.available > 0) {
+      const sellRate = sellRates[currency as Currency] ?? 0;
+      p.currentValue = Math.round(p.available * sellRate);
+
+      const avgCost = p.bought > 0 ? p.totalCost / p.bought : 0;
+      const costOfAvailable = Math.round(p.available * avgCost);
+
+      p.unrealizedGain = p.currentValue - costOfAvailable;
+      p.gainPercent =
+        costOfAvailable > 0 ? (p.unrealizedGain / costOfAvailable) * 100 : 0;
+
+      totalPortfolioValue += p.currentValue;
+      totalPortfolioCost += costOfAvailable;
+    }
   });
 
-  // Show all currencies with transactions (historical data - not filtered by visibility)
-  const currencies = Object.keys(inventory);
+  const totalUnrealizedGain = totalPortfolioValue - totalPortfolioCost;
+  const totalGainPercent =
+    totalPortfolioCost > 0
+      ? (totalUnrealizedGain / totalPortfolioCost) * 100
+      : 0;
+
+  const currencies = Object.keys(portfolio).filter(
+    (c) => portfolio[c].available > 0 || portfolio[c].bought > 0
+  );
+
   if (currencies.length === 0) return null;
 
   return (
     <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
-          <Wallet className="w-5 h-5 text-purple-400" />
+      {/* Header with total valuation */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">Mi Portafolio</h3>
+            <p className="text-xs text-neutral-500">Valorización actual</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-bold text-white">
-            Inventario de Divisas
-          </h3>
-          <p className="text-xs text-neutral-500">Disponible para vender</p>
-        </div>
+        {totalPortfolioValue > 0 && (
+          <div className="text-right">
+            <p className="text-lg font-bold text-white tabular-nums">
+              {formatNumber(totalPortfolioValue)} CUP
+            </p>
+            <p
+              className={cn(
+                "text-xs font-bold tabular-nums",
+                totalUnrealizedGain >= 0 ? "text-emerald-400" : "text-red-400"
+              )}
+            >
+              {totalUnrealizedGain >= 0 ? "+" : ""}
+              {formatNumber(totalUnrealizedGain)} ({totalGainPercent.toFixed(1)}
+              %)
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Inventory Grid */}
+      {/* Currency Cards */}
       <div className="space-y-3">
         {currencies.map((currency) => {
           const meta = CURRENCY_META[currency as Currency];
-          const { bought, sold, available } = inventory[currency];
-          const isLow = available < bought * 0.2 && available > 0; // Less than 20%
-          const isEmpty = available <= 0;
+          const p = portfolio[currency];
+          const hasInventory = p.available > 0;
+          const isLow = p.available < p.bought * 0.2 && p.available > 0;
+          const isEmpty = p.available <= 0;
 
           return (
             <div
@@ -392,65 +523,431 @@ function CurrencyInventory() {
               className={cn(
                 "rounded-xl p-3 border transition-colors",
                 isEmpty
-                  ? "bg-red-500/5 border-red-500/20"
+                  ? "bg-neutral-950/50 border-neutral-800/50 opacity-60"
                   : isLow
                   ? "bg-amber-500/5 border-amber-500/20"
                   : "bg-neutral-950 border-neutral-800"
               )}
             >
               {/* Currency Header */}
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{meta?.flag || "💵"}</span>
                   <span className="font-bold text-white">{currency}</span>
-                </div>
-                {/* Status Badge */}
-                {isEmpty ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold">
-                    AGOTADO
+                  <span className="text-sm text-neutral-500">
+                    {formatNumber(p.available)} disp.
                   </span>
-                ) : isLow ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold">
-                    BAJO
-                  </span>
-                ) : null}
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-[10px] text-neutral-500 uppercase">
-                    Comprado
-                  </div>
-                  <div className="text-sm font-bold text-emerald-400 tabular-nums">
-                    {formatNumber(bought)}
-                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] text-neutral-500 uppercase">
-                    Vendido
-                  </div>
-                  <div className="text-sm font-bold text-amber-400 tabular-nums">
-                    {formatNumber(sold)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-neutral-500 uppercase">
-                    Disponible
-                  </div>
-                  <div
+                {hasInventory && (
+                  <span
                     className={cn(
-                      "text-sm font-bold tabular-nums",
-                      isEmpty
-                        ? "text-red-400"
-                        : isLow
-                        ? "text-amber-400"
-                        : "text-white"
+                      "text-xs px-2 py-0.5 rounded-full font-bold",
+                      p.unrealizedGain >= 0
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-red-500/20 text-red-400"
                     )}
                   >
-                    {formatNumber(available)}
+                    {p.unrealizedGain >= 0 ? "+" : ""}
+                    {p.gainPercent.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+
+              {hasInventory && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-neutral-900 rounded-lg p-2">
+                    <div className="text-[10px] text-neutral-500 uppercase">
+                      Valor Actual
+                    </div>
+                    <div className="text-sm font-bold text-white tabular-nums">
+                      {formatNumber(p.currentValue)}
+                    </div>
+                  </div>
+                  <div className="bg-neutral-900 rounded-lg p-2">
+                    <div className="text-[10px] text-neutral-500 uppercase">
+                      Costo
+                    </div>
+                    <div className="text-sm font-bold text-neutral-400 tabular-nums">
+                      {formatNumber(
+                        Math.round(p.available * (p.totalCost / p.bought))
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-neutral-900 rounded-lg p-2">
+                    <div className="text-[10px] text-neutral-500 uppercase">
+                      Ganancia
+                    </div>
+                    <div
+                      className={cn(
+                        "text-sm font-bold tabular-nums",
+                        p.unrealizedGain >= 0
+                          ? "text-emerald-400"
+                          : "text-red-400"
+                      )}
+                    >
+                      {p.unrealizedGain >= 0 ? "+" : ""}
+                      {formatNumber(p.unrealizedGain)}
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Sell Simulator Component - Enhanced UX/UI
+function SellSimulator() {
+  const transactions = useStore($transactions);
+  const sellRates = useStore($sellRates);
+
+  // Get currencies with available inventory
+  const availableCurrencies: {
+    currency: Currency;
+    available: number;
+    avgCost: number;
+  }[] = [];
+
+  const inventoryByCurrency: Record<
+    string,
+    { bought: number; sold: number; totalCost: number }
+  > = {};
+
+  transactions.forEach((txn) => {
+    const currency = txn.currency || "USD";
+    if (!inventoryByCurrency[currency]) {
+      inventoryByCurrency[currency] = { bought: 0, sold: 0, totalCost: 0 };
+    }
+    if (txn.operationType === "BUY") {
+      inventoryByCurrency[currency].bought += txn.amountForeign;
+      inventoryByCurrency[currency].totalCost += txn.totalCUP;
+    } else {
+      inventoryByCurrency[currency].sold += txn.amountForeign;
+    }
+  });
+
+  Object.entries(inventoryByCurrency).forEach(([currency, data]) => {
+    const available = data.bought - data.sold;
+    if (available > 0) {
+      const avgCost = data.bought > 0 ? data.totalCost / data.bought : 0;
+      availableCurrencies.push({
+        currency: currency as Currency,
+        available,
+        avgCost,
+      });
+    }
+  });
+
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(
+    availableCurrencies[0]?.currency || "USD"
+  );
+  const [quantity, setQuantity] = useState("");
+  const [customRate, setCustomRate] = useState("");
+
+  const currencyData = availableCurrencies.find(
+    (c) => c.currency === selectedCurrency
+  );
+  const currentRate = sellRates[selectedCurrency] ?? 0;
+  const rate = customRate ? parseFloat(customRate) : currentRate;
+  const qty = parseFloat(quantity) || 0;
+  const maxQty = currencyData?.available ?? 0;
+
+  const cupReceived = Math.round(qty * rate);
+  const costBasis = Math.round(qty * (currencyData?.avgCost ?? 0));
+  const profit = cupReceived - costBasis;
+  const profitPercent = costBasis > 0 ? (profit / costBasis) * 100 : 0;
+
+  // Quick fill percentages
+  const quickFills = [25, 50, 75, 100];
+
+  if (availableCurrencies.length === 0) return null;
+
+  return (
+    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-5">
+        <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
+          <Calculator className="w-5 h-5 text-blue-400" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white">Simulador de Venta</h3>
+          <p className="text-xs text-neutral-500">
+            Calcula tu ganancia antes de vender
+          </p>
+        </div>
+      </div>
+
+      {/* Currency Pills - Horizontal scroll on mobile */}
+      <div className="mb-4">
+        <label className="text-[10px] text-neutral-500 uppercase block mb-2">
+          Selecciona moneda
+        </label>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {availableCurrencies.map(({ currency, available }) => {
+            const meta = CURRENCY_META[currency];
+            const isSelected = selectedCurrency === currency;
+            return (
+              <button
+                key={currency}
+                onClick={() => {
+                  setSelectedCurrency(currency);
+                  setQuantity("");
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all shrink-0",
+                  isSelected
+                    ? "bg-blue-500/20 border-blue-500/50 text-white"
+                    : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                )}
+              >
+                <span className="text-base">{meta?.flag}</span>
+                <div className="text-left">
+                  <span className="text-sm font-bold block">{currency}</span>
+                  <span className="text-[10px] text-neutral-500">
+                    {formatNumber(available)} disp.
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Input Section - Responsive grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {/* Quantity Section */}
+        <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+          <label className="text-[10px] text-neutral-500 uppercase block mb-2">
+            Cantidad a vender
+          </label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder="0"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="bg-transparent border-0 text-2xl font-bold text-white p-0 h-auto focus:ring-0"
+            />
+            <span className="text-sm text-neutral-500">{selectedCurrency}</span>
+          </div>
+
+          {/* Quick Fill Buttons */}
+          <div className="flex gap-2 mt-3">
+            {quickFills.map((pct) => (
+              <button
+                key={pct}
+                onClick={() =>
+                  setQuantity(Math.floor(maxQty * (pct / 100)).toString())
+                }
+                className={cn(
+                  "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                  qty === Math.floor(maxQty * (pct / 100))
+                    ? "bg-blue-500/30 text-blue-400"
+                    : "bg-neutral-900 text-neutral-500 hover:text-neutral-300"
+                )}
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Rate Section */}
+        <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
+          <label className="text-[10px] text-neutral-500 uppercase block mb-2">
+            Tasa de venta
+          </label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder={currentRate.toString()}
+              value={customRate}
+              onChange={(e) => setCustomRate(e.target.value)}
+              className="bg-transparent border-0 text-2xl font-bold text-white p-0 h-auto focus:ring-0"
+            />
+            <span className="text-sm text-neutral-500">CUP</span>
+          </div>
+          <p className="text-[10px] text-neutral-600 mt-2">
+            Tasa actual: {formatNumber(currentRate)} CUP/{selectedCurrency}
+          </p>
+        </div>
+      </div>
+
+      {/* Results - Always visible with empty state */}
+      <div
+        className={cn(
+          "rounded-xl p-4 border transition-all",
+          qty > 0
+            ? "bg-neutral-950 border-neutral-700"
+            : "bg-neutral-950/50 border-neutral-800/50"
+        )}
+      >
+        {qty > 0 ? (
+          <>
+            {/* Main Result - Prominent */}
+            <div className="text-center mb-4">
+              <p className="text-[10px] text-neutral-500 uppercase mb-1">
+                Recibirás
+              </p>
+              <p className="text-3xl font-bold text-white tabular-nums">
+                {formatNumber(cupReceived)}{" "}
+                <span className="text-lg text-neutral-500">CUP</span>
+              </p>
+            </div>
+
+            {/* Breakdown */}
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-neutral-800">
+              <div className="text-center">
+                <p className="text-[10px] text-neutral-500 uppercase">
+                  Costo original
+                </p>
+                <p className="text-sm font-bold text-neutral-400 tabular-nums">
+                  {formatNumber(costBasis)} CUP
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-neutral-500 uppercase">
+                  Ganancia
+                </p>
+                <p
+                  className={cn(
+                    "text-sm font-bold tabular-nums",
+                    profit >= 0 ? "text-emerald-400" : "text-red-400"
+                  )}
+                >
+                  {profit >= 0 ? "+" : ""}
+                  {formatNumber(profit)}
+                  <span className="text-[10px] ml-1 opacity-70">
+                    ({profitPercent.toFixed(1)}%)
+                  </span>
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <Calculator className="w-8 h-8 text-neutral-700 mx-auto mb-2" />
+            <p className="text-sm text-neutral-600">
+              Ingresa una cantidad para simular
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Rate Trends Component - Shows currency rate trends over time
+function RateTrends() {
+  const sellRates = useStore($sellRates);
+  const hasHistory = useStore($hasRateHistory);
+  const rateHistory = useStore($rateHistory);
+
+  // Record snapshot of current rates when component mounts or rates change
+  useEffect(() => {
+    if (Object.values(sellRates).some((r) => r > 0)) {
+      recordRateSnapshot(sellRates);
+    }
+  }, [sellRates]);
+
+  // Only show if we have history
+  if (!hasHistory || rateHistory.length < 2) {
+    return null;
+  }
+
+  // Get visible currencies with trends
+  const visibleCurrencies = CURRENCIES.slice(0, 6) as Currency[];
+
+  return (
+    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center">
+          <TrendingUp className="w-5 h-5 text-cyan-400" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white">Tendencia de Tasas</h3>
+          <p className="text-xs text-neutral-500">
+            Últimos {rateHistory.length} días
+          </p>
+        </div>
+      </div>
+
+      {/* Currency Trends Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {visibleCurrencies.map((currency) => {
+          const trend = getCurrencyTrend(currency, 7);
+          const history = getRateHistoryForCurrency(currency, 7);
+          const meta = CURRENCY_META[currency];
+
+          if (history.length < 2) return null;
+
+          // Simple sparkline: normalize values to 0-100 range
+          const rates = history.map((h) => h.rate);
+          const min = Math.min(...rates);
+          const max = Math.max(...rates);
+          const range = max - min || 1;
+          const normalized = rates.map((r) => ((r - min) / range) * 100);
+
+          // Create SVG sparkline path
+          const width = 60;
+          const height = 20;
+          const points = normalized
+            .map(
+              (val, i) =>
+                `${(i / (normalized.length - 1)) * width},${
+                  height - (val / 100) * height
+                }`
+            )
+            .join(" ");
+
+          return (
+            <div
+              key={currency}
+              className="bg-neutral-950 rounded-xl p-3 border border-neutral-800"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">{meta?.flag}</span>
+                  <span className="text-xs font-bold text-white">
+                    {currency}
+                  </span>
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                    trend.isUp
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-red-500/20 text-red-400"
+                  )}
+                >
+                  {trend.isUp ? "▲" : "▼"}{" "}
+                  {Math.abs(trend.changePercent).toFixed(1)}%
+                </span>
+              </div>
+
+              {/* Sparkline */}
+              <svg width={width} height={height} className="w-full">
+                <polyline
+                  points={points}
+                  fill="none"
+                  stroke={trend.isUp ? "#10b981" : "#ef4444"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+
+              <div className="flex justify-between mt-1 text-[10px] text-neutral-500 tabular-nums">
+                <span>{formatNumber(trend.startRate)}</span>
+                <span className="font-bold text-white">
+                  {formatNumber(trend.endRate)}
+                </span>
               </div>
             </div>
           );
@@ -471,8 +968,11 @@ export function ReportsTab() {
         "space-y-4"
       )}
     >
+      <LiquidityAlert />
       <CapitalCard />
-      <CurrencyInventory />
+      <PortfolioCard />
+      <SellSimulator />
+      <RateTrends />
       <ProfitSummary />
     </main>
   );
