@@ -1,4 +1,5 @@
 import { useStore } from "@nanostores/react";
+import { useState } from "react";
 import {
   RotateCcw,
   TrendingUp,
@@ -7,6 +8,8 @@ import {
   Pencil,
   Eye,
   EyeOff,
+  Heart,
+  Smartphone,
 } from "lucide-react";
 import {
   $buyRates,
@@ -264,6 +267,112 @@ function VisibilitySection() {
   );
 }
 
+// Donation Section Component
+function DonationSection() {
+  const [customAmount, setCustomAmount] = useState("");
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+
+  // Your phone number for receiving donations (Transfermóvil)
+  const RECIPIENT_PHONE = "+5353118193";
+
+  const presetAmounts = [250, 500, 1000];
+
+  const handleSelectAmount = (amount: number) => {
+    setSelectedAmount(amount);
+    setCustomAmount("");
+  };
+
+  const handleCustomChange = (value: string) => {
+    setCustomAmount(value);
+    setSelectedAmount(null);
+  };
+
+  const finalAmount = selectedAmount || parseInt(customAmount) || 0;
+
+  // Generate Transfermóvil USSD code for transfer
+  // Format: tel:*444*45# opens Transfermóvil transfer menu
+  // Users then manually enter recipient and amount
+  const handleDonate = () => {
+    if (finalAmount < 50) return;
+
+    // Open phone dialer with Transfermóvil code
+    // *444*45# is the transfer menu in Transfermóvil
+    window.location.href = "tel:*444*45%23";
+  };
+
+  return (
+    <div className="bg-neutral-900 rounded-xl p-4 border border-neutral-800">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-pink-500/15 flex items-center justify-center">
+          <Heart className="w-5 h-5 text-pink-400" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white">Apoya el Desarrollo</h3>
+          <p className="text-xs text-neutral-500">
+            Tu donación mantiene la app gratis
+          </p>
+        </div>
+      </div>
+
+      {/* Preset Amounts */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {presetAmounts.map((amount) => (
+          <button
+            key={amount}
+            onClick={() => handleSelectAmount(amount)}
+            className={cn(
+              "py-3 rounded-xl font-bold text-sm transition-all border",
+              selectedAmount === amount
+                ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
+                : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+            )}
+          >
+            {amount} CUP
+          </button>
+        ))}
+      </div>
+
+      {/* Custom Amount */}
+      <div className="mb-4">
+        <Input
+          type="number"
+          inputMode="numeric"
+          placeholder="Otro monto (CUP)"
+          value={customAmount}
+          onChange={(e) => handleCustomChange(e.target.value)}
+          className={cn(
+            "bg-neutral-950 border-neutral-800 text-center",
+            customAmount && "border-pink-500/50"
+          )}
+        />
+      </div>
+
+      {/* Donate Button */}
+      <button
+        onClick={handleDonate}
+        disabled={finalAmount < 50}
+        className={cn(
+          "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+          finalAmount >= 50
+            ? "bg-pink-500 text-white hover:bg-pink-600"
+            : "bg-neutral-800 text-neutral-600 cursor-not-allowed"
+        )}
+      >
+        <Smartphone className="w-4 h-4" />
+        {finalAmount >= 50
+          ? `Donar ${finalAmount} CUP via Transfermóvil`
+          : "Selecciona un monto (min. 50 CUP)"}
+      </button>
+
+      {/* Info */}
+      <p className="text-[10px] text-neutral-600 text-center mt-3">
+        Se abrirá Transfermóvil. Transfiere a: {RECIPIENT_PHONE}
+      </p>
+    </div>
+  );
+}
+
 export function SettingsSheet() {
   const isOpen = useStore($isSettingsOpen) ?? false;
   const isLoadingElToque = useStore($isLoadingElToque);
@@ -351,6 +460,9 @@ export function SettingsSheet() {
 
         {/* Visibility Customization */}
         <VisibilitySection />
+
+        {/* Donation Section */}
+        <DonationSection />
 
         {/* Actions - Fixed Footer */}
         <div className="flex gap-3 pt-4 mt-4 border-t border-neutral-800">
