@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "@nanostores/react";
 import {
   Eye,
@@ -17,6 +17,7 @@ import {
   togglePrivacyMode,
   clearAll,
 } from "../../stores/counterStore";
+import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { useInTransaction, openHistoryDrawer } from "../../stores/uiStore";
 import { confirm } from "../../stores/confirmStore";
 import { formatNumber, formatCurrency } from "../../lib/formatters";
@@ -24,22 +25,12 @@ import { cn } from "../../lib/utils";
 import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
 import { Button } from "../ui/Button";
+import type { Currency } from "../../lib/constants";
 
 // ============================================
 // TotalsFooter Component
 // Smart Compact with Currency Carousel
 // ============================================
-
-// All 6 currencies in the carousel
-const CAROUSEL_CURRENCIES = [
-  "USD",
-  "EUR",
-  "CAD",
-  "MLC",
-  "CLASICA",
-  "ZELLE",
-] as const;
-type CarouselCurrency = (typeof CAROUSEL_CURRENCIES)[number];
 
 export function TotalsFooter() {
   const grandTotal = useStore($grandTotalCUP) ?? 0;
@@ -53,8 +44,15 @@ export function TotalsFooter() {
   };
   const privacyMode = useStore($privacyMode) ?? false;
   const operation = useStore($counterOperation);
+  const visibleCurrencies = useStore($visibleCurrencies);
   const { toast } = useToast();
   const haptic = useHaptic();
+
+  // Use only visible currencies for carousel
+  const carouselCurrencies = useMemo(
+    () => visibleCurrencies,
+    [visibleCurrencies]
+  );
 
   // Keyboard/Focus State
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -63,28 +61,38 @@ export function TotalsFooter() {
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  // Reset carousel index when visible currencies change
+  useEffect(() => {
+    if (carouselIndex >= carouselCurrencies.length) {
+      setCarouselIndex(0);
+    }
+  }, [carouselCurrencies.length, carouselIndex]);
+
   // Carousel auto-rotation
   useEffect(() => {
+    if (carouselCurrencies.length <= 1) return;
+
     const interval = setInterval(() => {
       setIsAnimating(true);
       setTimeout(() => {
-        setCarouselIndex((prev) => (prev + 1) % CAROUSEL_CURRENCIES.length);
+        setCarouselIndex((prev) => (prev + 1) % carouselCurrencies.length);
         setIsAnimating(false);
       }, 200); // Animation duration
     }, 2500);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [carouselCurrencies.length]);
 
   // Manual carousel switch on tap
   const handleCarouselTap = useCallback(() => {
+    if (carouselCurrencies.length <= 1) return;
     haptic.light();
     setIsAnimating(true);
     setTimeout(() => {
-      setCarouselIndex((prev) => (prev + 1) % CAROUSEL_CURRENCIES.length);
+      setCarouselIndex((prev) => (prev + 1) % carouselCurrencies.length);
       setIsAnimating(false);
     }, 150);
-  }, [haptic]);
+  }, [haptic, carouselCurrencies.length]);
 
   // Detect input focus for slim mode
   useEffect(() => {
@@ -141,7 +149,7 @@ export function TotalsFooter() {
 
   // Display Values
   const displayTotal = privacyMode ? "••••" : formatNumber(grandTotal);
-  const currentCurrency = CAROUSEL_CURRENCIES[carouselIndex];
+  const currentCurrency = carouselCurrencies[carouselIndex] as Currency;
   const currentForeignValue = foreignTotals[currentCurrency] || 0;
   const operationLabel = operation === "BUY" ? "Compra" : "Venta";
   const displayCarousel = privacyMode
