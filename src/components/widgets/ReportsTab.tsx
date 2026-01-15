@@ -9,7 +9,6 @@ import {
   Edit3,
   Check,
   RotateCcw,
-  Coins,
 } from "lucide-react";
 import {
   $initialCapital,
@@ -329,81 +328,6 @@ function ProfitSummary() {
   );
 }
 
-// Volume Summary Component (moved from HistoryDrawer)
-function VolumeSummary() {
-  const transactions = useStore($transactions);
-
-  // Calculate volume by currency for BUY and SELL
-  const volumeByCurrency: Record<string, { buy: number; sell: number }> = {};
-
-  transactions.forEach((txn) => {
-    const currency = txn.currency || "USD";
-    const amount = txn.amountForeign || 0;
-
-    if (!volumeByCurrency[currency]) {
-      volumeByCurrency[currency] = { buy: 0, sell: 0 };
-    }
-
-    if (txn.operationType === "BUY") {
-      volumeByCurrency[currency].buy += amount;
-    } else {
-      volumeByCurrency[currency].sell += amount;
-    }
-  });
-
-  // Show all currencies with transactions (historical data - not filtered by visibility)
-  const currencies = Object.keys(volumeByCurrency);
-  if (currencies.length === 0) return null;
-
-  return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
-          <Coins className="w-5 h-5 text-blue-400" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-white">Volumen por Moneda</h3>
-          <p className="text-xs text-neutral-500">Total operado en divisas</p>
-        </div>
-      </div>
-
-      {/* Currency Grid */}
-      <div className="space-y-2">
-        {currencies.map((currency) => {
-          const meta = CURRENCY_META[currency as Currency];
-          const { buy, sell } = volumeByCurrency[currency];
-          return (
-            <div
-              key={currency}
-              className="flex items-center justify-between py-3 border-b border-neutral-800 last:border-0"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{meta?.flag || "💵"}</span>
-                <span className="font-bold text-white">{currency}</span>
-              </div>
-              <div className="flex items-center gap-4 text-sm tabular-nums">
-                <div className="text-right">
-                  <span className="text-neutral-500">C: </span>
-                  <span className="text-emerald-400 font-bold">
-                    {formatNumber(buy)}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-neutral-500">V: </span>
-                  <span className="text-amber-400 font-bold">
-                    {formatNumber(sell)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // Currency Inventory Component - Shows available currency to sell
 function CurrencyInventory() {
   const transactions = useStore($transactions);
@@ -549,7 +473,6 @@ export function ReportsTab() {
     >
       <CapitalCard />
       <CurrencyInventory />
-      <VolumeSummary />
       <ProfitSummary />
     </main>
   );
