@@ -216,20 +216,20 @@ export function RatesDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={openDonation}
-              className="h-8 w-8 p-0 text-pink-400 hover:text-pink-300"
-              title="Apoyar"
-            >
-              <Heart size={14} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
               onClick={openSettings}
               className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
               title="Configuración"
             >
               <Settings size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openDonation}
+              className="h-8 w-8 p-0 text-pink-400 hover:text-pink-300"
+              title="Apoyar"
+            >
+              <Heart size={14} />
             </Button>
           </div>
         </div>

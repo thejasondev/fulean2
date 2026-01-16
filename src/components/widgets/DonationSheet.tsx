@@ -148,13 +148,11 @@ export function DonationSheet() {
           <p className="text-xs text-neutral-500 leading-relaxed">
             <strong className="text-neutral-400">Cómo donar:</strong>
             <br />
-            1. Copia el número de tarjeta
+            1. Autentícate desde tu app bancaria y vuelve a nuestra app.
             <br />
-            2. Toca el botón para abrir Transfermóvil
+            2. Copia la tarjeta de donación y selecciona la cantidad deseada.
             <br />
-            3. Autentícate (*444*40*02#) si es necesario
-            <br />
-            4. Transfiere a la tarjeta copiada
+            3. Transfiere a la tarjeta copiada la cantidad deseada.
           </p>
         </div>
       </div>
