@@ -1,13 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import {
-  RefreshCw,
-  Settings,
-  Shield,
-  WifiOff,
-  Zap,
-  Pencil,
-} from "lucide-react";
+import { RefreshCw, Settings, WifiOff, Zap, Pencil, Heart } from "lucide-react";
 import {
   $buyRates,
   $sellRates,
@@ -21,7 +14,7 @@ import {
   refreshRates,
   loadElToqueRates,
 } from "../../stores/ratesStore";
-import { openSettings, openSecurityModal } from "../../stores/uiStore";
+import { openSettings, openDonation } from "../../stores/uiStore";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatLastUpdate } from "../../lib/eltoque-api";
@@ -223,11 +216,11 @@ export function RatesDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={openSecurityModal}
-              className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
-              title="Seguridad"
+              onClick={openDonation}
+              className="h-8 w-8 p-0 text-pink-400 hover:text-pink-300"
+              title="Apoyar"
             >
-              <Shield size={14} />
+              <Heart size={14} />
             </Button>
             <Button
               variant="ghost"

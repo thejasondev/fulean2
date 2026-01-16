@@ -6,9 +6,9 @@ import { RatesDashboard } from "../widgets/RatesDashboard";
 import { AppTabs } from "../widgets/AppTabs";
 import { TotalsFooter } from "../widgets/TotalsFooter";
 import { SettingsSheet } from "../widgets/SettingsSheet";
-import { SecurityModal } from "../widgets/SecurityModal";
 import { HistoryDrawer } from "../widgets/HistoryDrawer";
 import { ClientViewModal } from "../widgets/ClientViewModal";
+import { DonationSheet } from "../widgets/DonationSheet";
 import { initializeRates } from "../../stores/ratesStore";
 
 // ============================================
@@ -37,9 +37,9 @@ export function App() {
 
         {/* Modals and Drawers */}
         <SettingsSheet />
-        <SecurityModal />
         <HistoryDrawer />
         <ClientViewModal />
+        <DonationSheet />
       </div>
 
       {/* Confirm Dialog (global) */}

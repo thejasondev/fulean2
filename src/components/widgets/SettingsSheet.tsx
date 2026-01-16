@@ -504,9 +504,6 @@ export function SettingsSheet() {
         {/* Visibility Customization */}
         <VisibilitySection />
 
-        {/* Donation Section */}
-        <DonationSection />
-
         {/* Actions - Fixed Footer */}
         <div className="flex gap-3 pt-4 mt-4 border-t border-neutral-800">
           <Button

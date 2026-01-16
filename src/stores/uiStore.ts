@@ -112,3 +112,14 @@ export function closeClientView() {
   $isClientViewOpen.set(false);
   $clientViewData.set(null);
 }
+
+// Donation Modal
+export const $isDonationOpen = atom<boolean>(false);
+
+export function openDonation() {
+  $isDonationOpen.set(true);
+}
+
+export function closeDonation() {
+  $isDonationOpen.set(false);
+}

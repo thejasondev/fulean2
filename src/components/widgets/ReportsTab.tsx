@@ -40,6 +40,7 @@ import { confirm } from "../../stores/confirmStore";
 import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { useEffect } from "react";
 
 // ============================================
@@ -842,26 +843,27 @@ function SellSimulator() {
   );
 }
 
-// Rate Trends Component - Shows currency rate trends over time
+// Rate Trends Component - Shows SELL rate trends for visible currencies
+// Focus on sell rates because investors want to know when to sell high
 function RateTrends() {
   const sellRates = useStore($sellRates);
   const hasHistory = useStore($hasRateHistory);
   const rateHistory = useStore($rateHistory);
+  const visibleCurrencies = useStore($visibleCurrencies);
 
-  // Record snapshot of current rates when component mounts or rates change
+  // Record snapshot of current SELL rates when they change
   useEffect(() => {
     if (Object.values(sellRates).some((r) => r > 0)) {
       recordRateSnapshot(sellRates);
     }
   }, [sellRates]);
 
-  // Only show if we have history
+  // Only show if we have at least 2 days of history
   if (!hasHistory || rateHistory.length < 2) {
     return null;
   }
 
-  // Get visible currencies with trends
-  const visibleCurrencies = CURRENCIES.slice(0, 6) as Currency[];
+  // Filter to only visible currencies
 
   return (
     <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
@@ -972,8 +974,8 @@ export function ReportsTab() {
       <CapitalCard />
       <PortfolioCard />
       <SellSimulator />
-      <RateTrends />
       <ProfitSummary />
+      <RateTrends />
     </main>
   );
 }
