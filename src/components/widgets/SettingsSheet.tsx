@@ -215,26 +215,6 @@ function VisibilitySection() {
         </span>
       </div>
 
-      {/* Sunlight Mode Toggle */}
-      <div className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-primary)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] flex items-center justify-center">
-              <Sun className="w-5 h-5 text-[var(--status-warning)]" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                Modo Sunlight
-              </h3>
-              <p className="text-xs text-[var(--text-faint)]">
-                Alto contraste para usar bajo el sol
-              </p>
-            </div>
-          </div>
-          <Toggle checked={theme === "sunlight"} onChange={handleThemeToggle} />
-        </div>
-      </div>
-
       {/* Denominations */}
       <div>
         <span className="block text-[10px] text-[var(--text-faint)] mb-2 font-medium">

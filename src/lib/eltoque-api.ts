@@ -14,17 +14,20 @@ export interface ElToqueRates {
   CAD: number;
   CLASICA: number; // Maps from "CLA" in El Toque API
   ZELLE: number;
+  BTC: number;
+  USDT_TRC20: number;
   lastUpdate: Date;
 }
 
 /**
  * Parse El Toque API response
  *
- * API returns: { tasas: { USD, ECU, MLC, CAD, ZELLE, CLA, ... } }
+ * API returns: { tasas: { USD, ECU, MLC, CAD, ZELLE, CLA, BTC, USDT_TRC20, ... } }
  *
  * Mappings:
  * - ECU or EUR -> EUR (El Toque uses "ECU" for Euro)
  * - CLA -> CLASICA (our app name)
+ * - BTC and USDT_TRC20 are direct mappings
  */
 export function parseElToqueRates(data: unknown): ElToqueRates {
   const response = data as { tasas?: Record<string, number> };
@@ -39,6 +42,8 @@ export function parseElToqueRates(data: unknown): ElToqueRates {
   const cad = tasas.CAD || 300;
   const zelle = tasas.ZELLE || 457;
   const cla = tasas.CLA || 427; // CLA = Tarjeta Clásica
+  const btc = tasas.BTC || 5800000; // Bitcoin
+  const usdt = tasas.USDT_TRC20 || tasas.USDT || 460; // USDT TRC20
 
   return {
     USD: Math.round(usd),
@@ -47,6 +52,8 @@ export function parseElToqueRates(data: unknown): ElToqueRates {
     CAD: Math.round(cad),
     CLASICA: Math.round(cla), // Map CLA -> CLASICA
     ZELLE: Math.round(zelle),
+    BTC: Math.round(btc),
+    USDT_TRC20: Math.round(usdt),
     lastUpdate: new Date(),
   };
 }

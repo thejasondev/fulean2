@@ -24,7 +24,12 @@ import {
   resetCapital,
 } from "../../stores/capitalStore";
 import { $transactions } from "../../stores/historyStore";
-import { $sellRates } from "../../stores/ratesStore";
+import {
+  $sellRates,
+  $elToqueRates,
+  $manualElToqueRates,
+  isManualElToqueCurrency,
+} from "../../stores/ratesStore";
 import {
   $rateHistory,
   recordRateSnapshot,
@@ -865,20 +870,56 @@ function SellSimulator() {
   );
 }
 
-// Rate Trends Component - Shows SELL rate trends for visible currencies
-// Focus on sell rates because investors want to know when to sell high
+// Rate Trends Component - Shows rate trends for visible currencies
+// Uses El Toque rates ("la bolsa") when available as they represent true market values
+// Falls back to manual rates for currencies not in API
 function RateTrends() {
   const sellRates = useStore($sellRates);
+  const elToqueRates = useStore($elToqueRates);
+  const manualRates = useStore($manualElToqueRates);
   const hasHistory = useStore($hasRateHistory);
   const rateHistory = useStore($rateHistory);
   const visibleCurrencies = useStore($visibleCurrencies);
 
-  // Record snapshot of current SELL rates when they change
+  // Record snapshot using El Toque rates when available (true market values)
+  // Fall back to sell rates for currencies without API data
   useEffect(() => {
-    if (Object.values(sellRates).some((r) => r > 0)) {
-      recordRateSnapshot(sellRates);
+    // Build rates prioritizing El Toque ("la bolsa") data
+    const ratesToRecord: Record<string, number> = {};
+
+    for (const currency of visibleCurrencies) {
+      // Priority 1: El Toque API rates (true market values)
+      if (
+        elToqueRates &&
+        elToqueRates[currency as keyof typeof elToqueRates] !== undefined
+      ) {
+        const rate = elToqueRates[currency as keyof typeof elToqueRates];
+        if (typeof rate === "number" && rate > 0) {
+          ratesToRecord[currency] = rate;
+          continue;
+        }
+      }
+
+      // Priority 2: Manual El Toque rates (for currencies not in API)
+      if (
+        isManualElToqueCurrency(currency) &&
+        manualRates[currency as keyof typeof manualRates]
+      ) {
+        ratesToRecord[currency] =
+          manualRates[currency as keyof typeof manualRates];
+        continue;
+      }
+
+      // Priority 3: User's sell rates (fallback)
+      if (sellRates[currency] > 0) {
+        ratesToRecord[currency] = sellRates[currency];
+      }
     }
-  }, [sellRates]);
+
+    if (Object.values(ratesToRecord).some((r) => r > 0)) {
+      recordRateSnapshot(ratesToRecord as Record<Currency, number>);
+    }
+  }, [sellRates, elToqueRates, manualRates, visibleCurrencies]);
 
   // Only show if we have at least 2 days of history
   if (!hasHistory || rateHistory.length < 2) {

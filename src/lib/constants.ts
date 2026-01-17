@@ -19,6 +19,8 @@ export const CURRENCIES = [
   "MLC",
   "CLASICA",
   "ZELLE",
+  "BTC",
+  "USDT_TRC20",
 ] as const;
 
 export type Currency = (typeof CURRENCIES)[number];
@@ -85,24 +87,42 @@ export const CURRENCY_META: Record<Currency, CurrencyMeta> = {
     category: "digital",
     color: "violet",
   },
+  BTC: {
+    code: "BTC",
+    name: "Bitcoin",
+    symbol: "₿",
+    flag: "₿",
+    category: "digital",
+    color: "orange",
+  },
+  USDT_TRC20: {
+    code: "USDT_TRC20",
+    name: "USDT TRC20",
+    symbol: "₮",
+    flag: "💵",
+    category: "digital",
+    color: "teal",
+  },
 };
 
 // Helper to get currencies by category
 export const CASH_CURRENCIES = CURRENCIES.filter(
-  (c) => CURRENCY_META[c].category === "cash"
+  (c) => CURRENCY_META[c].category === "cash",
 );
 export const DIGITAL_CURRENCIES = CURRENCIES.filter(
-  (c) => CURRENCY_META[c].category === "digital"
+  (c) => CURRENCY_META[c].category === "digital",
 );
 
 // Default exchange rates (CUP per 1 unit of currency)
 export const DEFAULT_RATES: Record<Currency, number> = {
-  USD: 320,
-  EUR: 335,
-  CAD: 280,
-  MLC: 275,
-  CLASICA: 250,
-  ZELLE: 310,
+  USD: 450,
+  EUR: 500,
+  CAD: 380,
+  MLC: 350,
+  CLASICA: 350,
+  ZELLE: 400,
+  BTC: 450,
+  USDT_TRC20: 500,
 };
 
 // Number of bills in a "Fajo" (bundle)
