@@ -141,59 +141,59 @@
   --bg-active: #cbd5e1;
 
   /* Text Colors - Maximum contrast */
-  --text-primary: #111827;
-  --text-secondary: #1f2937;
-  --text-muted: #374151;
-  --text-faint: #4b5563;
+  --text-primary: #0f172a; /* Slate-900: Deepest black-blue */
+  --text-secondary: #334155; /* Slate-700: Strong gray */
+  --text-muted: #475569; /* Slate-600: Readable gray */
+  --text-faint: #64748b; /* Slate-500: Faint but visible */
   --text-inverted: #ffffff;
 
   /* Border Colors - Visible but not harsh */
-  --border-primary: #d1d5db;
-  --border-secondary: #9ca3af;
-  --border-muted: #e5e7eb;
+  --border-primary: #cbd5e1; /* Stronger borders for sunlight */
+  --border-secondary: #e2e8f0;
+  --border-muted: #f1f5f9;
 
-  /* Accent Colors - More saturated for visibility */
-  --accent: #059669;
-  --accent-hover: #047857;
-  --accent-muted: #05966833;
-  --accent-text: #047857;
+  /* Accent Colors - High Saturation */
+  --accent: #059669; /* Emerald-600 */
+  --accent-hover: #047857; /* Emerald-700 */
+  --accent-muted: rgba(5, 150, 105, 0.1);
+  --accent-text: #059669;
 
-  /* Status Colors - Higher saturation */
-  --status-success: #059669;
-  --status-success-bg: rgba(5, 150, 105, 0.15);
-  --status-error: #dc2626;
-  --status-error-bg: rgba(220, 38, 38, 0.12);
-  --status-warning: #d97706;
-  --status-warning-bg: rgba(217, 119, 6, 0.12);
-  --status-info: #2563eb;
-  --status-info-bg: rgba(37, 99, 235, 0.12);
+  /* Status Colors - Vibrant */
+  --status-success: #16a34a; /* Green-600 */
+  --status-success-bg: rgba(22, 163, 74, 0.1);
+  --status-error: #dc2626; /* Red-600 */
+  --status-error-bg: rgba(220, 38, 38, 0.1);
+  --status-warning: #ea580c; /* Orange-600 - darker for white bg */
+  --status-warning-bg: rgba(234, 88, 12, 0.1);
+  --status-info: #2563eb; /* Blue-600 */
+  --status-info-bg: rgba(37, 99, 235, 0.1);
 
   /* Special Colors - Darker for contrast */
   --purple: #9333ea;
-  --purple-bg: rgba(147, 51, 234, 0.12);
+  --purple-bg: rgba(147, 51, 234, 0.1);
   --pink: #db2777;
-  --pink-bg: rgba(219, 39, 119, 0.12);
+  --pink-bg: rgba(219, 39, 119, 0.1);
   --blue: #2563eb;
-  --blue-bg: rgba(37, 99, 235, 0.12);
+  --blue-bg: rgba(37, 99, 235, 0.1);
 
-  /* Backdrop/Overlay - Lighter for sunlight */
-  --backdrop-bg: rgba(0, 0, 0, 0.5);
+  /* Backdrop/Overlay */
+  --backdrop-bg: rgba(255, 255, 255, 0.8); /* Light frosted glass */
 
-  /* Shadows - Softer for light backgrounds */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  /* Shadows - Sharper for "sunlight" feel */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md:
-    0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
   --shadow-lg:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08);
-  --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.2);
+    0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 15px rgba(5, 150, 105, 0.3);
 
   /* Focus Ring */
   --focus-ring: rgba(5, 150, 105, 0.5);
   --focus-ring-offset: #ffffff;
 
   /* Scrollbar */
-  --scrollbar-thumb: #9ca3af;
-  --scrollbar-thumb-hover: #6b7280;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
 }
 
 /* ============================================

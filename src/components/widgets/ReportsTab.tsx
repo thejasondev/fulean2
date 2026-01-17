@@ -410,7 +410,9 @@ function ProfitSummary() {
         </div>
 
         <div className="flex items-center justify-between py-3">
-          <span className="text-sm font-bold text-white">Total Histórico</span>
+          <span className="text-sm font-bold text-[var(--text-primary)]">
+            Total Histórico
+          </span>
           <div className="text-right">
             <span className="block text-lg font-bold text-emerald-400 tabular-nums">
               +{formatNumber(profitTotal)} CUP
@@ -558,17 +560,19 @@ function PortfolioCard() {
               className={cn(
                 "rounded-xl p-3 border transition-colors",
                 isEmpty
-                  ? "bg-neutral-950/50 border-neutral-800/50 opacity-60"
+                  ? "bg-[var(--bg-secondary)]/50 border-[var(--border-muted)]/50 opacity-60"
                   : isLow
-                    ? "bg-amber-500/5 border-amber-500/20"
-                    : "bg-neutral-950 border-neutral-800",
+                    ? "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/30"
+                    : "bg-[var(--bg-secondary)] border-[var(--border-muted)]",
               )}
             >
               {/* Currency Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{meta?.flag || "💵"}</span>
-                  <span className="font-bold text-white">{currency}</span>
+                  <span className="font-bold text-[var(--text-primary)]">
+                    {currency}
+                  </span>
                   <span className="text-sm text-neutral-500">
                     {formatNumber(p.available)} disp.
                   </span>
@@ -590,26 +594,26 @@ function PortfolioCard() {
 
               {hasInventory && (
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-neutral-900 rounded-lg p-2">
-                    <div className="text-[10px] text-neutral-500 uppercase">
+                  <div className="bg-[var(--bg-tertiary)] rounded-lg p-2">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase">
                       Valor Actual
                     </div>
-                    <div className="text-sm font-bold text-white tabular-nums">
+                    <div className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
                       {formatNumber(p.currentValue)}
                     </div>
                   </div>
-                  <div className="bg-neutral-900 rounded-lg p-2">
-                    <div className="text-[10px] text-neutral-500 uppercase">
+                  <div className="bg-[var(--bg-tertiary)] rounded-lg p-2">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase">
                       Costo
                     </div>
-                    <div className="text-sm font-bold text-neutral-400 tabular-nums">
+                    <div className="text-sm font-bold text-[var(--text-faint)] tabular-nums">
                       {formatNumber(
                         Math.round(p.available * (p.totalCost / p.bought)),
                       )}
                     </div>
                   </div>
-                  <div className="bg-neutral-900 rounded-lg p-2">
-                    <div className="text-[10px] text-neutral-500 uppercase">
+                  <div className="bg-[var(--bg-tertiary)] rounded-lg p-2">
+                    <div className="text-[10px] text-[var(--text-muted)] uppercase">
                       Ganancia
                     </div>
                     <div
@@ -736,8 +740,8 @@ function SellSimulator() {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all shrink-0",
                   isSelected
-                    ? "bg-blue-500/20 border-blue-500/50 text-white"
-                    : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700",
+                    ? "bg-[var(--blue-bg)] border-[var(--blue)]/50 text-[var(--blue)]"
+                    : "bg-[var(--bg-secondary)] border-[var(--border-muted)] text-[var(--text-muted)] hover:border-[var(--border-primary)]",
                 )}
               >
                 <span className="text-base">{meta?.flag}</span>
@@ -756,8 +760,8 @@ function SellSimulator() {
       {/* Main Input Section - Responsive grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {/* Quantity Section */}
-        <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
-          <label className="text-[10px] text-neutral-500 uppercase block mb-2">
+        <div className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-muted)]">
+          <label className="text-[10px] text-[var(--text-muted)] uppercase block mb-2">
             Cantidad a vender
           </label>
           <div className="flex items-center gap-2">
@@ -767,9 +771,11 @@ function SellSimulator() {
               placeholder="0"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="bg-transparent border-0 text-2xl font-bold text-white p-0 h-auto focus:ring-0"
+              className="bg-transparent border-0 text-2xl font-bold text-[var(--text-primary)] p-0 h-auto focus:ring-0"
             />
-            <span className="text-sm text-neutral-500">{selectedCurrency}</span>
+            <span className="text-sm text-[var(--text-muted)]">
+              {selectedCurrency}
+            </span>
           </div>
 
           {/* Quick Fill Buttons */}
@@ -781,10 +787,10 @@ function SellSimulator() {
                   setQuantity(Math.floor(maxQty * (pct / 100)).toString())
                 }
                 className={cn(
-                  "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                  "flex-1 py-1.5 text-xs font-bold rounded-full transition-all duration-200 border",
                   qty === Math.floor(maxQty * (pct / 100))
-                    ? "bg-blue-500/30 text-blue-400"
-                    : "bg-neutral-900 text-neutral-500 hover:text-neutral-300",
+                    ? "bg-[var(--blue)] text-white border-transparent shadow-sm scale-105"
+                    : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]",
                 )}
               >
                 {pct}%
@@ -794,8 +800,8 @@ function SellSimulator() {
         </div>
 
         {/* Rate Section */}
-        <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
-          <label className="text-[10px] text-neutral-500 uppercase block mb-2">
+        <div className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-muted)]">
+          <label className="text-[10px] text-[var(--text-muted)] uppercase block mb-2">
             Tasa de venta
           </label>
           <div className="flex items-center gap-2">
@@ -805,9 +811,9 @@ function SellSimulator() {
               placeholder={currentRate.toString()}
               value={customRate}
               onChange={(e) => setCustomRate(e.target.value)}
-              className="bg-transparent border-0 text-2xl font-bold text-white p-0 h-auto focus:ring-0"
+              className="bg-transparent border-0 text-2xl font-bold text-[var(--text-primary)] p-0 h-auto focus:ring-0"
             />
-            <span className="text-sm text-neutral-500">CUP</span>
+            <span className="text-sm text-[var(--text-muted)]">CUP</span>
           </div>
           <p className="text-[10px] text-neutral-600 mt-2">
             Tasa actual: {formatNumber(currentRate)} CUP/{selectedCurrency}
@@ -820,20 +826,20 @@ function SellSimulator() {
         className={cn(
           "rounded-xl p-4 border transition-all",
           qty > 0
-            ? "bg-neutral-950 border-neutral-700"
-            : "bg-neutral-950/50 border-neutral-800/50",
+            ? "bg-[var(--bg-secondary)] border-[var(--border-muted)]"
+            : "bg-[var(--bg-secondary)]/50 border-[var(--border-muted)]/50",
         )}
       >
         {qty > 0 ? (
           <>
             {/* Main Result - Prominent */}
             <div className="text-center mb-4">
-              <p className="text-[10px] text-neutral-500 uppercase mb-1">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase mb-1">
                 Recibirás
               </p>
-              <p className="text-3xl font-bold text-white tabular-nums">
+              <p className="text-3xl font-bold text-[var(--text-primary)] tabular-nums">
                 {formatNumber(cupReceived)}{" "}
-                <span className="text-lg text-neutral-500">CUP</span>
+                <span className="text-lg text-[var(--text-muted)]">CUP</span>
               </p>
             </div>
 
@@ -984,12 +990,12 @@ function RateTrends() {
           return (
             <div
               key={currency}
-              className="bg-neutral-950 rounded-xl p-3 border border-neutral-800"
+              className="bg-[var(--bg-secondary)] rounded-xl p-3 border border-[var(--border-muted)]"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm">{meta?.flag}</span>
-                  <span className="text-xs font-bold text-white">
+                  <span className="text-xs font-bold text-[var(--text-primary)]">
                     {currency}
                   </span>
                 </div>
@@ -1026,9 +1032,9 @@ function RateTrends() {
                 />
               </svg>
 
-              <div className="flex justify-between mt-1 text-[10px] text-neutral-500 tabular-nums">
+              <div className="flex justify-between mt-1 text-[10px] text-[var(--text-muted)] tabular-nums">
                 <span>{formatNumber(trend.startRate)}</span>
-                <span className="font-bold text-white">
+                <span className="font-bold text-[var(--text-primary)]">
                   {formatNumber(trend.endRate)}
                 </span>
               </div>
