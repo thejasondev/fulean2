@@ -62,7 +62,7 @@ export function recordRateSnapshot(rates: Record<Currency, number>): void {
     const updated = current.map((s) =>
       s.date === today
         ? { ...s, rates: { ...rates }, timestamp: new Date().toISOString() }
-        : s
+        : s,
     );
     $rateHistory.set(updated);
     saveToStorage(updated);
@@ -88,7 +88,7 @@ export function recordRateSnapshot(rates: Record<Currency, number>): void {
  */
 export function getRateHistoryForCurrency(
   currency: Currency,
-  days: number = 7
+  days: number = 7,
 ): { date: string; rate: number }[] {
   const history = $rateHistory.get();
 
@@ -103,18 +103,48 @@ export function getRateHistoryForCurrency(
 }
 
 /**
- * Get trend info for a currency
- * Returns change from oldest to newest in the period
+ * Calculate Linear Regression Slope & Trend
+ * Uses method of least squares to find the trend line y = mx + b
+ */
+function calculateRegression(values: number[]): {
+  slope: number;
+  start: number;
+  end: number;
+} {
+  const n = values.length;
+  if (n < 2) return { slope: 0, start: values[0] || 0, end: values[0] || 0 };
+
+  const x = Array.from({ length: n }, (_, i) => i); // 0, 1, 2...
+
+  const sumX = x.reduce((a, b) => a + b, 0);
+  const sumY = values.reduce((a, b) => a + b, 0);
+  const sumXY = x.reduce((sum, xi, i) => sum + xi * values[i], 0);
+  const sumXX = x.reduce((sum, xi) => sum + xi * xi, 0);
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return {
+    slope,
+    start: intercept,
+    end: intercept + slope * (n - 1),
+  };
+}
+
+/**
+ * Get trend info for a currency using Linear Regression
+ * More robust than simple start/end comparison
  */
 export function getCurrencyTrend(
   currency: Currency,
-  days: number = 7
+  days: number = 7,
 ): {
   startRate: number;
   endRate: number;
   change: number;
   changePercent: number;
   isUp: boolean;
+  isNeutral: boolean;
 } {
   const history = getRateHistoryForCurrency(currency, days);
 
@@ -125,20 +155,28 @@ export function getCurrencyTrend(
       change: 0,
       changePercent: 0,
       isUp: true,
+      isNeutral: true,
     };
   }
 
-  const startRate = history[0].rate;
-  const endRate = history[history.length - 1].rate;
-  const change = endRate - startRate;
-  const changePercent = startRate > 0 ? (change / startRate) * 100 : 0;
+  const rates = history.map((h) => h.rate);
+  const regression = calculateRegression(rates);
+
+  const change = regression.end - regression.start;
+  // Use a small threshold for "neutral" to avoid noise (e.g., 0.1% change)
+  const threshold = regression.start * 0.001;
+  const isNeutral = Math.abs(change) < threshold;
+
+  const changePercent =
+    regression.start > 0 ? (change / regression.start) * 100 : 0;
 
   return {
-    startRate,
-    endRate,
+    startRate: regression.start,
+    endRate: regression.end,
     change,
     changePercent,
     isUp: change >= 0,
+    isNeutral,
   };
 }
 

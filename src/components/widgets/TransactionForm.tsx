@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { ArrowDownLeft, ArrowUpRight, Check, Eye } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  RefreshCw,
+  Check,
+  Eye,
+} from "lucide-react";
 import {
   $pendingCUP,
   clearPendingCUP,
@@ -17,6 +23,7 @@ import {
 } from "../../stores/ratesStore";
 import {
   saveTransaction,
+  saveExchangeTransaction,
   type OperationType,
   type TransactionCurrency,
 } from "../../stores/historyStore";
@@ -49,6 +56,12 @@ export function TransactionForm() {
   const [amountForeign, setAmountForeign] = useState<string>("");
   const [rate, setRate] = useState<string>("");
   const [totalCUP, setTotalCUP] = useState<string>("");
+
+  // Exchange-specific state
+  const [fromCurrency, setFromCurrency] = useState<TransactionCurrency>("EUR");
+  const [toCurrency, setToCurrency] = useState<TransactionCurrency>("USD");
+  const [exchangeRate, setExchangeRate] = useState<string>("1.10");
+  const [exchangeAmount, setExchangeAmount] = useState<string>("");
 
   // Get the appropriate rate based on operation
   const getRate = (curr: Currency, op: OperationType) => {
@@ -190,10 +203,11 @@ export function TransactionForm() {
         <button
           onClick={() => setOperation("BUY")}
           className={cn(
-            "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
-            "flex items-center justify-center gap-2",
+            "flex-1 flex items-center justify-center gap-2",
+            "py-2.5 rounded-lg text-sm font-bold",
+            "transition-all duration-200",
             operation === "BUY"
-              ? "bg-[var(--bg-secondary)] text-[var(--status-success)] shadow-lg"
+              ? "bg-[var(--status-success-bg)] text-[var(--status-success)] border border-[var(--status-success)]/30"
               : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
           )}
         >
@@ -203,182 +217,382 @@ export function TransactionForm() {
         <button
           onClick={() => setOperation("SELL")}
           className={cn(
-            "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
-            "flex items-center justify-center gap-2",
+            "flex-1 flex items-center justify-center gap-2",
+            "py-2.5 rounded-lg text-sm font-bold",
+            "transition-all duration-200",
             operation === "SELL"
-              ? "bg-[var(--bg-secondary)] text-[var(--status-warning)] shadow-lg"
+              ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning)]/30"
               : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
           )}
         >
           <ArrowUpRight className="w-4 h-4" />
           Venta
         </button>
-      </div>
-
-      {/* Currency Selector - Grid */}
-      <div className="mb-6">
-        <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
-          Moneda
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {visibleCurrencies.map((currencyCode) => {
-            const meta = CURRENCY_META[currencyCode];
-            const isSelected = currency === currencyCode;
-            const isDigital = meta.category === "digital";
-
-            return (
-              <button
-                key={currencyCode}
-                onClick={() =>
-                  handleCurrencyChange(currencyCode as TransactionCurrency)
-                }
-                className={cn(
-                  "flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200",
-                  isSelected
-                    ? cn(
-                        theme.bg,
-                        theme.border,
-                        theme.text,
-                        "border-opacity-50",
-                      )
-                    : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-secondary)]",
-                )}
-              >
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-lg">{meta.flag}</span>
-                  {isDigital && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[var(--purple-bg)] text-[var(--purple)]">
-                      DIG
-                    </span>
-                  )}
-                </div>
-                <span className="text-xs font-bold">{currencyCode}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Form Inputs */}
-      <div
-        className={cn(
-          "space-y-4 p-5 rounded-2xl border mb-6",
-          theme.bg,
-          theme.border,
-        )}
-      >
-        {/* Foreign Amount */}
-        <div>
-          <label
-            className={cn(
-              "block text-xs font-medium mb-1.5 uppercase tracking-wide",
-              theme.text,
-            )}
-          >
-            Monto ({currency})
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={amountForeign}
-              onChange={(e) => handleForeignChange(e.target.value)}
-              className={cn(
-                "text-lg font-bold tabular-nums pr-12",
-                theme.input,
-              )}
-              placeholder="0.00"
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
-              {currency}
-            </span>
-          </div>
-        </div>
-
-        {/* Exchange Rate */}
-        <div>
-          <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
-            Tasa de cambio
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) => handleRateChange(e.target.value)}
-              className="text-lg font-bold tabular-nums pr-12 text-center"
-              placeholder="0"
-            />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs">
-              CUP/1{currency}
-            </div>
-          </div>
-        </div>
-
-        {/* Total CUP */}
-        <div>
-          <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
-            Total a pagar/recibir
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              inputMode="numeric"
-              value={totalCUP}
-              onChange={(e) => handleCUPChange(e.target.value)}
-              className={cn(
-                "text-2xl font-bold tabular-nums pr-12",
-                theme.text,
-                theme.input,
-              )}
-              placeholder="0"
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
-              CUP
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        {/* Show to Client Button */}
-        {foreignAmount > 0 && parseFloat(totalCUP) > 0 && (
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => {
-              haptic.medium();
-              openClientView({
-                foreignAmount,
-                foreignCurrency: currency,
-                cupAmount: parseFloat(totalCUP),
-                rate: parseFloat(rate),
-                operation,
-              });
-            }}
-            className="flex-1 font-bold"
-          >
-            <Eye className="w-5 h-5 mr-2" />
-            Mostrar
-          </Button>
-        )}
-
-        {/* Submit Button */}
-        <Button
-          size="lg"
-          onClick={handleSubmit}
+        <button
+          onClick={() => setOperation("EXCHANGE")}
           className={cn(
-            "flex-1 font-bold text-lg shadow-xl",
-            operation === "BUY"
-              ? "bg-[var(--accent)] hover:bg-[var(--accent-hover)]"
-              : "bg-[var(--status-warning)] hover:opacity-90",
+            "flex-1 flex items-center justify-center gap-2",
+            "py-2.5 rounded-lg text-sm font-bold",
+            "transition-all duration-200",
+            operation === "EXCHANGE"
+              ? "bg-[var(--blue-bg)] text-[var(--blue)] border border-[var(--blue)]/30"
+              : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
           )}
         >
-          <Check className="w-6 h-6 mr-2" />
-          Registrar
-        </Button>
+          <RefreshCw className="w-4 h-4" />
+          Cambio
+        </button>
       </div>
+
+      {/* EXCHANGE Mode UI */}
+      {operation === "EXCHANGE" && (
+        <div className="space-y-4">
+          {/* Currency Pair Selection */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* FROM Currency */}
+            <div>
+              <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+                De (Entregar)
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {visibleCurrencies.map((curr) => {
+                  const meta = CURRENCY_META[curr];
+                  const isActive = fromCurrency === curr;
+                  return (
+                    <button
+                      key={curr}
+                      onClick={() => {
+                        haptic.light();
+                        setFromCurrency(curr as TransactionCurrency);
+                        if (curr === toCurrency) {
+                          setToCurrency(fromCurrency);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-1",
+                        "py-2 px-2 rounded-lg border text-xs font-semibold",
+                        "transition-all duration-200",
+                        isActive
+                          ? "bg-[var(--blue-bg)] border-[var(--blue)]/50 text-[var(--blue)]"
+                          : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-secondary)]",
+                      )}
+                    >
+                      <span>{meta.flag}</span>
+                      <span>{curr}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* TO Currency */}
+            <div>
+              <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+                A (Recibir)
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {visibleCurrencies.map((curr) => {
+                  const meta = CURRENCY_META[curr];
+                  const isActive = toCurrency === curr;
+                  return (
+                    <button
+                      key={curr}
+                      onClick={() => {
+                        haptic.light();
+                        setToCurrency(curr as TransactionCurrency);
+                        if (curr === fromCurrency) {
+                          setFromCurrency(toCurrency);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-1",
+                        "py-2 px-2 rounded-lg border text-xs font-semibold",
+                        "transition-all duration-200",
+                        isActive
+                          ? "bg-[var(--blue-bg)] border-[var(--blue)]/50 text-[var(--blue)]"
+                          : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-secondary)]",
+                      )}
+                    >
+                      <span>{meta.flag}</span>
+                      <span>{curr}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Exchange Rate Input */}
+          <div>
+            <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+              Tasa de cambio (1 {fromCurrency} = X {toCurrency})
+            </label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={exchangeRate}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9.]/g, "");
+                setExchangeRate(val);
+              }}
+              placeholder="Ej: 1.10"
+              className="text-center text-lg font-bold text-[var(--blue)]"
+            />
+          </div>
+
+          {/* Amount to Exchange */}
+          <div>
+            <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+              Cantidad de {fromCurrency} a entregar
+            </label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={exchangeAmount}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9.]/g, "");
+                setExchangeAmount(val);
+              }}
+              placeholder="0"
+              className="text-center text-2xl font-bold"
+            />
+          </div>
+
+          {/* Exchange Result & Derived Cost */}
+          {parseFloat(exchangeAmount) > 0 && parseFloat(exchangeRate) > 0 && (
+            <div className="bg-[var(--bg-primary)] rounded-xl p-4 border border-[var(--border-primary)] space-y-3">
+              <div className="text-center">
+                <p className="text-sm text-[var(--text-faint)] mb-1">
+                  Recibirás
+                </p>
+                <p className="text-3xl font-bold text-[var(--blue)]">
+                  {(
+                    parseFloat(exchangeAmount) * parseFloat(exchangeRate)
+                  ).toFixed(2)}{" "}
+                  {toCurrency}
+                </p>
+              </div>
+
+              {/* Derived Cost Calculation Info */}
+              <div className="border-t border-[var(--border-primary)] pt-3">
+                <p className="text-xs text-[var(--text-faint)] mb-2">
+                  Cálculo de costo derivado
+                </p>
+                <div className="text-sm text-[var(--text-muted)] space-y-1">
+                  <p>
+                    Si compraste {fromCurrency} a{" "}
+                    <span className="text-[var(--text-primary)] font-medium">
+                      X CUP
+                    </span>
+                  </p>
+                  <p>
+                    El costo del {toCurrency} será:{" "}
+                    <span className="text-[var(--blue)] font-bold">
+                      X ÷ {exchangeRate} CUP
+                    </span>
+                  </p>
+                </div>
+                <p className="text-xs text-[var(--text-faint)] mt-2">
+                  Ejemplo: 520 ÷ {exchangeRate} ={" "}
+                  {(520 / parseFloat(exchangeRate)).toFixed(0)} CUP/{toCurrency}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Exchange Submit Button */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              size="lg"
+              onClick={() => {
+                const amount = parseFloat(exchangeAmount);
+                const rate = parseFloat(exchangeRate);
+
+                if (!amount || !rate) {
+                  toast.warning("Complete todos los campos");
+                  return;
+                }
+
+                saveExchangeTransaction(fromCurrency, toCurrency, amount, rate);
+                toast.success(
+                  `Cambio registrado: ${amount} ${fromCurrency} → ${(amount * rate).toFixed(2)} ${toCurrency}`,
+                );
+
+                // Reset form
+                setExchangeAmount("");
+                goToCounter();
+              }}
+              className="flex-1 font-bold text-lg shadow-xl bg-[var(--blue)] hover:opacity-90"
+            >
+              <RefreshCw className="w-5 h-5 mr-2" />
+              Registrar Cambio
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* BUY/SELL Mode UI */}
+      {operation !== "EXCHANGE" && (
+        <>
+          {/* Currency Selector - Grid */}
+          <div className="mb-6">
+            <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+              Moneda
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {visibleCurrencies.map((currencyCode) => {
+                const meta = CURRENCY_META[currencyCode];
+                const isSelected = currency === currencyCode;
+
+                return (
+                  <button
+                    key={currencyCode}
+                    onClick={() =>
+                      handleCurrencyChange(currencyCode as TransactionCurrency)
+                    }
+                    className={cn(
+                      "flex items-center justify-center gap-1.5",
+                      "min-h-[44px] px-2 py-2",
+                      "rounded-xl border",
+                      "font-semibold text-sm",
+                      "transition-all duration-200",
+                      isSelected
+                        ? operation === "BUY"
+                          ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/50 text-[var(--status-success)]"
+                          : "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/50 text-[var(--status-warning)]"
+                        : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] hover:border-[var(--border-secondary)]",
+                    )}
+                  >
+                    <span>{meta.flag}</span>
+                    <span>{currencyCode}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Form Inputs */}
+          <div
+            className={cn(
+              "space-y-4 p-5 rounded-2xl border mb-6",
+              theme.bg,
+              theme.border,
+            )}
+          >
+            {/* Foreign Amount */}
+            <div>
+              <label
+                className={cn(
+                  "block text-xs font-medium mb-1.5 uppercase tracking-wide",
+                  theme.text,
+                )}
+              >
+                Monto ({currency})
+              </label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={amountForeign}
+                  onChange={(e) => handleForeignChange(e.target.value)}
+                  className={cn(
+                    "text-lg font-bold tabular-nums pr-12",
+                    theme.input,
+                  )}
+                  placeholder="0.00"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
+                  {currency}
+                </span>
+              </div>
+            </div>
+
+            {/* Exchange Rate */}
+            <div>
+              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                Tasa de cambio
+              </label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={rate}
+                  onChange={(e) => handleRateChange(e.target.value)}
+                  className="text-lg font-bold tabular-nums pr-12 text-center"
+                  placeholder="0"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs">
+                  CUP/1{currency}
+                </div>
+              </div>
+            </div>
+
+            {/* Total CUP */}
+            <div>
+              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                Total a pagar/recibir
+              </label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={totalCUP}
+                  onChange={(e) => handleCUPChange(e.target.value)}
+                  className={cn(
+                    "text-2xl font-bold tabular-nums pr-12",
+                    theme.text,
+                    theme.input,
+                  )}
+                  placeholder="0"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
+                  CUP
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            {/* Show to Client Button */}
+            {foreignAmount > 0 && parseFloat(totalCUP) > 0 && (
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => {
+                  haptic.medium();
+                  openClientView({
+                    foreignAmount,
+                    foreignCurrency: currency,
+                    cupAmount: parseFloat(totalCUP),
+                    rate: parseFloat(rate),
+                    operation,
+                  });
+                }}
+                className="flex-1 font-bold"
+              >
+                <Eye className="w-5 h-5 mr-2" />
+                Mostrar
+              </Button>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              size="lg"
+              onClick={handleSubmit}
+              className={cn(
+                "flex-1 font-bold text-lg shadow-xl",
+                operation === "BUY"
+                  ? "bg-[var(--accent)] hover:bg-[var(--accent-hover)]"
+                  : "bg-[var(--status-warning)] hover:opacity-90",
+              )}
+            >
+              <Check className="w-6 h-6 mr-2" />
+              Registrar
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

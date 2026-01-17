@@ -25,7 +25,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 
 // ============================================
 // CalculatorTab Component
-// Enhanced with Buy/Sell selector and denomination filter
+// Enhanced with Buy/Sell/Convert selector and denomination filter
 // Theme-aware using CSS variables
 // ============================================
 
@@ -119,10 +119,11 @@ export function CalculatorTab() {
               setOperation("BUY");
             }}
             className={cn(
-              "flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200",
-              "flex items-center justify-center gap-2",
+              "flex-1 flex items-center justify-center gap-2",
+              "py-2.5 rounded-lg text-sm font-bold",
+              "transition-all duration-200",
               operation === "BUY"
-                ? "bg-[var(--bg-secondary)] text-[var(--status-success)] shadow-lg"
+                ? "bg-[var(--status-success-bg)] text-[var(--status-success)] border border-[var(--status-success)]/30"
                 : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
@@ -135,10 +136,11 @@ export function CalculatorTab() {
               setOperation("SELL");
             }}
             className={cn(
-              "flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200",
-              "flex items-center justify-center gap-2",
+              "flex-1 flex items-center justify-center gap-2",
+              "py-2.5 rounded-lg text-sm font-bold",
+              "transition-all duration-200",
               operation === "SELL"
-                ? "bg-[var(--bg-secondary)] text-[var(--status-warning)] shadow-lg"
+                ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning)]/30"
                 : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
@@ -148,6 +150,7 @@ export function CalculatorTab() {
         </div>
       </div>
 
+      {/* Standard BUY/SELL Calculator UI */}
       {/* Currency Selector */}
       <div className="mb-4">
         <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">

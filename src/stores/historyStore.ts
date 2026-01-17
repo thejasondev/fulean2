@@ -16,7 +16,7 @@ import {
 // ============================================
 
 // Operation types
-export type OperationType = "BUY" | "SELL";
+export type OperationType = "BUY" | "SELL" | "EXCHANGE";
 
 // Supported currencies (the 6 pillars)
 export type TransactionCurrency =
@@ -41,6 +41,12 @@ export interface Transaction {
   costBasis?: number; // Actual cost from FIFO lots (for SELL only)
   realProfitCUP?: number; // totalCUP - costBasis (actual profit)
   lotsConsumed?: string[]; // IDs of inventory lots used
+  // EXCHANGE operation fields
+  fromCurrency?: TransactionCurrency; // Source currency (what you gave)
+  toCurrency?: TransactionCurrency; // Target currency (what you received)
+  exchangeRate?: number; // e.g., 1.13 EUR->USD
+  amountReceived?: number; // Amount of target currency received
+  derivedCostRate?: number; // Cost rate for target: sourceCostRate / exchangeRate
   // Legacy fields (still supported)
   profitCUP?: number; // Old: Spread × amountForeign (estimate)
   cupImpact?: number; // + for SELL (CUP received), - for BUY (CUP paid)
@@ -109,7 +115,7 @@ export function saveTransaction(
   amountForeign: number,
   rate: number,
   totalCUP: number,
-  spreadUsed?: number // Optional: for legacy/estimated profit
+  spreadUsed?: number, // Optional: for legacy/estimated profit
 ): Transaction {
   const txnId = generateId();
 
@@ -130,7 +136,7 @@ export function saveTransaction(
     // SELL: Consume lots using FIFO and calculate real profit
     const consumption = consumeInventoryLots(
       currency as Currency,
-      amountForeign
+      amountForeign,
     );
 
     if (consumption) {
@@ -167,9 +173,102 @@ export function saveTransaction(
     realProfitCUP,
     lotsConsumed,
     // Legacy profit (estimate)
-    profitCUP: operationType === "SELL" ? realProfitCUP ?? estimatedProfit : 0,
+    profitCUP:
+      operationType === "SELL" ? (realProfitCUP ?? estimatedProfit) : 0,
     cupImpact,
     spreadUsed: spreadUsed ? Math.round(spreadUsed) : undefined,
+  };
+
+  const current = $transactions.get();
+  $transactions.set([transaction, ...current]);
+
+  return transaction;
+}
+
+/**
+ * Save a currency exchange transaction
+ *
+ * Handles lateral currency-to-currency exchange:
+ * - Consumes inventory from source currency (FIFO)
+ * - Adds inventory to target currency with derived cost rate
+ * - Formula: derivedCostRate = sourceCostRate / exchangeRate
+ *
+ * Example: 100 EUR (bought at 520 CUP/EUR) → 113 USD at 1.13 rate
+ * - Derived USD cost rate: 520 / 1.13 = 460 CUP/USD
+ */
+export function saveExchangeTransaction(
+  fromCurrency: TransactionCurrency,
+  toCurrency: TransactionCurrency,
+  amountFrom: number, // Amount of source currency given
+  exchangeRate: number, // e.g., 1.13 EUR->USD means 1 EUR = 1.13 USD
+): Transaction {
+  const txnId = generateId();
+  const amountReceived = Math.round(amountFrom * exchangeRate * 100) / 100;
+
+  let costBasis: number | undefined;
+  let lotsConsumed: string[] | undefined;
+  let derivedCostRate: number | undefined;
+
+  // 1. Consume inventory from source currency (FIFO)
+  const consumption = consumeInventoryLots(
+    fromCurrency as Currency,
+    amountFrom,
+  );
+
+  if (consumption) {
+    costBasis = consumption.totalCost;
+    lotsConsumed = consumption.lotsConsumed;
+
+    // 2. Calculate derived cost rate for target currency
+    // Formula: derivedCostRate = (total cost / amount given) / exchangeRate
+    // Or simplified: costPerSourceUnit / exchangeRate
+    const sourceCostRate = costBasis / amountFrom;
+    derivedCostRate = Math.round(sourceCostRate / exchangeRate);
+
+    // 3. Add to target currency inventory at derived cost rate
+    addInventoryLot(
+      toCurrency as Currency,
+      amountReceived,
+      derivedCostRate,
+      txnId,
+    );
+  } else {
+    // No inventory to consume - use average cost if available
+    const avgCost = getAverageCost(fromCurrency as Currency);
+    if (avgCost > 0) {
+      costBasis = Math.round(amountFrom * avgCost);
+      derivedCostRate = Math.round(avgCost / exchangeRate);
+
+      // Add to target inventory at derived cost
+      addInventoryLot(
+        toCurrency as Currency,
+        amountReceived,
+        derivedCostRate,
+        txnId,
+      );
+    }
+  }
+
+  const transaction: Transaction = {
+    id: txnId,
+    date: new Date().toISOString(),
+    operationType: "EXCHANGE",
+    // For EXCHANGE, currency field stores the source currency
+    currency: fromCurrency,
+    amountForeign: Math.round(amountFrom * 100) / 100,
+    rate: Math.round(exchangeRate * 10000) / 10000, // Store with precision
+    totalCUP: costBasis ?? 0, // Total CUP cost basis of exchanged amount
+    // EXCHANGE-specific fields
+    fromCurrency,
+    toCurrency,
+    exchangeRate: Math.round(exchangeRate * 10000) / 10000,
+    amountReceived,
+    derivedCostRate,
+    // FIFO tracking
+    costBasis,
+    lotsConsumed,
+    // No CUP impact for exchanges (lateral movement)
+    cupImpact: 0,
   };
 
   const current = $transactions.get();
@@ -186,7 +285,7 @@ export function saveLegacyTransaction(
   totalCUP: number,
   conversions: { USD: number; EUR: number; CAD: number },
   ratesUsed: Record<string, number>,
-  billCounts: Record<Denomination, number>
+  billCounts: Record<Denomination, number>,
 ): void {
   const transaction: Transaction = {
     id: generateId(),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "@nanostores/react";
-import { Heart, Smartphone } from "lucide-react";
+import { Heart, Smartphone, Copy, Check } from "lucide-react";
 import { $isDonationOpen, closeDonation } from "../../stores/uiStore";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
@@ -78,20 +78,25 @@ export function DonationSheet() {
           <p className="text-[10px] text-[var(--text-faint)] uppercase mb-2">
             Transferir a tarjeta:
           </p>
-          <div className="flex items-center justify-between">
-            <span className="text-xl font-mono font-bold text-[var(--text-primary)] tracking-wider">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-lg sm:text-xl font-mono font-bold text-[var(--text-primary)] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis">
               {CARD_NUMBER}
             </span>
             <button
               onClick={handleCopyCard}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                "p-2.5 rounded-lg transition-all flex-shrink-0", // Icon button style
                 copied
                   ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
-                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
               )}
+              title="Copiar número de tarjeta"
             >
-              {copied ? "✓ Copiado" : "Copiar"}
+              {copied ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <Copy className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>

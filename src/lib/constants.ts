@@ -122,7 +122,7 @@ export const DEFAULT_RATES: Record<Currency, number> = {
   CLASICA: 350,
   ZELLE: 400,
   BTC: 450,
-  USDT_TRC20: 500,
+  USDT: 500,
 };
 
 // Number of bills in a "Fajo" (bundle)

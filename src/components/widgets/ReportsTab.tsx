@@ -26,6 +26,7 @@ import {
 import { $transactions } from "../../stores/historyStore";
 import {
   $sellRates,
+  $buyRates,
   $elToqueRates,
   $manualElToqueRates,
   isManualElToqueCurrency,
@@ -289,6 +290,8 @@ function CapitalCard() {
 // Profit Summary Component
 function ProfitSummary() {
   const transactions = useStore($transactions);
+  const buyRates = useStore($buyRates) ?? {};
+  const currentUsdRate = buyRates["USD"] || 1; // Fallback to 1 to avoid division by zero
 
   // Helper to get profit (uses realProfitCUP if available, falls back to profitCUP)
   const getProfit = (t: (typeof transactions)[0]) =>
@@ -408,9 +411,15 @@ function ProfitSummary() {
 
         <div className="flex items-center justify-between py-3">
           <span className="text-sm font-bold text-white">Total Histórico</span>
-          <span className="text-lg font-bold text-emerald-400 tabular-nums">
-            +{formatNumber(profitTotal)} CUP
-          </span>
+          <div className="text-right">
+            <span className="block text-lg font-bold text-emerald-400 tabular-nums">
+              +{formatNumber(profitTotal)} CUP
+            </span>
+            <span className="block text-xs text-[var(--text-muted)] tabular-nums">
+              ≈ +{formatNumber(profitTotal / currentUsdRate)} USD (@
+              {currentUsdRate})
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -910,10 +919,9 @@ function RateTrends() {
         continue;
       }
 
-      // Priority 3: User's sell rates (fallback)
-      if (sellRates[currency] > 0) {
-        ratesToRecord[currency] = sellRates[currency];
-      }
+      // Priority 3: Fallback removed as per user request
+      // Trends now strictly reflect "El Toque" (API or Manual)
+      // to avoid polluting market data with personal set rates.
     }
 
     if (Object.values(ratesToRecord).some((r) => r > 0)) {
@@ -988,12 +996,14 @@ function RateTrends() {
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded font-bold",
-                    trend.isUp
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-red-500/20 text-red-400",
+                    trend.isNeutral
+                      ? "bg-neutral-500/20 text-neutral-400"
+                      : trend.isUp
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-red-500/20 text-red-400",
                   )}
                 >
-                  {trend.isUp ? "▲" : "▼"}{" "}
+                  {trend.isNeutral ? "•" : trend.isUp ? "▲" : "▼"}{" "}
                   {Math.abs(trend.changePercent).toFixed(1)}%
                 </span>
               </div>
@@ -1003,7 +1013,13 @@ function RateTrends() {
                 <polyline
                   points={points}
                   fill="none"
-                  stroke={trend.isUp ? "#10b981" : "#ef4444"}
+                  stroke={
+                    trend.isNeutral
+                      ? "#9ca3af"
+                      : trend.isUp
+                        ? "#10b981"
+                        : "#ef4444"
+                  }
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
