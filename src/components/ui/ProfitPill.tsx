@@ -7,6 +7,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // ProfitPill Component
 // Blurred profit display with long-press reveal
+// Theme-aware using CSS variables
 // ============================================
 
 interface ProfitPillProps {
@@ -43,17 +44,19 @@ export function ProfitPill({ profit, className }: ProfitPillProps) {
         "inline-flex items-center gap-1 px-2 py-1 rounded-full",
         "border transition-all duration-200",
         isPositive
-          ? "bg-emerald-500/10 border-emerald-500/20"
-          : "bg-red-500/10 border-red-500/20",
-        className
+          ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/20"
+          : "bg-[var(--status-error-bg)] border-[var(--status-error)]/20",
+        className,
       )}
     >
-      {!isRevealed && <Lock size={10} className="text-neutral-500" />}
+      {!isRevealed && <Lock size={10} className="text-[var(--text-faint)]" />}
       <span
         className={cn(
           "text-[10px] font-bold tabular-nums transition-all duration-200",
           isRevealed ? "" : "blur-sm select-none",
-          isPositive ? "text-emerald-400" : "text-red-400"
+          isPositive
+            ? "text-[var(--status-success)]"
+            : "text-[var(--status-error)]",
         )}
       >
         G: {displayValue}

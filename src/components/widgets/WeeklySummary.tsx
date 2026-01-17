@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // WeeklySummary Component
 // Analytics dashboard for the History view
+// Theme-aware using CSS variables
 // ============================================
 
 interface WeeklyStats {
@@ -100,12 +101,12 @@ export function WeeklySummary() {
     stats.volumeUSD > 0
       ? `$${stats.volumeUSD.toLocaleString("es-CU")}`
       : stats.volumeEUR > 0
-      ? `€${stats.volumeEUR.toLocaleString("es-CU")}`
-      : `C$${stats.volumeCAD.toLocaleString("es-CU")}`;
+        ? `€${stats.volumeEUR.toLocaleString("es-CU")}`
+        : `C$${stats.volumeCAD.toLocaleString("es-CU")}`;
 
   return (
     <div className="mb-4">
-      <div className="text-xs text-neutral-500 font-medium uppercase tracking-wide mb-2">
+      <div className="text-xs text-[var(--text-faint)] font-medium uppercase tracking-wide mb-2">
         Esta Semana
       </div>
 
@@ -113,16 +114,16 @@ export function WeeklySummary() {
         {/* Volume Card */}
         <div
           className={cn(
-            "bg-neutral-900/80 rounded-xl p-3 border border-neutral-800",
-            "flex items-center gap-3"
+            "bg-[var(--bg-primary)]/80 rounded-xl p-3 border border-[var(--border-primary)]",
+            "flex items-center gap-3",
           )}
         >
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-            <DollarSign size={20} className="text-emerald-400" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--status-success-bg)] flex items-center justify-center">
+            <DollarSign size={20} className="text-[var(--status-success)]" />
           </div>
           <div>
-            <div className="text-xs text-neutral-500">Volumen</div>
-            <div className="text-lg font-bold tabular-nums text-white">
+            <div className="text-xs text-[var(--text-faint)]">Volumen</div>
+            <div className="text-lg font-bold tabular-nums text-[var(--text-primary)]">
               {mainVolume}
             </div>
           </div>
@@ -131,16 +132,16 @@ export function WeeklySummary() {
         {/* Transactions Card */}
         <div
           className={cn(
-            "bg-neutral-900/80 rounded-xl p-3 border border-neutral-800",
-            "flex items-center gap-3"
+            "bg-[var(--bg-primary)]/80 rounded-xl p-3 border border-[var(--border-primary)]",
+            "flex items-center gap-3",
           )}
         >
-          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <ArrowRightLeft size={20} className="text-blue-400" />
+          <div className="w-10 h-10 rounded-lg bg-[var(--blue-bg)] flex items-center justify-center">
+            <ArrowRightLeft size={20} className="text-[var(--blue)]" />
           </div>
           <div>
-            <div className="text-xs text-neutral-500">Operaciones</div>
-            <div className="text-lg font-bold tabular-nums text-white">
+            <div className="text-xs text-[var(--text-faint)]">Operaciones</div>
+            <div className="text-lg font-bold tabular-nums text-[var(--text-primary)]">
               {stats.totalTransactions}
             </div>
           </div>
@@ -148,20 +149,20 @@ export function WeeklySummary() {
       </div>
 
       {/* Flow Bar */}
-      <div className="mt-3 bg-neutral-900/80 rounded-xl p-3 border border-neutral-800">
-        <div className="flex items-center justify-between text-xs text-neutral-500 mb-2">
+      <div className="mt-3 bg-[var(--bg-primary)]/80 rounded-xl p-3 border border-[var(--border-primary)]">
+        <div className="flex items-center justify-between text-xs text-[var(--text-faint)] mb-2">
           <div className="flex items-center gap-1">
-            <TrendingDown size={12} className="text-emerald-400" />
+            <TrendingDown size={12} className="text-[var(--status-success)]" />
             <span>Compras {buyPercent}%</span>
           </div>
           <div className="flex items-center gap-1">
             <span>Ventas {sellPercent}%</span>
-            <TrendingUp size={12} className="text-amber-400" />
+            <TrendingUp size={12} className="text-[var(--status-warning)]" />
           </div>
         </div>
 
         {/* Visual Bar */}
-        <div className="h-2 rounded-full bg-neutral-800 overflow-hidden flex">
+        <div className="h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden flex">
           <div
             className="bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
             style={{ width: `${buyPercent}%` }}

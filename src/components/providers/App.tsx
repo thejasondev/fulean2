@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useStore } from "@nanostores/react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastProvider } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
@@ -10,6 +11,7 @@ import { HistoryDrawer } from "../widgets/HistoryDrawer";
 import { ClientViewModal } from "../widgets/ClientViewModal";
 import { DonationSheet } from "../widgets/DonationSheet";
 import { initializeRates } from "../../stores/ratesStore";
+import { $theme, initializeTheme } from "../../stores/themeStore";
 
 // ============================================
 // App Component
@@ -18,10 +20,29 @@ import { initializeRates } from "../../stores/ratesStore";
 // ============================================
 
 export function App() {
-  // Initialize rates from localStorage on mount
+  const theme = useStore($theme);
+
+  // Initialize rates and theme from localStorage on mount
   useEffect(() => {
     initializeRates();
+    initializeTheme();
   }, []);
+
+  // Apply theme class to document when theme changes
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove("theme-dark", "theme-sunlight");
+    root.classList.add(`theme-${theme}`);
+
+    // Update meta theme-color
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute(
+        "content",
+        theme === "sunlight" ? "#FFFFFF" : "#0a0a0a",
+      );
+    }
+  }, [theme]);
 
   return (
     <ToastProvider>

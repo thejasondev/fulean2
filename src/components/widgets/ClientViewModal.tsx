@@ -12,6 +12,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // ClientViewModal Component
 // Full-screen customer-facing display (Trust Builder)
+// Theme-aware using CSS variables
 // ============================================
 
 export function ClientViewModal() {
@@ -29,10 +30,8 @@ export function ClientViewModal() {
   const isBuy = data.operation === "BUY";
 
   // Determine display labels based on operation
-  // BUY: Customer delivers foreign currency, receives CUP
-  // SELL: Customer delivers CUP, receives foreign currency
-  const topLabel = isBuy ? "USTED ENTREGA" : "USTED ENTREGA";
-  const bottomLabel = isBuy ? "USTED RECIBE" : "USTED RECIBE";
+  const topLabel = "USTED ENTREGA";
+  const bottomLabel = "USTED RECIBE";
 
   const topAmount = isBuy
     ? formatCurrency(data.foreignAmount, data.foreignCurrency as any)
@@ -47,29 +46,31 @@ export function ClientViewModal() {
       onClick={handleClose}
       className={cn(
         "fixed inset-0 z-[100]",
-        "bg-neutral-950",
+        "bg-[var(--bg-base)]",
         "flex flex-col items-center justify-center",
         "animate-scale-in cursor-pointer",
-        "select-none"
+        "select-none",
       )}
     >
       {/* Close hint */}
       <button
         onClick={handleClose}
-        className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 text-neutral-500 hover:text-white transition-colors"
+        className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors"
       >
         <X size={24} />
       </button>
 
       {/* Top: What customer delivers */}
       <div className="text-center mb-6">
-        <div className="text-sm font-bold text-neutral-500 uppercase tracking-widest mb-3">
+        <div className="text-sm font-bold text-[var(--text-faint)] uppercase tracking-widest mb-3">
           {topLabel}
         </div>
         <div
           className={cn(
             "text-5xl md:text-7xl font-black tabular-nums tracking-tight",
-            isBuy ? "text-amber-400" : "text-emerald-400"
+            isBuy
+              ? "text-[var(--status-warning)]"
+              : "text-[var(--status-success)]",
           )}
         >
           {topAmount}
@@ -78,20 +79,22 @@ export function ClientViewModal() {
 
       {/* Arrow Indicator */}
       <div className="my-8 animate-bounce">
-        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-          <ArrowDown size={32} className="text-neutral-400" />
+        <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center">
+          <ArrowDown size={32} className="text-[var(--text-muted)]" />
         </div>
       </div>
 
       {/* Bottom: What customer receives */}
       <div className="text-center mt-6">
-        <div className="text-sm font-bold text-neutral-500 uppercase tracking-widest mb-3">
+        <div className="text-sm font-bold text-[var(--text-faint)] uppercase tracking-widest mb-3">
           {bottomLabel}
         </div>
         <div
           className={cn(
             "text-5xl md:text-7xl font-black tabular-nums tracking-tight",
-            isBuy ? "text-emerald-400" : "text-amber-400"
+            isBuy
+              ? "text-[var(--status-success)]"
+              : "text-[var(--status-warning)]",
           )}
         >
           {bottomAmount}
@@ -100,10 +103,12 @@ export function ClientViewModal() {
 
       {/* Rate Footer */}
       <div className="absolute bottom-12 left-0 right-0 text-center">
-        <div className="text-sm text-neutral-600">
+        <div className="text-sm text-[var(--text-faint)]">
           Tasa: 1 {data.foreignCurrency} = {data.rate} CUP
         </div>
-        <div className="text-xs text-neutral-700 mt-2">Toca para cerrar</div>
+        <div className="text-xs text-[var(--text-faint)]/60 mt-2">
+          Toca para cerrar
+        </div>
       </div>
     </div>
   );

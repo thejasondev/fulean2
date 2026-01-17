@@ -3,6 +3,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Toggle Component
 // Accessible switch with smooth animations
+// Theme-aware using CSS variables
 // ============================================
 
 interface ToggleProps {
@@ -31,7 +32,7 @@ export function Toggle({
     <label
       className={cn(
         "inline-flex items-center gap-3 cursor-pointer select-none",
-        disabled && "opacity-50 cursor-not-allowed"
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       <button
@@ -49,25 +50,27 @@ export function Toggle({
           // Touch target
           "touch-target",
           // Focus styles (accessible)
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]",
           // State colors
-          checked ? "bg-emerald-500" : "bg-neutral-700"
+          checked ? "bg-[var(--accent)]" : "bg-[var(--bg-tertiary)]",
         )}
       >
         <span
           className={cn(
             // Thumb styles
             "pointer-events-none inline-block transform rounded-full",
-            "bg-white shadow-lg",
+            "bg-[var(--text-primary)] shadow-lg",
             // Transition
             "transition-transform duration-200 ease-in-out",
             thumb,
             // Position
-            checked ? translate : "translate-x-1"
+            checked ? translate : "translate-x-1",
           )}
         />
       </button>
-      {label && <span className="text-neutral-300 text-sm">{label}</span>}
+      {label && (
+        <span className="text-[var(--text-secondary)] text-sm">{label}</span>
+      )}
     </label>
   );
 }

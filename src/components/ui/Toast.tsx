@@ -11,6 +11,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Toast Notification System
 // Professional, non-blocking notifications
+// Theme-aware using CSS variables
 // ============================================
 
 // Toast Types
@@ -59,7 +60,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         }, duration);
       }
     },
-    []
+    [],
   );
 
   const removeToast = useCallback((id: string) => {
@@ -110,7 +111,7 @@ function ToastContainer({
         "fixed left-1/2 -translate-x-1/2 z-[200]",
         "flex flex-col gap-2",
         "w-full max-w-sm px-4",
-        "pointer-events-none"
+        "pointer-events-none",
       )}
       style={{
         // Use safe-area-inset-top for iPhone notch/Dynamic Island
@@ -144,24 +145,24 @@ function ToastItem({
 
   const styles = {
     success: {
-      bg: "bg-emerald-500/15 border-emerald-500/40",
-      icon: "text-emerald-400",
-      text: "text-emerald-100",
+      bg: "bg-[var(--status-success-bg)] border-[var(--status-success)]/40",
+      icon: "text-[var(--status-success)]",
+      text: "text-[var(--text-primary)]",
     },
     error: {
-      bg: "bg-red-500/15 border-red-500/40",
-      icon: "text-red-400",
-      text: "text-red-100",
+      bg: "bg-[var(--status-error-bg)] border-[var(--status-error)]/40",
+      icon: "text-[var(--status-error)]",
+      text: "text-[var(--text-primary)]",
     },
     info: {
-      bg: "bg-blue-500/15 border-blue-500/40",
-      icon: "text-blue-400",
-      text: "text-blue-100",
+      bg: "bg-[var(--status-info-bg)] border-[var(--status-info)]/40",
+      icon: "text-[var(--status-info)]",
+      text: "text-[var(--text-primary)]",
     },
     warning: {
-      bg: "bg-amber-500/15 border-amber-500/40",
-      icon: "text-amber-400",
-      text: "text-amber-100",
+      bg: "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/40",
+      icon: "text-[var(--status-warning)]",
+      text: "text-[var(--text-primary)]",
     },
   };
 
@@ -176,7 +177,7 @@ function ToastItem({
         "shadow-lg",
         "pointer-events-auto",
         "animate-slide-up",
-        style.bg
+        style.bg,
       )}
       role="alert"
     >
@@ -189,9 +190,9 @@ function ToastItem({
         className={cn(
           "w-6 h-6 flex items-center justify-center shrink-0",
           "rounded-full",
-          "text-neutral-400 hover:text-white",
-          "hover:bg-white/10",
-          "transition-colors duration-150"
+          "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+          "hover:bg-[var(--bg-hover)]",
+          "transition-colors duration-150",
         )}
         aria-label="Cerrar notificación"
       >

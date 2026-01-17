@@ -68,26 +68,30 @@ function LiquidityAlert() {
       className={cn(
         "rounded-xl p-4 border flex items-start gap-3",
         isCritical
-          ? "bg-red-500/10 border-red-500/30"
-          : "bg-amber-500/10 border-amber-500/30"
+          ? "bg-[var(--status-error-bg)] border-[var(--status-error)]/30"
+          : "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/30",
       )}
     >
       <AlertTriangle
         className={cn(
           "w-5 h-5 shrink-0 mt-0.5",
-          isCritical ? "text-red-400" : "text-amber-400"
+          isCritical
+            ? "text-[var(--status-error)]"
+            : "text-[var(--status-warning)]",
         )}
       />
       <div>
         <p
           className={cn(
             "text-sm font-bold",
-            isCritical ? "text-red-400" : "text-amber-400"
+            isCritical
+              ? "text-[var(--status-error)]"
+              : "text-[var(--status-warning)]",
           )}
         >
           {isCritical ? "⚠️ Liquidez crítica" : "Liquidez baja"}
         </p>
-        <p className="text-xs text-neutral-400 mt-1">
+        <p className="text-xs text-[var(--text-muted)] mt-1">
           Solo {liquidityPercent.toFixed(0)}% del capital en CUP (
           {formatNumber(currentBalance)} CUP).
           {isCritical
@@ -150,25 +154,27 @@ function CapitalCard() {
   const isPositive = netChange >= 0;
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-emerald-400" />
+          <div className="w-10 h-10 rounded-xl bg-[var(--status-success-bg)] flex items-center justify-center">
+            <Wallet className="w-5 h-5 text-[var(--status-success)]" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">
               Capital de Operación
             </h3>
-            <p className="text-xs text-neutral-500">Gestiona tu efectivo</p>
+            <p className="text-xs text-[var(--text-faint)]">
+              Gestiona tu efectivo
+            </p>
           </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleReset}
-          className="h-8 w-8 p-0 text-neutral-500 hover:text-red-400"
+          className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--status-error)]"
           title="Reiniciar"
         >
           <RotateCcw size={14} />
@@ -176,9 +182,11 @@ function CapitalCard() {
       </div>
 
       {/* Initial Capital - Editable */}
-      <div className="bg-neutral-950 rounded-xl p-4 mb-3">
+      <div className="bg-[var(--bg-base)] rounded-xl p-4 mb-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-neutral-400">Capital Inicial</span>
+          <span className="text-sm text-[var(--text-muted)]">
+            Capital Inicial
+          </span>
           {isEditing ? (
             <div className="flex items-center gap-2">
               <Input
@@ -191,7 +199,7 @@ function CapitalCard() {
               />
               <button
                 onClick={handleSave}
-                className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/30"
+                className="w-8 h-8 rounded-lg bg-[var(--status-success-bg)] text-[var(--status-success)] flex items-center justify-center hover:opacity-80"
               >
                 <Check size={14} />
               </button>
@@ -199,10 +207,10 @@ function CapitalCard() {
           ) : (
             <button
               onClick={handleEdit}
-              className="flex items-center gap-2 text-white font-bold tabular-nums hover:text-emerald-400 transition-colors"
+              className="flex items-center gap-2 text-[var(--text-primary)] font-bold tabular-nums hover:text-[var(--status-success)] transition-colors"
             >
               {formatNumber(initialCapital)} CUP
-              <Edit3 size={12} className="text-neutral-500" />
+              <Edit3 size={12} className="text-[var(--text-faint)]" />
             </button>
           )}
         </div>
@@ -210,32 +218,34 @@ function CapitalCard() {
 
       {/* Movement Summary */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-neutral-950 rounded-xl p-3">
+        <div className="bg-[var(--bg-base)] rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <ArrowDownLeft size={12} className="text-emerald-400" />
-            <span className="text-xs text-neutral-500">(Compras)</span>
+            <ArrowDownLeft size={12} className="text-[var(--status-success)]" />
+            <span className="text-xs text-[var(--text-faint)]">(Compras)</span>
           </div>
-          <span className="text-sm font-bold text-emerald-400 tabular-nums">
+          <span className="text-sm font-bold text-[var(--status-success)] tabular-nums">
             -{formatNumber(totalOut)} CUP
           </span>
         </div>
-        <div className="bg-neutral-950 rounded-xl p-3">
+        <div className="bg-[var(--bg-base)] rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <ArrowUpRight size={12} className="text-amber-400" />
-            <span className="text-xs text-neutral-500">(Ventas)</span>
+            <ArrowUpRight size={12} className="text-[var(--status-warning)]" />
+            <span className="text-xs text-[var(--text-faint)]">(Ventas)</span>
           </div>
-          <span className="text-sm font-bold text-amber-400 tabular-nums">
+          <span className="text-sm font-bold text-[var(--status-warning)] tabular-nums">
             +{formatNumber(totalIn)} CUP
           </span>
         </div>
       </div>
 
       {/* Current Balance */}
-      <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-xl p-4 border border-emerald-500/20">
+      <div className="bg-gradient-to-r from-[var(--status-success-bg)] to-transparent rounded-xl p-4 border border-[var(--status-success)]/20">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-xs text-neutral-400">Balance Actual</span>
-            <div className="text-2xl font-bold text-white tabular-nums">
+            <span className="text-xs text-[var(--text-muted)]">
+              Balance Actual
+            </span>
+            <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">
               {formatNumber(currentBalance)} CUP
             </div>
           </div>
@@ -243,8 +253,8 @@ function CapitalCard() {
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
               isPositive
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "bg-red-500/20 text-red-400"
+                ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                : "bg-[var(--status-error-bg)] text-[var(--status-error)]",
             )}
           >
             {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -252,12 +262,14 @@ function CapitalCard() {
             {percentageChange.toFixed(1)}%
           </div>
         </div>
-        <div className="mt-2 text-sm text-neutral-400">
+        <div className="mt-2 text-sm text-[var(--text-muted)]">
           Variación:
           <span
             className={cn(
               "font-bold ml-1 tabular-nums",
-              isPositive ? "text-emerald-400" : "text-red-400"
+              isPositive
+                ? "text-[var(--status-success)]"
+                : "text-[var(--status-error)]",
             )}
           >
             {isPositive ? "+" : ""}
@@ -299,35 +311,37 @@ function ProfitSummary() {
 
   // Count operations by type for each period
   const todayTransactions = transactions.filter(
-    (t) => new Date(t.date) >= today
+    (t) => new Date(t.date) >= today,
   );
   const weekTransactions = transactions.filter(
-    (t) => new Date(t.date) >= weekAgo
+    (t) => new Date(t.date) >= weekAgo,
   );
 
   const buysTodayCount = todayTransactions.filter(
-    (t) => t.operationType === "BUY"
+    (t) => t.operationType === "BUY",
   ).length;
   const sellsTodayCount = todayTransactions.filter(
-    (t) => t.operationType === "SELL"
+    (t) => t.operationType === "SELL",
   ).length;
   const buysWeekCount = weekTransactions.filter(
-    (t) => t.operationType === "BUY"
+    (t) => t.operationType === "BUY",
   ).length;
   const sellsWeekCount = weekTransactions.filter(
-    (t) => t.operationType === "SELL"
+    (t) => t.operationType === "SELL",
   ).length;
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-amber-400" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] flex items-center justify-center">
+          <TrendingUp className="w-5 h-5 text-[var(--status-warning)]" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Ganancias Reales</h3>
-          <p className="text-xs text-neutral-500">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            Ganancias Reales
+          </h3>
+          <p className="text-xs text-[var(--text-faint)]">
             Basado en costo real (FIFO)
           </p>
         </div>
@@ -348,7 +362,7 @@ function ProfitSummary() {
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitToday > 0 ? "text-emerald-400" : "text-neutral-500"
+              profitToday > 0 ? "text-emerald-400" : "text-neutral-500",
             )}
           >
             +{formatNumber(profitToday)} CUP
@@ -368,7 +382,7 @@ function ProfitSummary() {
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitWeek > 0 ? "text-emerald-400" : "text-neutral-500"
+              profitWeek > 0 ? "text-emerald-400" : "text-neutral-500",
             )}
           >
             +{formatNumber(profitWeek)} CUP
@@ -380,7 +394,7 @@ function ProfitSummary() {
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitMonth > 0 ? "text-emerald-400" : "text-neutral-500"
+              profitMonth > 0 ? "text-emerald-400" : "text-neutral-500",
             )}
           >
             +{formatNumber(profitMonth)} CUP
@@ -472,33 +486,39 @@ function PortfolioCard() {
       : 0;
 
   const currencies = Object.keys(portfolio).filter(
-    (c) => portfolio[c].available > 0 || portfolio[c].bought > 0
+    (c) => portfolio[c].available > 0 || portfolio[c].bought > 0,
   );
 
   if (currencies.length === 0) return null;
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
       {/* Header with total valuation */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 rounded-xl bg-[var(--purple-bg)] flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-[var(--purple)]" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Mi Portafolio</h3>
-            <p className="text-xs text-neutral-500">Valorización actual</p>
+            <h3 className="text-sm font-bold text-[var(--text-primary)]">
+              Mi Portafolio
+            </h3>
+            <p className="text-xs text-[var(--text-faint)]">
+              Valorización actual
+            </p>
           </div>
         </div>
         {totalPortfolioValue > 0 && (
           <div className="text-right">
-            <p className="text-lg font-bold text-white tabular-nums">
+            <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">
               {formatNumber(totalPortfolioValue)} CUP
             </p>
             <p
               className={cn(
                 "text-xs font-bold tabular-nums",
-                totalUnrealizedGain >= 0 ? "text-emerald-400" : "text-red-400"
+                totalUnrealizedGain >= 0
+                  ? "text-[var(--status-success)]"
+                  : "text-[var(--status-error)]",
               )}
             >
               {totalUnrealizedGain >= 0 ? "+" : ""}
@@ -526,8 +546,8 @@ function PortfolioCard() {
                 isEmpty
                   ? "bg-neutral-950/50 border-neutral-800/50 opacity-60"
                   : isLow
-                  ? "bg-amber-500/5 border-amber-500/20"
-                  : "bg-neutral-950 border-neutral-800"
+                    ? "bg-amber-500/5 border-amber-500/20"
+                    : "bg-neutral-950 border-neutral-800",
               )}
             >
               {/* Currency Header */}
@@ -545,7 +565,7 @@ function PortfolioCard() {
                       "text-xs px-2 py-0.5 rounded-full font-bold",
                       p.unrealizedGain >= 0
                         ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/20 text-red-400"
+                        : "bg-red-500/20 text-red-400",
                     )}
                   >
                     {p.unrealizedGain >= 0 ? "+" : ""}
@@ -570,7 +590,7 @@ function PortfolioCard() {
                     </div>
                     <div className="text-sm font-bold text-neutral-400 tabular-nums">
                       {formatNumber(
-                        Math.round(p.available * (p.totalCost / p.bought))
+                        Math.round(p.available * (p.totalCost / p.bought)),
                       )}
                     </div>
                   </div>
@@ -583,7 +603,7 @@ function PortfolioCard() {
                         "text-sm font-bold tabular-nums",
                         p.unrealizedGain >= 0
                           ? "text-emerald-400"
-                          : "text-red-400"
+                          : "text-red-400",
                       )}
                     >
                       {p.unrealizedGain >= 0 ? "+" : ""}
@@ -643,13 +663,13 @@ function SellSimulator() {
   });
 
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(
-    availableCurrencies[0]?.currency || "USD"
+    availableCurrencies[0]?.currency || "USD",
   );
   const [quantity, setQuantity] = useState("");
   const [customRate, setCustomRate] = useState("");
 
   const currencyData = availableCurrencies.find(
-    (c) => c.currency === selectedCurrency
+    (c) => c.currency === selectedCurrency,
   );
   const currentRate = sellRates[selectedCurrency] ?? 0;
   const rate = customRate ? parseFloat(customRate) : currentRate;
@@ -667,15 +687,17 @@ function SellSimulator() {
   if (availableCurrencies.length === 0) return null;
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
       {/* Header */}
       <div className="flex items-center gap-2 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center">
-          <Calculator className="w-5 h-5 text-blue-400" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center">
+          <Calculator className="w-5 h-5 text-[var(--blue)]" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Simulador de Venta</h3>
-          <p className="text-xs text-neutral-500">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            Simulador de Venta
+          </h3>
+          <p className="text-xs text-[var(--text-faint)]">
             Calcula tu ganancia antes de vender
           </p>
         </div>
@@ -701,7 +723,7 @@ function SellSimulator() {
                   "flex items-center gap-2 px-3 py-2 rounded-xl border transition-all shrink-0",
                   isSelected
                     ? "bg-blue-500/20 border-blue-500/50 text-white"
-                    : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                    : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700",
                 )}
               >
                 <span className="text-base">{meta?.flag}</span>
@@ -748,7 +770,7 @@ function SellSimulator() {
                   "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors",
                   qty === Math.floor(maxQty * (pct / 100))
                     ? "bg-blue-500/30 text-blue-400"
-                    : "bg-neutral-900 text-neutral-500 hover:text-neutral-300"
+                    : "bg-neutral-900 text-neutral-500 hover:text-neutral-300",
                 )}
               >
                 {pct}%
@@ -785,7 +807,7 @@ function SellSimulator() {
           "rounded-xl p-4 border transition-all",
           qty > 0
             ? "bg-neutral-950 border-neutral-700"
-            : "bg-neutral-950/50 border-neutral-800/50"
+            : "bg-neutral-950/50 border-neutral-800/50",
         )}
       >
         {qty > 0 ? (
@@ -818,7 +840,7 @@ function SellSimulator() {
                 <p
                   className={cn(
                     "text-sm font-bold tabular-nums",
-                    profit >= 0 ? "text-emerald-400" : "text-red-400"
+                    profit >= 0 ? "text-emerald-400" : "text-red-400",
                   )}
                 >
                   {profit >= 0 ? "+" : ""}
@@ -866,15 +888,17 @@ function RateTrends() {
   // Filter to only visible currencies
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-cyan-400" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--cyan-bg)] flex items-center justify-center">
+          <TrendingUp className="w-5 h-5 text-[var(--cyan)]" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Tendencia de Tasas</h3>
-          <p className="text-xs text-neutral-500">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            Tendencia de Tasas
+          </h3>
+          <p className="text-xs text-[var(--text-faint)]">
             Últimos {rateHistory.length} días
           </p>
         </div>
@@ -904,7 +928,7 @@ function RateTrends() {
               (val, i) =>
                 `${(i / (normalized.length - 1)) * width},${
                   height - (val / 100) * height
-                }`
+                }`,
             )
             .join(" ");
 
@@ -925,7 +949,7 @@ function RateTrends() {
                     "text-[10px] px-1.5 py-0.5 rounded font-bold",
                     trend.isUp
                       ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-red-500/20 text-red-400"
+                      : "bg-red-500/20 text-red-400",
                   )}
                 >
                   {trend.isUp ? "▲" : "▼"}{" "}
@@ -967,7 +991,7 @@ export function ReportsTab() {
         "flex-1 overflow-y-auto",
         "px-4 py-4",
         "pb-32",
-        "space-y-4"
+        "space-y-4",
       )}
     >
       <LiquidityAlert />

@@ -7,9 +7,9 @@ import {
   RefreshCw,
   Pencil,
   Eye,
-  EyeOff,
   Heart,
   Smartphone,
+  Sun,
 } from "lucide-react";
 import {
   $buyRates,
@@ -31,6 +31,7 @@ import {
   toggleDenomination,
   toggleCurrency,
 } from "../../stores/visibilityStore";
+import { $theme, toggleTheme } from "../../stores/themeStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
 import {
   CURRENCIES,
@@ -45,11 +46,13 @@ import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
+import { Toggle } from "../ui/Toggle";
 import { useHaptic } from "../../hooks/useHaptic";
 
 // ============================================
 // SettingsSheet Component
 // Buy/Sell rate editing with El Toque reference
+// Theme-aware using CSS variables
 // ============================================
 
 function RateRow({ currency }: { currency: Currency }) {
@@ -93,15 +96,19 @@ function RateRow({ currency }: { currency: Currency }) {
 
   return (
     <div
-      className={cn("bg-neutral-900 rounded-xl p-4 border border-neutral-800")}
+      className={cn(
+        "bg-[var(--bg-primary)] rounded-xl p-4 border border-[var(--border-primary)]",
+      )}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">{meta.flag}</span>
-          <span className="font-bold text-white">{currency}</span>
+          <span className="font-bold text-[var(--text-primary)]">
+            {currency}
+          </span>
           {meta.category === "digital" && (
-            <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+            <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[var(--purple-bg)] text-[var(--purple)]">
               DIG
             </span>
           )}
@@ -110,20 +117,20 @@ function RateRow({ currency }: { currency: Currency }) {
         <div className="flex items-center gap-2">
           {/* El Toque Reference - Editable for manual currencies */}
           {isManual ? (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-              <Pencil size={10} className="text-purple-400" />
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--purple-bg)] border border-[var(--purple)]/20">
+              <Pencil size={10} className="text-[var(--purple)]" />
               <input
                 type="number"
                 value={elToqueRate || 0}
                 onChange={(e) => handleManualElToqueChange(e.target.value)}
-                className="w-12 bg-transparent text-[10px] font-bold text-purple-400 tabular-nums text-center outline-none"
+                className="w-12 bg-transparent text-[10px] font-bold text-[var(--purple)] tabular-nums text-center outline-none"
                 min={1}
               />
             </div>
           ) : elToqueRate ? (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
-              <Zap size={10} className="text-blue-400" />
-              <span className="text-[10px] font-bold text-blue-400 tabular-nums">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--blue-bg)] border border-[var(--blue)]/20">
+              <Zap size={10} className="text-[var(--blue)]" />
+              <span className="text-[10px] font-bold text-[var(--blue)] tabular-nums">
                 {elToqueRate}
               </span>
             </div>
@@ -131,9 +138,9 @@ function RateRow({ currency }: { currency: Currency }) {
 
           {/* Spread Badge */}
           {spread > 0 && (
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <TrendingUp size={12} className="text-emerald-400" />
-              <span className="text-xs font-bold text-emerald-400 tabular-nums">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--status-success-bg)] border border-[var(--status-success)]/20">
+              <TrendingUp size={12} className="text-[var(--status-success)]" />
+              <span className="text-xs font-bold text-[var(--status-success)] tabular-nums">
                 +{spread}
               </span>
             </div>
@@ -144,7 +151,7 @@ function RateRow({ currency }: { currency: Currency }) {
       {/* Buy/Sell Inputs */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[10px] text-neutral-500 mb-1 font-medium uppercase tracking-wide">
+          <label className="block text-[10px] text-[var(--text-faint)] mb-1 font-medium uppercase tracking-wide">
             Compra
           </label>
           <Input
@@ -153,12 +160,12 @@ function RateRow({ currency }: { currency: Currency }) {
             onChange={(e) => handleBuyChange(e.target.value)}
             size="sm"
             numericOnly
-            className="text-center font-bold tabular-nums text-emerald-400"
+            className="text-center font-bold tabular-nums text-[var(--status-success)]"
             min={1}
           />
         </div>
         <div>
-          <label className="block text-[10px] text-neutral-500 mb-1 font-medium uppercase tracking-wide">
+          <label className="block text-[10px] text-[var(--text-faint)] mb-1 font-medium uppercase tracking-wide">
             Venta
           </label>
           <Input
@@ -167,7 +174,7 @@ function RateRow({ currency }: { currency: Currency }) {
             onChange={(e) => handleSellChange(e.target.value)}
             size="sm"
             numericOnly
-            className="text-center font-bold tabular-nums text-amber-400"
+            className="text-center font-bold tabular-nums text-[var(--status-warning)]"
             min={1}
           />
         </div>
@@ -176,10 +183,11 @@ function RateRow({ currency }: { currency: Currency }) {
   );
 }
 
-// Visibility Customization Section
+// Visibility & Theme Customization Section
 function VisibilitySection() {
   const visibleDenominations = useStore($visibleDenominations);
   const visibleCurrencies = useStore($visibleCurrencies);
+  const theme = useStore($theme);
   const haptic = useHaptic();
 
   const handleDenomToggle = (denom: Denomination) => {
@@ -192,19 +200,44 @@ function VisibilitySection() {
     toggleCurrency(currency);
   };
 
+  const handleThemeToggle = () => {
+    haptic.medium();
+    toggleTheme();
+  };
+
   return (
-    <div className="pt-4 mt-4 border-t border-neutral-800 space-y-4">
+    <div className="pt-4 mt-4 border-t border-[var(--border-primary)] space-y-4">
       {/* Section Header */}
       <div className="flex items-center gap-2">
-        <Eye size={14} className="text-neutral-500" />
-        <span className="text-xs text-neutral-500 font-bold uppercase tracking-wide">
+        <Eye size={14} className="text-[var(--text-faint)]" />
+        <span className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide">
           Personalización
         </span>
       </div>
 
+      {/* Sunlight Mode Toggle */}
+      <div className="bg-[var(--bg-secondary)] rounded-xl p-4 border border-[var(--border-primary)]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[var(--status-warning-bg)] flex items-center justify-center">
+              <Sun className="w-5 h-5 text-[var(--status-warning)]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                Modo Sunlight
+              </h3>
+              <p className="text-xs text-[var(--text-faint)]">
+                Alto contraste para usar bajo el sol
+              </p>
+            </div>
+          </div>
+          <Toggle checked={theme === "sunlight"} onChange={handleThemeToggle} />
+        </div>
+      </div>
+
       {/* Denominations */}
       <div>
-        <span className="block text-[10px] text-neutral-500 mb-2 font-medium">
+        <span className="block text-[10px] text-[var(--text-faint)] mb-2 font-medium">
           Billetes visibles
         </span>
         <div className="flex flex-wrap gap-2">
@@ -220,9 +253,9 @@ function VisibilitySection() {
                   "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
                   "border",
                   isVisible
-                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                    : "bg-neutral-900 border-neutral-700 text-neutral-500",
-                  isOnlyOne && "opacity-50 cursor-not-allowed"
+                    ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/30 text-[var(--status-success)]"
+                    : "bg-[var(--bg-primary)] border-[var(--border-secondary)] text-[var(--text-faint)]",
+                  isOnlyOne && "opacity-50 cursor-not-allowed",
                 )}
               >
                 {denom}
@@ -234,7 +267,7 @@ function VisibilitySection() {
 
       {/* Currencies */}
       <div>
-        <span className="block text-[10px] text-neutral-500 mb-2 font-medium">
+        <span className="block text-[10px] text-[var(--text-faint)] mb-2 font-medium">
           Monedas visibles
         </span>
         <div className="flex flex-wrap gap-2">
@@ -251,9 +284,9 @@ function VisibilitySection() {
                   "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
                   "border flex items-center gap-1.5",
                   isVisible
-                    ? "bg-blue-500/15 border-blue-500/30 text-blue-400"
-                    : "bg-neutral-900 border-neutral-700 text-neutral-500",
-                  isOnlyOne && "opacity-50 cursor-not-allowed"
+                    ? "bg-[var(--blue-bg)] border-[var(--blue)]/30 text-[var(--blue)]"
+                    : "bg-[var(--bg-primary)] border-[var(--border-secondary)] text-[var(--text-faint)]",
+                  isOnlyOne && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <span>{meta.flag}</span>
@@ -274,7 +307,6 @@ function DonationSection() {
   const [copied, setCopied] = useState(false);
 
   // Your BANK CARD number for receiving donations (NOT phone)
-  // This is the 16-digit card number from your tarjeta RED/MLC
   const CARD_NUMBER = "9234 0699 9301 9516";
   const CARD_NUMBER_CLEAN = CARD_NUMBER.replace(/\s/g, "");
 
@@ -302,36 +334,35 @@ function DonationSection() {
     }
   };
 
-  // Open Transfermóvil bank transfer menu
-  // *444*45# opens the transfer section (user must be authenticated)
   const handleDonate = () => {
     if (finalAmount < 50) return;
-    // Open phone dialer with Transfermóvil bank transfer code
     window.location.href = "tel:*444*45%23";
   };
 
   return (
-    <div className="bg-neutral-900 rounded-xl p-4 border border-neutral-800">
+    <div className="bg-[var(--bg-primary)] rounded-xl p-4 border border-[var(--border-primary)]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-pink-500/15 flex items-center justify-center">
-          <Heart className="w-5 h-5 text-pink-400" />
+        <div className="w-10 h-10 rounded-xl bg-[var(--pink-bg)] flex items-center justify-center">
+          <Heart className="w-5 h-5 text-[var(--pink)]" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white">Apoya el Desarrollo</h3>
-          <p className="text-xs text-neutral-500">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            Apoya el Desarrollo
+          </h3>
+          <p className="text-xs text-[var(--text-faint)]">
             Tu donación mantiene la app gratis
           </p>
         </div>
       </div>
 
       {/* Card Number Display - Easy to copy */}
-      <div className="bg-neutral-950 rounded-xl p-3 mb-4 border border-neutral-800">
-        <p className="text-[10px] text-neutral-500 uppercase mb-1">
+      <div className="bg-[var(--bg-base)] rounded-xl p-3 mb-4 border border-[var(--border-primary)]">
+        <p className="text-[10px] text-[var(--text-faint)] uppercase mb-1">
           Transferir a tarjeta:
         </p>
         <div className="flex items-center justify-between">
-          <span className="text-lg font-mono font-bold text-white tracking-wider">
+          <span className="text-lg font-mono font-bold text-[var(--text-primary)] tracking-wider">
             {CARD_NUMBER}
           </span>
           <button
@@ -339,8 +370,8 @@ function DonationSection() {
             className={cn(
               "px-3 py-1 rounded-lg text-xs font-bold transition-all",
               copied
-                ? "bg-emerald-500/20 text-emerald-400"
-                : "bg-neutral-800 text-neutral-400 hover:text-white"
+                ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]",
             )}
           >
             {copied ? "✓ Copiado" : "Copiar"}
@@ -357,8 +388,8 @@ function DonationSection() {
             className={cn(
               "py-3 rounded-xl font-bold text-sm transition-all border",
               selectedAmount === amount
-                ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
-                : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                ? "bg-[var(--pink-bg)] border-[var(--pink)]/50 text-[var(--pink)]"
+                : "bg-[var(--bg-base)] border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-secondary)]",
             )}
           >
             {amount} CUP
@@ -375,8 +406,8 @@ function DonationSection() {
           value={customAmount}
           onChange={(e) => handleCustomChange(e.target.value)}
           className={cn(
-            "bg-neutral-950 border-neutral-800 text-center",
-            customAmount && "border-pink-500/50"
+            "bg-[var(--bg-base)] border-[var(--border-primary)] text-center",
+            customAmount && "border-[var(--pink)]/50",
           )}
         />
       </div>
@@ -388,8 +419,8 @@ function DonationSection() {
         className={cn(
           "w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
           finalAmount >= 50
-            ? "bg-pink-500 text-white hover:bg-pink-600"
-            : "bg-neutral-800 text-neutral-600 cursor-not-allowed"
+            ? "bg-[var(--pink)] text-[var(--text-inverted)] hover:opacity-90"
+            : "bg-[var(--bg-secondary)] text-[var(--text-faint)] cursor-not-allowed",
         )}
       >
         <Smartphone className="w-4 h-4" />
@@ -399,9 +430,9 @@ function DonationSection() {
       </button>
 
       {/* Instructions */}
-      <div className="mt-3 p-3 bg-neutral-950 rounded-lg border border-neutral-800">
-        <p className="text-[10px] text-neutral-500 leading-relaxed">
-          <strong className="text-neutral-400">Pasos:</strong>
+      <div className="mt-3 p-3 bg-[var(--bg-base)] rounded-lg border border-[var(--border-primary)]">
+        <p className="text-[10px] text-[var(--text-faint)] leading-relaxed">
+          <strong className="text-[var(--text-muted)]">Pasos:</strong>
           <br />
           1. Copia el número de tarjeta
           <br />
@@ -436,21 +467,23 @@ export function SettingsSheet() {
     >
       <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
         {/* Explanation */}
-        <div className="bg-neutral-950/50 rounded-xl p-3 border border-neutral-800/40">
-          <p className="text-sm text-neutral-300 font-medium">Compra / Venta</p>
-          <p className="text-xs text-neutral-500 mt-1">
+        <div className="bg-[var(--bg-base)]/50 rounded-xl p-3 border border-[var(--border-primary)]/40">
+          <p className="text-sm text-[var(--text-secondary)] font-medium">
+            Compra / Venta
+          </p>
+          <p className="text-xs text-[var(--text-faint)] mt-1">
             Define las tasas a las que compras y vendes cada moneda.
           </p>
         </div>
 
         {/* El Toque Reference Section */}
-        <div className="bg-blue-500/5 rounded-xl p-3 border border-blue-500/20">
+        <div className="bg-[var(--blue-bg)] rounded-xl p-3 border border-[var(--blue)]/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap size={16} className="text-blue-400" />
+              <Zap size={16} className="text-[var(--blue)]" />
               <div>
-                <p className="text-sm text-blue-400 font-bold">El Toque</p>
-                <p className="text-[10px] text-blue-400/60">
+                <p className="text-sm text-[var(--blue)] font-bold">El Toque</p>
+                <p className="text-[10px] text-[var(--blue)]/60">
                   Referencia mercado informal
                 </p>
               </div>
@@ -459,7 +492,7 @@ export function SettingsSheet() {
               variant="ghost"
               size="sm"
               onClick={handleRefreshElToque}
-              className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
+              className="h-8 w-8 p-0 text-[var(--blue)] hover:text-[var(--blue)]"
               title="Actualizar El Toque"
             >
               <RefreshCw
@@ -469,7 +502,7 @@ export function SettingsSheet() {
             </Button>
           </div>
           {elToqueRates && (
-            <p className="text-[10px] text-blue-400/60 mt-2">
+            <p className="text-[10px] text-[var(--blue)]/60 mt-2">
               Usa estos valores como guía para ajustar tus tasas
             </p>
           )}
@@ -477,8 +510,8 @@ export function SettingsSheet() {
 
         {/* Cash Currencies */}
         <div>
-          <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[var(--status-success)]" />
             Efectivo
           </div>
           <div className="space-y-3">
@@ -490,8 +523,8 @@ export function SettingsSheet() {
 
         {/* Digital Currencies */}
         <div>
-          <div className="text-xs text-neutral-500 font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-500" />
+          <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[var(--purple)]" />
             Digital
           </div>
           <div className="space-y-3">
@@ -505,7 +538,7 @@ export function SettingsSheet() {
         <VisibilitySection />
 
         {/* Actions - Fixed Footer */}
-        <div className="flex gap-3 pt-4 mt-4 border-t border-neutral-800">
+        <div className="flex gap-3 pt-4 mt-4 border-t border-[var(--border-primary)]">
           <Button
             variant="secondary"
             onClick={resetRates}

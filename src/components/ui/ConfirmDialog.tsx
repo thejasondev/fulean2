@@ -7,6 +7,7 @@ import { Button } from "./Button";
 // ============================================
 // ConfirmDialog Component
 // Professional replacement for window.confirm()
+// Theme-aware using CSS variables
 // ============================================
 
 export function ConfirmDialog() {
@@ -21,9 +22,9 @@ export function ConfirmDialog() {
   };
 
   const iconStyles = {
-    danger: "bg-red-500/15 text-red-400",
-    warning: "bg-amber-500/15 text-amber-400",
-    info: "bg-blue-500/15 text-blue-400",
+    danger: "bg-[var(--status-error-bg)] text-[var(--status-error)]",
+    warning: "bg-[var(--status-warning-bg)] text-[var(--status-warning)]",
+    info: "bg-[var(--status-info-bg)] text-[var(--status-info)]",
   };
 
   const Icon = icons[state.variant];
@@ -32,7 +33,7 @@ export function ConfirmDialog() {
     <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-[var(--backdrop-bg)] backdrop-blur-sm animate-fade-in"
         onClick={closeConfirmDialog}
         aria-hidden="true"
       />
@@ -41,10 +42,10 @@ export function ConfirmDialog() {
       <div
         className={cn(
           "relative w-full max-w-sm",
-          "bg-neutral-900 border border-neutral-800",
+          "bg-[var(--bg-primary)] border border-[var(--border-primary)]",
           "rounded-2xl shadow-2xl",
           "p-5",
-          "animate-slide-up"
+          "animate-slide-up",
         )}
         role="alertdialog"
         aria-modal="true"
@@ -57,7 +58,7 @@ export function ConfirmDialog() {
             className={cn(
               "w-12 h-12 rounded-full",
               "flex items-center justify-center",
-              iconStyles[state.variant]
+              iconStyles[state.variant],
             )}
           >
             <Icon className="w-6 h-6" />
@@ -67,7 +68,7 @@ export function ConfirmDialog() {
         {/* Title */}
         <h2
           id="confirm-title"
-          className="text-lg font-semibold text-white text-center mb-2"
+          className="text-lg font-semibold text-[var(--text-primary)] text-center mb-2"
         >
           {state.title}
         </h2>
@@ -75,7 +76,7 @@ export function ConfirmDialog() {
         {/* Message */}
         <p
           id="confirm-message"
-          className="text-sm text-neutral-400 text-center mb-5"
+          className="text-sm text-[var(--text-muted)] text-center mb-5"
         >
           {state.message}
         </p>

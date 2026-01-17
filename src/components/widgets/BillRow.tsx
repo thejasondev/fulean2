@@ -12,7 +12,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // BillRow Component
 // Individual row for counting a specific denomination
-// Features: numeric input, fajo button, subtotal display
+// Theme-aware using CSS variables
 // ============================================
 
 interface BillRowProps {
@@ -48,15 +48,15 @@ export function BillRow({ denomination }: BillRowProps) {
     <div
       className={cn(
         // Card base
-        "bg-neutral-900 rounded-2xl",
-        "border border-neutral-800",
+        "bg-[var(--bg-primary)] rounded-2xl",
+        "border border-[var(--border-primary)]",
         // Spacing (8px = 2 × 4px base unit)
         "p-4",
         // Interaction
         "transition-all duration-200",
-        "hover:border-neutral-700 hover:bg-neutral-800/50",
+        "hover:border-[var(--border-secondary)] hover:bg-[var(--bg-hover)]",
         // Animation on mount
-        "animate-fade-in"
+        "animate-fade-in",
       )}
     >
       {/* Main Row: Icon, Input, Fajo Button */}
@@ -80,7 +80,7 @@ export function BillRow({ denomination }: BillRowProps) {
               // Money styling
               "tabular-nums font-bold",
               // Highlight when has value
-              count > 0 && "border-emerald-500/30 bg-emerald-500/5"
+              count > 0 && "border-[var(--accent)]/30 bg-[var(--accent-muted)]",
             )}
             min={0}
             aria-label={`Cantidad de billetes de ${denomination} CUP`}
@@ -105,11 +105,11 @@ export function BillRow({ denomination }: BillRowProps) {
       <div
         className={cn(
           "mt-4 flex items-center justify-between",
-          "pt-3 border-t border-neutral-800"
+          "pt-3 border-t border-[var(--border-primary)]",
         )}
       >
         {/* Calculation breakdown */}
-        <span className="text-sm text-neutral-500 tabular-nums">
+        <span className="text-sm text-[var(--text-faint)] tabular-nums">
           {formatNumber(count)} × {formatNumber(denomination)}
         </span>
 
@@ -117,11 +117,15 @@ export function BillRow({ denomination }: BillRowProps) {
         <span
           className={cn(
             "text-lg font-bold tabular-nums",
-            subtotal > 0 ? "text-emerald-400 money-glow" : "text-neutral-600"
+            subtotal > 0
+              ? "text-[var(--accent-text)] money-glow"
+              : "text-[var(--text-faint)]",
           )}
         >
           {formatNumber(subtotal)}
-          <span className="text-sm font-normal text-neutral-500 ml-1">CUP</span>
+          <span className="text-sm font-normal text-[var(--text-faint)] ml-1">
+            CUP
+          </span>
         </span>
       </div>
     </div>

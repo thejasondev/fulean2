@@ -8,6 +8,7 @@ import { Calculator } from "lucide-react";
 // ============================================
 // BillBreakdown Component
 // Visual display of greedy algorithm results
+// Theme-aware using CSS variables
 // ============================================
 
 interface BillBreakdownProps {
@@ -20,7 +21,7 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
     return (
       <div className="empty-state">
         <Calculator className="empty-state-icon" />
-        <p className="text-neutral-500">
+        <p className="text-[var(--text-faint)]">
           Ingresa una cantidad para ver el desglose
         </p>
       </div>
@@ -33,10 +34,10 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
     <div className="space-y-3 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-sm text-neutral-500 font-medium">
+        <span className="text-sm text-[var(--text-faint)] font-medium">
           Desglose de billetes
         </span>
-        <span className="text-sm font-semibold text-neutral-400 tabular-nums">
+        <span className="text-sm font-semibold text-[var(--text-muted)] tabular-nums">
           {result.totalBills} billetes
         </span>
       </div>
@@ -48,10 +49,10 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
             key={item.denomination}
             className={cn(
               "flex items-center gap-4",
-              "bg-neutral-900 rounded-xl p-3",
-              "border border-neutral-800",
+              "bg-[var(--bg-primary)] rounded-xl p-3",
+              "border border-[var(--border-primary)]",
               "transition-all duration-200",
-              "hover:border-neutral-700"
+              "hover:border-[var(--border-secondary)]",
             )}
           >
             {/* Bill Icon */}
@@ -62,9 +63,9 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
 
             {/* Count */}
             <div className="flex-1">
-              <div className="text-2xl font-bold text-white tabular-nums">
+              <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">
                 {item.count}
-                <span className="text-sm font-normal text-neutral-500 ml-1">
+                <span className="text-sm font-normal text-[var(--text-faint)] ml-1">
                   {item.count === 1 ? "billete" : "billetes"}
                 </span>
               </div>
@@ -72,10 +73,10 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
 
             {/* Subtotal */}
             <div className="text-right">
-              <div className="text-lg font-semibold text-emerald-400 tabular-nums">
+              <div className="text-lg font-semibold text-[var(--status-success)] tabular-nums">
                 {formatNumber(item.subtotal)}
               </div>
-              <div className="text-xs text-neutral-500">CUP</div>
+              <div className="text-xs text-[var(--text-faint)]">CUP</div>
             </div>
           </div>
         ))}
@@ -85,11 +86,11 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
       {result.remainder > 0 && (
         <div
           className={cn(
-            "bg-amber-500/10 border border-amber-500/30",
-            "rounded-xl p-3"
+            "bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/30",
+            "rounded-xl p-3",
           )}
         >
-          <p className="text-sm text-amber-400">
+          <p className="text-sm text-[var(--status-warning)]">
             ⚠️ Quedaron{" "}
             <strong className="tabular-nums">
               {formatNumber(result.remainder)} CUP
@@ -102,18 +103,18 @@ export function BillBreakdown({ result }: BillBreakdownProps) {
       {/* Total Summary */}
       <div
         className={cn(
-          "bg-neutral-950/60 rounded-2xl p-4 mt-4",
-          "border border-neutral-800/40"
+          "bg-[var(--bg-base)]/60 rounded-2xl p-4 mt-4",
+          "border border-[var(--border-primary)]/40",
         )}
       >
         <div className="flex items-center justify-between">
-          <span className="text-neutral-400 font-medium">Total</span>
+          <span className="text-[var(--text-muted)] font-medium">Total</span>
           <div className="text-right">
-            <div className="text-2xl font-bold text-emerald-400 tabular-nums money-glow">
+            <div className="text-2xl font-bold text-[var(--status-success)] tabular-nums money-glow">
               {formatNumber(result.targetCUP - result.remainder)} CUP
             </div>
             {result.remainder > 0 && (
-              <div className="text-xs text-neutral-500 tabular-nums">
+              <div className="text-xs text-[var(--text-faint)] tabular-nums">
                 de {formatNumber(result.targetCUP)} CUP objetivo
               </div>
             )}

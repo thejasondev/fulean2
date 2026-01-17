@@ -4,6 +4,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Tabs Component
 // Accessible tab navigation with proper ARIA roles
+// Theme-aware using CSS variables
 // ============================================
 
 export interface Tab {
@@ -23,8 +24,8 @@ export function Tabs({ tabs, activeTab, onChange }: TabsProps) {
     <div
       className={cn(
         "flex",
-        "bg-neutral-900/80 backdrop-blur-sm",
-        "border-b border-neutral-800/60"
+        "bg-[var(--bg-primary)]/80 backdrop-blur-sm",
+        "border-b border-[var(--border-primary)]/60",
       )}
       role="tablist"
       aria-label="Navegación principal"
@@ -50,8 +51,8 @@ export function Tabs({ tabs, activeTab, onChange }: TabsProps) {
               "border-b-2",
               // States
               isActive
-                ? "text-emerald-400 border-emerald-400 bg-emerald-400/5"
-                : "text-neutral-400 border-transparent hover:text-neutral-200 hover:bg-neutral-800/50"
+                ? "text-[var(--accent-text)] border-[var(--accent)] bg-[var(--accent-muted)]"
+                : "text-[var(--text-muted)] border-transparent hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]/50",
             )}
             aria-selected={isActive ? "true" : "false"}
             aria-controls={`tabpanel-${tab.id}`}

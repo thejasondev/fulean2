@@ -4,6 +4,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Badge Component
 // Status indicators with semantic variants
+// Theme-aware using CSS variables
 // ============================================
 
 interface BadgeProps {
@@ -18,10 +19,14 @@ export function Badge({
   size = "md",
 }: BadgeProps) {
   const variants = {
-    default: "bg-neutral-800 text-neutral-400 border-neutral-700",
-    success: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    warning: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    error: "bg-red-500/15 text-red-400 border-red-500/30",
+    default:
+      "bg-[var(--bg-secondary)] text-[var(--text-muted)] border-[var(--border-secondary)]",
+    success:
+      "bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success)]/30",
+    warning:
+      "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning)]/30",
+    error:
+      "bg-[var(--status-error-bg)] text-[var(--status-error)] border-[var(--status-error)]/30",
   };
 
   const sizes = {
@@ -35,7 +40,7 @@ export function Badge({
         "inline-flex items-center font-medium rounded-full border",
         "transition-colors duration-200",
         variants[variant],
-        sizes[size]
+        sizes[size],
       )}
     >
       {children}

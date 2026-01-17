@@ -4,10 +4,13 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Input Component
 // Accessible, mobile-optimized numeric input
+// Theme-aware using CSS variables
 // ============================================
 
-interface InputProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
+interface InputProps extends Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "size"
+> {
   size?: "sm" | "md" | "lg";
   error?: boolean;
   /** If true, prevents invalid numeric characters (e, +, -) */
@@ -30,20 +33,20 @@ export function Input({
       }
       onKeyDown?.(e);
     },
-    [numericOnly, onKeyDown]
+    [numericOnly, onKeyDown],
   );
 
   const baseStyles = cn(
     // Base
-    "w-full bg-neutral-900 text-white",
-    "border border-neutral-700 rounded-xl",
-    "placeholder:text-neutral-500",
+    "w-full bg-[var(--bg-primary)] text-[var(--text-primary)]",
+    "border border-[var(--border-secondary)] rounded-xl",
+    "placeholder:text-[var(--text-faint)]",
     // Transitions
     "transition-all duration-200",
     // Focus states (accessible)
-    "focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500",
+    "focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] focus:border-[var(--accent)]",
     // Prevent iOS zoom (16px minimum)
-    "text-base"
+    "text-base",
   );
 
   const sizes = {
@@ -54,7 +57,7 @@ export function Input({
   };
 
   const errorStyles = error
-    ? "border-red-500 focus:border-red-500 focus:ring-red-500/40"
+    ? "border-[var(--status-error)] focus:border-[var(--status-error)] focus:ring-[var(--status-error)]/40"
     : "";
 
   return (

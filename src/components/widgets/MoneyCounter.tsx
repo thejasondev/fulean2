@@ -12,6 +12,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // MoneyCounter Component
 // Main counter view with Buy/Sell toggle
+// Theme-aware using CSS variables
 // ============================================
 
 export function MoneyCounter() {
@@ -32,15 +33,15 @@ export function MoneyCounter() {
         // Padding (consistent spacing scale)
         "px-4 py-4",
         // Bottom padding for compact footer (~100px + safe area)
-        "pb-32"
+        "pb-32",
       )}
     >
       {/* Operation Toggle - Buy/Sell */}
       <div className="mb-4">
-        <label className="block text-sm text-neutral-500 mb-2 font-medium">
+        <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
           Tipo de operación
         </label>
-        <div className="flex p-1 bg-neutral-900 rounded-xl border border-neutral-800">
+        <div className="flex p-1 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-primary)]">
           <button
             onClick={() => handleOperationChange("BUY")}
             className={cn(
@@ -48,8 +49,8 @@ export function MoneyCounter() {
               "py-2.5 rounded-lg text-sm font-bold",
               "transition-all duration-200",
               operation === "BUY"
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "text-neutral-500 hover:text-neutral-300"
+                ? "bg-[var(--status-success-bg)] text-[var(--status-success)] border border-[var(--status-success)]/30"
+                : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
             <ArrowDownLeft size={16} />
@@ -62,8 +63,8 @@ export function MoneyCounter() {
               "py-2.5 rounded-lg text-sm font-bold",
               "transition-all duration-200",
               operation === "SELL"
-                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                : "text-neutral-500 hover:text-neutral-300"
+                ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning)]/30"
+                : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
             <ArrowUpRight size={16} />

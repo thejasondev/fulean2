@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Modal Component
 // Accessible modal with backdrop blur and animations
+// Theme-aware using CSS variables
 // ============================================
 
 interface ModalProps {
@@ -59,15 +60,15 @@ export function Modal({
     <div
       className={cn(
         "fixed inset-0 z-[100]",
-        "flex items-center justify-center p-4"
+        "flex items-center justify-center p-4",
       )}
     >
       {/* Backdrop */}
       <div
         className={cn(
           "absolute inset-0",
-          "bg-black/80 backdrop-blur-sm",
-          "animate-fade-in"
+          "bg-[var(--backdrop-bg)] backdrop-blur-sm",
+          "animate-fade-in",
         )}
         onClick={onClose}
         aria-hidden="true"
@@ -78,10 +79,10 @@ export function Modal({
         className={cn(
           "relative w-full",
           sizeClasses[size],
-          "bg-neutral-900 border border-neutral-800",
+          "bg-[var(--bg-primary)] border border-[var(--border-primary)]",
           "rounded-2xl shadow-2xl",
           "max-h-[90vh] overflow-hidden",
-          "animate-slide-up"
+          "animate-slide-up",
         )}
         role="dialog"
         aria-modal="true"
@@ -93,10 +94,13 @@ export function Modal({
             className={cn(
               "flex items-center justify-between",
               "px-5 py-4",
-              "border-b border-neutral-800"
+              "border-b border-[var(--border-primary)]",
             )}
           >
-            <h2 id="modal-title" className="text-lg font-semibold text-white">
+            <h2
+              id="modal-title"
+              className="text-lg font-semibold text-[var(--text-primary)]"
+            >
               {title}
             </h2>
             <button
@@ -104,9 +108,9 @@ export function Modal({
               className={cn(
                 "w-10 h-10 -mr-2",
                 "flex items-center justify-center",
-                "text-neutral-400 hover:text-white",
-                "hover:bg-neutral-800 rounded-full",
-                "transition-colors duration-200"
+                "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                "hover:bg-[var(--bg-secondary)] rounded-full",
+                "transition-colors duration-200",
               )}
               aria-label="Cerrar"
             >

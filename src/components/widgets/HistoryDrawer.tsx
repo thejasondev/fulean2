@@ -30,6 +30,7 @@ import { CURRENCY_META, type Currency } from "../../lib/constants";
 // ============================================
 // HistoryDrawer Component
 // Enhanced with Volume Summary and Share All
+// Theme-aware using CSS variables
 // ============================================
 
 function formatDateTime(isoString: string): string {
@@ -74,14 +75,16 @@ function TransactionCard({
 
   const theme = isBuy
     ? {
-        iconBg: "bg-emerald-500/15",
-        iconColor: "text-emerald-400",
-        badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        iconBg: "bg-[var(--status-success-bg)]",
+        iconColor: "text-[var(--status-success)]",
+        badge:
+          "bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success)]/20",
       }
     : {
-        iconBg: "bg-amber-500/15",
-        iconColor: "text-amber-400",
-        badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+        iconBg: "bg-[var(--status-warning-bg)]",
+        iconColor: "text-[var(--status-warning)]",
+        badge:
+          "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning)]/20",
       };
 
   const currency = transaction.currency || "USD";
@@ -97,10 +100,10 @@ function TransactionCard({
   return (
     <div
       className={cn(
-        "bg-neutral-900 rounded-xl p-4",
-        "border border-neutral-800",
+        "bg-[var(--bg-primary)] rounded-xl p-4",
+        "border border-[var(--border-primary)]",
         "transition-all duration-200",
-        "hover:border-neutral-700"
+        "hover:border-[var(--border-secondary)]",
       )}
     >
       {/* Header */}
@@ -109,7 +112,7 @@ function TransactionCard({
           <div
             className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center",
-              theme.iconBg
+              theme.iconBg,
             )}
           >
             <Icon className={cn("w-5 h-5", theme.iconColor)} />
@@ -119,13 +122,13 @@ function TransactionCard({
               <span
                 className={cn(
                   "text-xs font-bold px-1.5 py-0.5 rounded border",
-                  theme.badge
+                  theme.badge,
                 )}
               >
                 {isBuy ? "COMPRA" : "VENTA"}
               </span>
             </div>
-            <div className="text-sm font-medium text-white mt-1">
+            <div className="text-sm font-medium text-[var(--text-primary)] mt-1">
               {formatNumber(transaction.totalCUP)} CUP
             </div>
           </div>
@@ -137,9 +140,9 @@ function TransactionCard({
             onClick={handleShare}
             className={cn(
               "w-8 h-8 flex items-center justify-center",
-              "text-neutral-500 hover:text-white",
-              "hover:bg-white/10 rounded-lg",
-              "transition-colors duration-200"
+              "text-[var(--text-faint)] hover:text-[var(--text-primary)]",
+              "hover:bg-[var(--bg-hover)] rounded-lg",
+              "transition-colors duration-200",
             )}
             aria-label="Compartir comprobante"
           >
@@ -149,9 +152,9 @@ function TransactionCard({
             onClick={onDelete}
             className={cn(
               "w-8 h-8 flex items-center justify-center",
-              "text-neutral-500 hover:text-red-400",
-              "hover:bg-red-500/10 rounded-lg",
-              "transition-colors duration-200"
+              "text-[var(--text-faint)] hover:text-[var(--status-error)]",
+              "hover:bg-[var(--status-error-bg)] rounded-lg",
+              "transition-colors duration-200",
             )}
             aria-label="Eliminar transacción"
           >
@@ -161,23 +164,23 @@ function TransactionCard({
       </div>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-2 gap-2 text-xs bg-neutral-950/50 p-3 rounded-lg border border-neutral-800/50">
+      <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--bg-base)]/50 p-3 rounded-lg border border-[var(--border-primary)]/50">
         <div>
-          <div className="text-neutral-500 mb-0.5">Operación</div>
-          <div className="font-semibold text-white">
+          <div className="text-[var(--text-faint)] mb-0.5">Operación</div>
+          <div className="font-semibold text-[var(--text-primary)]">
             {amountForeign} {currency}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-neutral-500 mb-0.5">Tasa</div>
-          <div className="font-semibold text-neutral-300">
+          <div className="text-[var(--text-faint)] mb-0.5">Tasa</div>
+          <div className="font-semibold text-[var(--text-secondary)]">
             1 {currency} = {rate} CUP
           </div>
         </div>
       </div>
 
       {/* Date Footer */}
-      <div className="flex items-center gap-1 mt-3 text-[10px] text-neutral-500">
+      <div className="flex items-center gap-1 mt-3 text-[10px] text-[var(--text-faint)]">
         <Calendar className="w-3 h-3" />
         <span>{formatDateTime(transaction.date)}</span>
       </div>
@@ -277,8 +280,8 @@ export function HistoryDrawer() {
       if (buy > 0 || sell > 0) {
         lines.push(
           `  ${currency}: Compra ${formatNumber(buy)} | Venta ${formatNumber(
-            sell
-          )}`
+            sell,
+          )}`,
         );
       }
     });
@@ -300,7 +303,7 @@ export function HistoryDrawer() {
 
       lines.push(`${index + 1}. ${type}`);
       lines.push(
-        `   ${amount} ${currency} @ ${rate} = ${formatNumber(txn.totalCUP)} CUP`
+        `   ${amount} ${currency} @ ${rate} = ${formatNumber(txn.totalCUP)} CUP`,
       );
       lines.push(`   📅 ${date}`);
       lines.push("");
@@ -335,10 +338,10 @@ export function HistoryDrawer() {
             // Empty state
             <div className="empty-state py-16">
               <History className="empty-state-icon" />
-              <p className="text-neutral-400 font-medium">
+              <p className="text-[var(--text-muted)] font-medium">
                 No hay transacciones
               </p>
-              <p className="text-xs text-neutral-500 mt-1">
+              <p className="text-xs text-[var(--text-faint)] mt-1">
                 Las operaciones registradas aparecerán aquí
               </p>
             </div>
@@ -346,7 +349,7 @@ export function HistoryDrawer() {
             <>
               {/* Stats & Actions Row */}
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-neutral-500">
+                <span className="text-sm text-[var(--text-faint)]">
                   {transactions.length} operación
                   {transactions.length !== 1 ? "es" : ""}
                 </span>

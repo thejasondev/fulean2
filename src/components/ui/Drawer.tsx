@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Drawer Component
 // Mobile-friendly bottom sheet with drag handle
+// Theme-aware using CSS variables
 // ============================================
 
 interface DrawerProps {
@@ -47,8 +48,8 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
       <div
         className={cn(
           "absolute inset-0",
-          "bg-black/80 backdrop-blur-sm",
-          "animate-fade-in"
+          "bg-[var(--backdrop-bg)] backdrop-blur-sm",
+          "animate-fade-in",
         )}
         onClick={onClose}
         aria-hidden="true"
@@ -58,11 +59,11 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
       <div
         className={cn(
           "absolute bottom-0 left-0 right-0",
-          "bg-neutral-900 border-t border-neutral-800",
+          "bg-[var(--bg-primary)] border-t border-[var(--border-primary)]",
           "rounded-t-2xl",
           "max-h-[85vh] overflow-hidden",
           "animate-slide-up",
-          "safe-bottom"
+          "safe-bottom",
         )}
         role="dialog"
         aria-modal="true"
@@ -70,7 +71,7 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
       >
         {/* Drag Handle */}
         <div className="flex justify-center py-3">
-          <div className="w-10 h-1 bg-neutral-700 rounded-full" />
+          <div className="w-10 h-1 bg-[var(--border-secondary)] rounded-full" />
         </div>
 
         {/* Header */}
@@ -79,10 +80,13 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
             className={cn(
               "flex items-center justify-between",
               "px-5 py-2",
-              "border-b border-neutral-800"
+              "border-b border-[var(--border-primary)]",
             )}
           >
-            <h2 id="drawer-title" className="text-lg font-semibold text-white">
+            <h2
+              id="drawer-title"
+              className="text-lg font-semibold text-[var(--text-primary)]"
+            >
               {title}
             </h2>
             <button
@@ -90,9 +94,9 @@ export function Drawer({ isOpen, onClose, title, children }: DrawerProps) {
               className={cn(
                 "w-10 h-10 -mr-2",
                 "flex items-center justify-center",
-                "text-neutral-400 hover:text-white",
-                "hover:bg-neutral-800 rounded-full",
-                "transition-colors duration-200"
+                "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+                "hover:bg-[var(--bg-secondary)] rounded-full",
+                "transition-colors duration-200",
               )}
               aria-label="Cerrar"
             >

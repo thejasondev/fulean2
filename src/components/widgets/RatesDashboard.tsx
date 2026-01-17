@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import { useStore } from "@nanostores/react";
-import { RefreshCw, Settings, WifiOff, Zap, Pencil, Heart } from "lucide-react";
+import {
+  RefreshCw,
+  Settings,
+  WifiOff,
+  Zap,
+  Pencil,
+  Heart,
+  Sun,
+  Moon,
+} from "lucide-react";
 import {
   $buyRates,
   $sellRates,
@@ -15,8 +24,9 @@ import {
   loadElToqueRates,
 } from "../../stores/ratesStore";
 import { openSettings, openDonation } from "../../stores/uiStore";
+import { $theme, toggleTheme } from "../../stores/themeStore";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
-import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatLastUpdate } from "../../lib/eltoque-api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -24,6 +34,7 @@ import { Button } from "../ui/Button";
 // ============================================
 // RatesDashboard Component
 // Shows Buy/Sell rates + El Toque reference
+// Theme-aware using CSS variables
 // ============================================
 
 function RateTickerCard({
@@ -56,22 +67,22 @@ function RateTickerCard({
         "snap-start shrink-0",
         "flex flex-col justify-between",
         "w-[105px] h-full p-2.5",
-        "bg-neutral-900/50 backdrop-blur-sm",
-        "border border-white/5 rounded-xl",
+        "bg-[var(--bg-primary)]/50 backdrop-blur-sm",
+        "border border-[var(--border-muted)] rounded-xl",
         "transition-all duration-200 active:scale-95",
-        "text-left hover:bg-neutral-800/50"
+        "text-left hover:bg-[var(--bg-hover)]",
       )}
     >
       {/* Row 1: Header */}
       <div className="flex items-center justify-between w-full mb-1">
         <div className="flex items-center gap-1">
           <span className="text-xs">{meta.flag}</span>
-          <span className="text-[10px] font-bold text-neutral-400">
+          <span className="text-[10px] font-bold text-[var(--text-muted)]">
             {currency}
           </span>
         </div>
         {isDigital && (
-          <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+          <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[var(--purple-bg)] text-[var(--purple)]">
             DIG
           </span>
         )}
@@ -79,11 +90,11 @@ function RateTickerCard({
 
       {/* Row 2: Buy/Sell Rates */}
       <div className="flex items-baseline gap-1">
-        <span className="text-lg font-bold text-emerald-400 tabular-nums leading-none">
+        <span className="text-lg font-bold text-[var(--status-success)] tabular-nums leading-none">
           {isLoading ? "-" : buyRate}
         </span>
-        <span className="text-neutral-600">/</span>
-        <span className="text-lg font-bold text-amber-400 tabular-nums leading-none">
+        <span className="text-[var(--text-faint)]">/</span>
+        <span className="text-lg font-bold text-[var(--status-warning)] tabular-nums leading-none">
           {isLoading ? "-" : sellRate}
         </span>
       </div>
@@ -93,24 +104,26 @@ function RateTickerCard({
         {elToqueRate ? (
           <div className="flex items-center gap-1">
             {isManual ? (
-              <Pencil size={8} className="text-purple-400" />
+              <Pencil size={8} className="text-[var(--purple)]" />
             ) : (
-              <Zap size={8} className="text-blue-400" />
+              <Zap size={8} className="text-[var(--blue)]" />
             )}
             <span
               className={cn(
                 "text-[9px] tabular-nums font-bold",
-                isManual ? "text-purple-400" : "text-blue-400"
+                isManual ? "text-[var(--purple)]" : "text-[var(--blue)]",
               )}
             >
               {elToqueRate}
             </span>
           </div>
         ) : (
-          <span className="text-[9px] text-neutral-500">{meta.name}</span>
+          <span className="text-[9px] text-[var(--text-faint)]">
+            {meta.name}
+          </span>
         )}
         {hasSpread && (
-          <span className="text-[9px] font-bold text-emerald-400 tabular-nums">
+          <span className="text-[9px] font-bold text-[var(--status-success)] tabular-nums">
             +{spread}
           </span>
         )}
@@ -127,16 +140,16 @@ function ElToqueBanner() {
   if (!elToqueRates && !isLoading) return null;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 border-b border-blue-500/20">
-      <Zap size={12} className="text-blue-400" />
-      <span className="text-[10px] text-blue-400 font-medium">
+    <div className="flex items-center gap-2 px-4 py-1.5 bg-[var(--blue-bg)] border-b border-[var(--blue)]/20">
+      <Zap size={12} className="text-[var(--blue)]" />
+      <span className="text-[10px] text-[var(--blue)] font-medium">
         {isLoading
           ? "Cargando El Toque..."
           : `El Toque: ${formatLastUpdate(
-              elToqueRates?.lastUpdate || new Date()
+              elToqueRates?.lastUpdate || new Date(),
             )}`}
       </span>
-      <span className="text-[10px] text-blue-400/60">
+      <span className="text-[10px] text-[var(--blue)]/60">
         • Referencia mercado informal
       </span>
     </div>
@@ -152,6 +165,7 @@ export function RatesDashboard() {
   const visibleCurrencies = useStore($visibleCurrencies);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
+  const theme = useStore($theme) ?? "dark";
 
   // Load El Toque rates on mount
   useEffect(() => {
@@ -162,8 +176,8 @@ export function RatesDashboard() {
     <header
       className={cn(
         "sticky top-0 z-40",
-        "bg-neutral-950/85 backdrop-blur-xl",
-        "border-b border-neutral-800/60"
+        "bg-[var(--bg-base)]/85 backdrop-blur-xl",
+        "border-b border-[var(--border-primary)]/60",
       )}
     >
       {/* Inner container with safe-area padding */}
@@ -176,14 +190,14 @@ export function RatesDashboard() {
               onClick={(e) => e.preventDefault()}
               className="group flex items-center cursor-pointer hover:opacity-80 transition-opacity"
             >
-              <span className="font-sans font-extrabold text-xl md:text-2xl tracking-tighter text-white">
+              <span className="font-sans font-extrabold text-xl md:text-2xl tracking-tighter text-[var(--text-primary)]">
                 Fulean
               </span>
               <span
                 className={cn(
                   "font-sans font-extrabold text-xl md:text-2xl tracking-tighter",
                   "bg-linear-to-tr from-emerald-400 to-green-300 bg-clip-text text-transparent",
-                  "drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]"
+                  "drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]",
                 )}
               >
                 2
@@ -191,9 +205,9 @@ export function RatesDashboard() {
             </a>
 
             {isOffline && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                <WifiOff size={12} className="text-amber-400" />
-                <span className="text-[10px] font-bold text-amber-400">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/20">
+                <WifiOff size={12} className="text-[var(--status-warning)]" />
+                <span className="text-[10px] font-bold text-[var(--status-warning)]">
                   OFFLINE
                 </span>
               </div>
@@ -205,7 +219,7 @@ export function RatesDashboard() {
               variant="ghost"
               size="sm"
               onClick={refreshRates}
-              className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
+              className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
               title="Actualizar tasas"
             >
               <RefreshCw
@@ -217,7 +231,7 @@ export function RatesDashboard() {
               variant="ghost"
               size="sm"
               onClick={openSettings}
-              className="h-8 w-8 p-0 text-neutral-500 hover:text-white"
+              className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
               title="Configuración"
             >
               <Settings size={14} />
@@ -225,8 +239,17 @@ export function RatesDashboard() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={toggleTheme}
+              className="h-8 w-8 p-0 text-[var(--status-warning)] hover:text-[var(--status-warning)]"
+              title={theme === "sunlight" ? "Modo oscuro" : "Modo sunlight"}
+            >
+              {theme === "sunlight" ? <Moon size={14} /> : <Sun size={14} />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={openDonation}
-              className="h-8 w-8 p-0 text-pink-400 hover:text-pink-300"
+              className="h-8 w-8 p-0 text-[var(--pink)] hover:text-[var(--pink)]"
               title="Apoyar"
             >
               <Heart size={14} />
@@ -236,14 +259,14 @@ export function RatesDashboard() {
 
         {/* Rate Legend */}
         <div className="flex items-center gap-2 pr-4 mb-2 text-[10px]">
-          <span className="text-emerald-400">Compra</span>
-          <span className="text-neutral-600">/</span>
-          <span className="text-amber-400">Venta</span>
+          <span className="text-[var(--status-success)]">Compra</span>
+          <span className="text-[var(--text-faint)]">/</span>
+          <span className="text-[var(--status-warning)]">Venta</span>
           {elToqueRates && (
             <>
-              <span className="text-neutral-600 ml-2">•</span>
-              <Zap size={10} className="text-blue-400" />
-              <span className="text-blue-400">El Toque</span>
+              <span className="text-[var(--text-faint)] ml-2">•</span>
+              <Zap size={10} className="text-[var(--blue)]" />
+              <span className="text-[var(--blue)]">El Toque</span>
             </>
           )}
         </div>

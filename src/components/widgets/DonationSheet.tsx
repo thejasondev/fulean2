@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "@nanostores/react";
-import { Heart, Smartphone, X } from "lucide-react";
+import { Heart, Smartphone } from "lucide-react";
 import { $isDonationOpen, closeDonation } from "../../stores/uiStore";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
@@ -9,6 +9,7 @@ import { Input } from "../ui/Input";
 // ============================================
 // DonationSheet Component
 // Bank Card Transfer for supporting development
+// Theme-aware using CSS variables
 // ============================================
 
 export function DonationSheet() {
@@ -56,29 +57,29 @@ export function DonationSheet() {
       isOpen={isOpen}
       onClose={closeDonation}
       title="Apoya el Desarrollo"
-      maxWidth="max-w-md"
+      size="md"
     >
-      <div className="space-y-4">
+      <div className="p-4 space-y-4">
         {/* Heart Icon */}
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-pink-500/15 flex items-center justify-center">
-            <Heart className="w-8 h-8 text-pink-400" />
+          <div className="w-16 h-16 rounded-2xl bg-[var(--pink-bg)] flex items-center justify-center">
+            <Heart className="w-8 h-8 text-[var(--pink)]" />
           </div>
         </div>
 
         {/* Message */}
-        <p className="text-sm text-neutral-400 text-center">
+        <p className="text-sm text-[var(--text-muted)] text-center">
           Tu donación ayuda a mantener Fulean2 gratis y en constante mejora.
           ¡Gracias por tu apoyo!
         </p>
 
         {/* Card Number Display */}
-        <div className="bg-neutral-950 rounded-xl p-4 border border-neutral-800">
-          <p className="text-[10px] text-neutral-500 uppercase mb-2">
+        <div className="bg-[var(--bg-base)] rounded-xl p-4 border border-[var(--border-primary)]">
+          <p className="text-[10px] text-[var(--text-faint)] uppercase mb-2">
             Transferir a tarjeta:
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-xl font-mono font-bold text-white tracking-wider">
+            <span className="text-xl font-mono font-bold text-[var(--text-primary)] tracking-wider">
               {CARD_NUMBER}
             </span>
             <button
@@ -86,8 +87,8 @@ export function DonationSheet() {
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-bold transition-all",
                 copied
-                  ? "bg-emerald-500/20 text-emerald-400"
-                  : "bg-neutral-800 text-neutral-400 hover:text-white"
+                  ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]",
               )}
             >
               {copied ? "✓ Copiado" : "Copiar"}
@@ -104,8 +105,8 @@ export function DonationSheet() {
               className={cn(
                 "py-4 rounded-xl font-bold text-base transition-all border",
                 selectedAmount === amount
-                  ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
-                  : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                  ? "bg-[var(--pink-bg)] border-[var(--pink)]/50 text-[var(--pink)]"
+                  : "bg-[var(--bg-base)] border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-secondary)]",
               )}
             >
               {amount} CUP
@@ -121,8 +122,8 @@ export function DonationSheet() {
           value={customAmount}
           onChange={(e) => handleCustomChange(e.target.value)}
           className={cn(
-            "bg-neutral-950 border-neutral-800 text-center text-lg",
-            customAmount && "border-pink-500/50"
+            "bg-[var(--bg-base)] border-[var(--border-primary)] text-center text-lg",
+            customAmount && "border-[var(--pink)]/50",
           )}
         />
 
@@ -133,8 +134,8 @@ export function DonationSheet() {
           className={cn(
             "w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2",
             finalAmount >= 50
-              ? "bg-pink-500 text-white hover:bg-pink-600"
-              : "bg-neutral-800 text-neutral-600 cursor-not-allowed"
+              ? "bg-[var(--pink)] text-[var(--text-inverted)] hover:opacity-90"
+              : "bg-[var(--bg-secondary)] text-[var(--text-faint)] cursor-not-allowed",
           )}
         >
           <Smartphone className="w-5 h-5" />
@@ -144,9 +145,9 @@ export function DonationSheet() {
         </button>
 
         {/* Instructions */}
-        <div className="p-3 bg-neutral-950 rounded-lg border border-neutral-800">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            <strong className="text-neutral-400">Cómo donar:</strong>
+        <div className="p-3 bg-[var(--bg-base)] rounded-lg border border-[var(--border-primary)]">
+          <p className="text-xs text-[var(--text-faint)] leading-relaxed">
+            <strong className="text-[var(--text-muted)]">Cómo donar:</strong>
             <br />
             1. Autentícate desde tu app bancaria y vuelve a nuestra app.
             <br />

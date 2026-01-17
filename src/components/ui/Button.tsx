@@ -4,6 +4,7 @@ import { cn } from "../../lib/utils";
 // ============================================
 // Button Component
 // Accessible, touch-friendly button with variants
+// Theme-aware using CSS variables
 // ============================================
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -38,32 +39,32 @@ export function Button({
     // Active state
     "active:scale-[0.97]",
     // Disabled state
-    "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+    "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
   );
 
   const variants = {
     primary: cn(
-      "bg-emerald-500 text-white",
-      "hover:bg-emerald-400",
+      "bg-[var(--accent)] text-[var(--text-inverted)]",
+      "hover:bg-[var(--accent-hover)]",
       "shadow-md hover:shadow-lg",
-      "focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+      "focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]",
     ),
     secondary: cn(
-      "bg-neutral-800 text-neutral-200",
-      "border border-neutral-700",
-      "hover:bg-neutral-700 hover:border-neutral-600",
-      "focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+      "bg-[var(--bg-secondary)] text-[var(--text-secondary)]",
+      "border border-[var(--border-secondary)]",
+      "hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-secondary)]",
+      "focus-visible:ring-2 focus-visible:ring-[var(--text-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]",
     ),
     ghost: cn(
-      "bg-transparent text-neutral-400",
-      "hover:bg-neutral-800 hover:text-white",
-      "focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+      "bg-transparent text-[var(--text-muted)]",
+      "hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]",
+      "focus-visible:ring-2 focus-visible:ring-[var(--text-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]",
     ),
     danger: cn(
-      "bg-red-500/10 text-red-400",
-      "border border-red-500/30",
-      "hover:bg-red-500/20 hover:border-red-500/50",
-      "focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
+      "bg-[var(--status-error-bg)] text-[var(--status-error)]",
+      "border border-[var(--status-error)]/30",
+      "hover:bg-[var(--status-error)]/20 hover:border-[var(--status-error)]/50",
+      "focus-visible:ring-2 focus-visible:ring-[var(--status-error)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]",
     ),
   };
 

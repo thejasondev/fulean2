@@ -32,6 +32,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // TransactionForm Component
 // Uses Buy/Sell rates based on operation type
+// Theme-aware using CSS variables
 // ============================================
 
 export function TransactionForm() {
@@ -146,8 +147,6 @@ export function TransactionForm() {
     const txn = saveTransaction(operation, currency, foreign, r, cup, spread);
 
     // Record capital movement
-    // BUY = you pay CUP (money out)
-    // SELL = you receive CUP (money in)
     recordCapitalMovement(operation === "BUY" ? "OUT" : "IN", cup, txn.id);
 
     // Clear the counter (reset bill counts to 0)
@@ -167,33 +166,35 @@ export function TransactionForm() {
   const theme =
     operation === "BUY"
       ? {
-          text: "text-emerald-400",
-          bg: "bg-emerald-500/10",
-          border: "border-emerald-500/20",
-          input: "focus:border-emerald-500 focus:ring-emerald-500/20",
+          text: "text-[var(--status-success)]",
+          bg: "bg-[var(--status-success-bg)]",
+          border: "border-[var(--status-success)]/20",
+          input:
+            "focus:border-[var(--status-success)] focus:ring-[var(--status-success)]/20",
         }
       : {
-          text: "text-amber-400",
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/20",
-          input: "focus:border-amber-500 focus:ring-amber-500/20",
+          text: "text-[var(--status-warning)]",
+          bg: "bg-[var(--status-warning-bg)]",
+          border: "border-[var(--status-warning)]/20",
+          input:
+            "focus:border-[var(--status-warning)] focus:ring-[var(--status-warning)]/20",
         };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-950 p-4 overflow-y-auto pb-32">
-      <label className="block text-sm text-neutral-500 mb-2 font-medium">
+    <div className="flex flex-col h-full bg-[var(--bg-base)] p-4 overflow-y-auto pb-32">
+      <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
         Tipo de operación
       </label>
       {/* Segmented Control */}
-      <div className="flex p-1 bg-neutral-900 rounded-xl mb-6 border border-neutral-800">
+      <div className="flex p-1 bg-[var(--bg-primary)] rounded-xl mb-6 border border-[var(--border-primary)]">
         <button
           onClick={() => setOperation("BUY")}
           className={cn(
             "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
             "flex items-center justify-center gap-2",
             operation === "BUY"
-              ? "bg-neutral-800 text-emerald-400 shadow-lg"
-              : "text-neutral-500 hover:text-neutral-300"
+              ? "bg-[var(--bg-secondary)] text-[var(--status-success)] shadow-lg"
+              : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
           )}
         >
           <ArrowDownLeft className="w-4 h-4" />
@@ -205,8 +206,8 @@ export function TransactionForm() {
             "flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
             "flex items-center justify-center gap-2",
             operation === "SELL"
-              ? "bg-neutral-800 text-amber-400 shadow-lg"
-              : "text-neutral-500 hover:text-neutral-300"
+              ? "bg-[var(--bg-secondary)] text-[var(--status-warning)] shadow-lg"
+              : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
           )}
         >
           <ArrowUpRight className="w-4 h-4" />
@@ -216,7 +217,7 @@ export function TransactionForm() {
 
       {/* Currency Selector - Grid */}
       <div className="mb-6">
-        <label className="block text-sm text-neutral-500 mb-2 font-medium">
+        <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
           Moneda
         </label>
         <div className="grid grid-cols-3 gap-2">
@@ -238,15 +239,15 @@ export function TransactionForm() {
                         theme.bg,
                         theme.border,
                         theme.text,
-                        "border-opacity-50"
+                        "border-opacity-50",
                       )
-                    : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                    : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-muted)] hover:border-[var(--border-secondary)]",
                 )}
               >
                 <div className="flex items-center gap-1 mb-0.5">
                   <span className="text-lg">{meta.flag}</span>
                   {isDigital && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-500/20 text-purple-400">
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[var(--purple-bg)] text-[var(--purple)]">
                       DIG
                     </span>
                   )}
@@ -263,7 +264,7 @@ export function TransactionForm() {
         className={cn(
           "space-y-4 p-5 rounded-2xl border mb-6",
           theme.bg,
-          theme.border
+          theme.border,
         )}
       >
         {/* Foreign Amount */}
@@ -271,7 +272,7 @@ export function TransactionForm() {
           <label
             className={cn(
               "block text-xs font-medium mb-1.5 uppercase tracking-wide",
-              theme.text
+              theme.text,
             )}
           >
             Monto ({currency})
@@ -284,11 +285,11 @@ export function TransactionForm() {
               onChange={(e) => handleForeignChange(e.target.value)}
               className={cn(
                 "text-lg font-bold tabular-nums pr-12",
-                theme.input
+                theme.input,
               )}
               placeholder="0.00"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-sm">
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
               {currency}
             </span>
           </div>
@@ -296,7 +297,7 @@ export function TransactionForm() {
 
         {/* Exchange Rate */}
         <div>
-          <label className="block text-xs text-neutral-500 font-medium mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
             Tasa de cambio
           </label>
           <div className="relative">
@@ -308,7 +309,7 @@ export function TransactionForm() {
               className="text-lg font-bold tabular-nums pr-12 text-center"
               placeholder="0"
             />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs">
               CUP/1{currency}
             </div>
           </div>
@@ -316,7 +317,7 @@ export function TransactionForm() {
 
         {/* Total CUP */}
         <div>
-          <label className="block text-xs text-neutral-500 font-medium mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
             Total a pagar/recibir
           </label>
           <div className="relative">
@@ -328,11 +329,11 @@ export function TransactionForm() {
               className={cn(
                 "text-2xl font-bold tabular-nums pr-12",
                 theme.text,
-                theme.input
+                theme.input,
               )}
               placeholder="0"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 font-bold text-sm">
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
               CUP
             </span>
           </div>
@@ -370,12 +371,12 @@ export function TransactionForm() {
           className={cn(
             "flex-1 font-bold text-lg shadow-xl",
             operation === "BUY"
-              ? "bg-emerald-500 hover:bg-emerald-600"
-              : "bg-amber-500 hover:bg-amber-600"
+              ? "bg-[var(--accent)] hover:bg-[var(--accent-hover)]"
+              : "bg-[var(--status-warning)] hover:opacity-90",
           )}
         >
           <Check className="w-6 h-6 mr-2" />
-          {operation === "BUY" ? "Registrar" : "Registrar"}
+          Registrar
         </Button>
       </div>
     </div>
