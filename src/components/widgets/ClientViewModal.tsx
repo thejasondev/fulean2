@@ -1,10 +1,10 @@
 import { useStore } from "@nanostores/react";
-import { ArrowDown, X } from "lucide-react";
+import { ArrowDown, X, RefreshCw } from "lucide-react";
 import {
   $isClientViewOpen,
-  $clientViewData,
+  $transactionFormState,
   closeClientView,
-} from "../../stores/uiStore";
+} from "../../stores/transactionFormStore";
 import { formatNumber, formatCurrency } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { useHaptic } from "../../hooks/useHaptic";
@@ -12,15 +12,15 @@ import { useHaptic } from "../../hooks/useHaptic";
 // ============================================
 // ClientViewModal Component
 // Full-screen customer-facing display (Trust Builder)
-// Theme-aware using CSS variables
+// Theme-aware with operation color coding
 // ============================================
 
 export function ClientViewModal() {
   const isOpen = useStore($isClientViewOpen);
-  const data = useStore($clientViewData);
+  const data = useStore($transactionFormState);
   const haptic = useHaptic();
 
-  if (!isOpen || !data) return null;
+  if (!isOpen || !data.isValid) return null;
 
   const handleClose = () => {
     haptic.light();
@@ -28,18 +28,46 @@ export function ClientViewModal() {
   };
 
   const isBuy = data.operation === "BUY";
+  const isSell = data.operation === "SELL";
+  const isExchange = data.operation === "EXCHANGE";
 
-  // Determine display labels based on operation
+  // Theme based on operation
+  const theme = isExchange
+    ? { primary: "text-[var(--blue)]", secondary: "text-[var(--blue)]" }
+    : isBuy
+      ? {
+          primary: "text-[var(--status-warning)]",
+          secondary: "text-[var(--status-success)]",
+        }
+      : {
+          primary: "text-[var(--status-success)]",
+          secondary: "text-[var(--status-warning)]",
+        };
+
+  // Display values
   const topLabel = "USTED ENTREGA";
   const bottomLabel = "USTED RECIBE";
 
-  const topAmount = isBuy
-    ? formatCurrency(data.foreignAmount, data.foreignCurrency as any)
-    : formatNumber(data.cupAmount) + " CUP";
+  let topAmount: string;
+  let bottomAmount: string;
+  let rateText: string;
 
-  const bottomAmount = isBuy
-    ? formatNumber(data.cupAmount) + " CUP"
-    : formatCurrency(data.foreignAmount, data.foreignCurrency as any);
+  if (isExchange) {
+    topAmount = formatCurrency(data.amount, data.fromCurrency as any);
+    bottomAmount = formatCurrency(
+      data.amountReceived || 0,
+      data.toCurrency as any,
+    );
+    rateText = `1 ${data.fromCurrency} = ${data.exchangeRate} ${data.toCurrency}`;
+  } else if (isBuy) {
+    topAmount = formatCurrency(data.amount, data.currency as any);
+    bottomAmount = formatNumber(data.totalCUP) + " CUP";
+    rateText = `1 ${data.currency} = ${formatNumber(data.rate)} CUP`;
+  } else {
+    topAmount = formatNumber(data.totalCUP) + " CUP";
+    bottomAmount = formatCurrency(data.amount, data.currency as any);
+    rateText = `1 ${data.currency} = ${formatNumber(data.rate)} CUP`;
+  }
 
   return (
     <div
@@ -52,10 +80,11 @@ export function ClientViewModal() {
         "select-none",
       )}
     >
-      {/* Close hint */}
+      {/* Close button - Only visible on desktop since tapping anywhere closes on mobile */}
       <button
         onClick={handleClose}
-        className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors"
+        className="hidden md:flex absolute top-6 right-6 w-12 h-12 items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-faint)] hover:text-[var(--text-primary)] transition-colors"
+        aria-label="Cerrar"
       >
         <X size={24} />
       </button>
@@ -68,9 +97,7 @@ export function ClientViewModal() {
         <div
           className={cn(
             "text-5xl md:text-7xl font-black tabular-nums tracking-tight",
-            isBuy
-              ? "text-[var(--status-warning)]"
-              : "text-[var(--status-success)]",
+            theme.primary,
           )}
         >
           {topAmount}
@@ -80,7 +107,11 @@ export function ClientViewModal() {
       {/* Arrow Indicator */}
       <div className="my-8 animate-bounce">
         <div className="w-16 h-16 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center">
-          <ArrowDown size={32} className="text-[var(--text-muted)]" />
+          {isExchange ? (
+            <RefreshCw size={32} className="text-[var(--blue)]" />
+          ) : (
+            <ArrowDown size={32} className="text-[var(--text-muted)]" />
+          )}
         </div>
       </div>
 
@@ -92,9 +123,7 @@ export function ClientViewModal() {
         <div
           className={cn(
             "text-5xl md:text-7xl font-black tabular-nums tracking-tight",
-            isBuy
-              ? "text-[var(--status-success)]"
-              : "text-[var(--status-warning)]",
+            theme.secondary,
           )}
         >
           {bottomAmount}
@@ -103,9 +132,7 @@ export function ClientViewModal() {
 
       {/* Rate Footer */}
       <div className="absolute bottom-12 left-0 right-0 text-center">
-        <div className="text-sm text-[var(--text-faint)]">
-          Tasa: 1 {data.foreignCurrency} = {data.rate} CUP
-        </div>
+        <div className="text-sm text-[var(--text-faint)]">Tasa: {rateText}</div>
         <div className="text-xs text-[var(--text-faint)]/60 mt-2">
           Toca para cerrar
         </div>

@@ -10,9 +10,14 @@ import {
 import {
   $pendingCUP,
   clearPendingCUP,
-  openClientView,
   goToCounter,
 } from "../../stores/uiStore";
+import {
+  setTransactionFormState,
+  clearTransactionFormState,
+  registerSubmitCallback,
+  unregisterSubmitCallback,
+} from "../../stores/transactionFormStore";
 import { clearAll } from "../../stores/counterStore";
 import { recordCapitalMovement } from "../../stores/capitalStore";
 import {
@@ -114,6 +119,67 @@ export function TransactionForm() {
     }
   }, [operation]);
 
+  // Sync form state to transactionFormStore for footer integration
+  useEffect(() => {
+    const foreignAmount = parseFloat(amountForeign) || 0;
+    const rateNum = parseFloat(rate) || 0;
+    const cupAmount = parseFloat(totalCUP) || 0;
+    const exchRate = parseFloat(exchangeRate) || 0;
+    const exchAmount = parseFloat(exchangeAmount) || 0;
+    const amountReceived = Math.round(exchAmount * exchRate * 100) / 100;
+
+    setTransactionFormState({
+      operation,
+      amount: operation === "EXCHANGE" ? exchAmount : foreignAmount,
+      currency,
+      rate: rateNum,
+      totalCUP: cupAmount,
+      isValid:
+        operation === "EXCHANGE"
+          ? exchAmount > 0 && exchRate > 0 && fromCurrency !== toCurrency
+          : foreignAmount > 0 && rateNum > 0 && cupAmount > 0,
+      walletId: targetWalletId,
+      // Exchange-specific
+      fromCurrency: operation === "EXCHANGE" ? fromCurrency : undefined,
+      toCurrency: operation === "EXCHANGE" ? toCurrency : undefined,
+      exchangeRate: operation === "EXCHANGE" ? exchRate : undefined,
+      amountReceived: operation === "EXCHANGE" ? amountReceived : undefined,
+    });
+  }, [
+    operation,
+    amountForeign,
+    currency,
+    rate,
+    totalCUP,
+    targetWalletId,
+    fromCurrency,
+    toCurrency,
+    exchangeRate,
+    exchangeAmount,
+  ]);
+
+  // Register submit callback for footer button
+  useEffect(() => {
+    registerSubmitCallback(handleSubmit);
+    return () => unregisterSubmitCallback();
+  }, [
+    operation,
+    amountForeign,
+    rate,
+    totalCUP,
+    currency,
+    targetWalletId,
+    exchangeAmount,
+    exchangeRate,
+    fromCurrency,
+    toCurrency,
+  ]);
+
+  // Clear form state when unmounting
+  useEffect(() => {
+    return () => clearTransactionFormState();
+  }, []);
+
   // Handle currency change
   const handleCurrencyChange = (newCurr: TransactionCurrency) => {
     setCurrency(newCurr);
@@ -155,6 +221,39 @@ export function TransactionForm() {
   };
 
   const handleSubmit = () => {
+    // Handle EXCHANGE operation
+    if (operation === "EXCHANGE") {
+      const amount = parseFloat(exchangeAmount);
+      const exchRate = parseFloat(exchangeRate);
+
+      if (!amount || !exchRate) {
+        toast.warning("Complete todos los campos");
+        return;
+      }
+
+      if (fromCurrency === toCurrency) {
+        toast.warning("Seleccione monedas diferentes");
+        return;
+      }
+
+      saveExchangeTransaction(
+        fromCurrency,
+        toCurrency,
+        amount,
+        exchRate,
+        targetWalletId,
+      );
+      toast.success(
+        `Cambio registrado: ${amount} ${fromCurrency} → ${(amount * exchRate).toFixed(2)} ${toCurrency}`,
+      );
+
+      // Reset form
+      setExchangeAmount("");
+      goToCounter();
+      return;
+    }
+
+    // Handle BUY/SELL operations
     const foreign = parseFloat(amountForeign);
     const r = parseFloat(rate);
     const cup = parseFloat(totalCUP);
@@ -462,34 +561,7 @@ export function TransactionForm() {
             </div>
           )}
 
-          {/* Exchange Submit Button */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              size="lg"
-              onClick={() => {
-                const amount = parseFloat(exchangeAmount);
-                const rate = parseFloat(exchangeRate);
-
-                if (!amount || !rate) {
-                  toast.warning("Complete todos los campos");
-                  return;
-                }
-
-                saveExchangeTransaction(fromCurrency, toCurrency, amount, rate);
-                toast.success(
-                  `Cambio registrado: ${amount} ${fromCurrency} → ${(amount * rate).toFixed(2)} ${toCurrency}`,
-                );
-
-                // Reset form
-                setExchangeAmount("");
-                goToCounter();
-              }}
-              className="flex-1 font-bold text-lg shadow-xl bg-[var(--blue)] hover:opacity-90"
-            >
-              <RefreshCw className="w-5 h-5 mr-2" />
-              Registrar Cambio
-            </Button>
-          </div>
+          {/* Exchange button moved to footer */}
         </div>
       )}
 
@@ -613,46 +685,7 @@ export function TransactionForm() {
               </div>
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            {/* Show to Client Button */}
-            {foreignAmount > 0 && parseFloat(totalCUP) > 0 && (
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => {
-                  haptic.medium();
-                  openClientView({
-                    foreignAmount,
-                    foreignCurrency: currency,
-                    cupAmount: parseFloat(totalCUP),
-                    rate: parseFloat(rate),
-                    operation,
-                  });
-                }}
-                className="flex-1 font-bold"
-              >
-                <Eye className="w-5 h-5 mr-2" />
-                Mostrar
-              </Button>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              size="lg"
-              onClick={handleSubmit}
-              className={cn(
-                "flex-1 font-bold text-lg shadow-xl",
-                operation === "BUY"
-                  ? "bg-[var(--accent)] hover:bg-[var(--accent-hover)]"
-                  : "bg-[var(--status-warning)] hover:opacity-90",
-              )}
-            >
-              <Check className="w-6 h-6 mr-2" />
-              Registrar
-            </Button>
-          </div>
+          {/* Buttons moved to footer */}
         </>
       )}
     </div>

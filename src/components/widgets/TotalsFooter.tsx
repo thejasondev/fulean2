@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useStore } from "@nanostores/react";
-import { Eye, EyeOff, Trash2, Clock, ArrowRightLeft } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Trash2,
+  Clock,
+  ArrowRightLeft,
+  Check,
+  RefreshCw,
+} from "lucide-react";
 import {
   $grandTotalCUP,
   $foreignTotals,
@@ -10,7 +18,17 @@ import {
   clearAll,
 } from "../../stores/counterStore";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
-import { useInTransaction, openHistoryDrawer } from "../../stores/uiStore";
+import {
+  $activeTab,
+  useInTransaction,
+  openHistoryDrawer,
+} from "../../stores/uiStore";
+import {
+  $transactionFormState,
+  $canSubmitTransaction,
+  openClientView,
+  executeSubmitFromFooter,
+} from "../../stores/transactionFormStore";
 import { confirm } from "../../stores/confirmStore";
 import { formatNumber, formatCurrency } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
@@ -36,6 +54,10 @@ export function TotalsFooter() {
   };
   const privacyMode = useStore($privacyMode) ?? false;
   const operation = useStore($counterOperation);
+  const activeTab = useStore($activeTab);
+  const formState = useStore($transactionFormState);
+  const canSubmit = useStore($canSubmitTransaction);
+  const isInOperar = activeTab === "operar";
   const visibleCurrencies = useStore($visibleCurrencies);
   const { toast } = useToast();
   const haptic = useHaptic();
@@ -214,17 +236,36 @@ export function TotalsFooter() {
               CUP
             </span>
 
-            {/* Privacy Toggle - Inline with total */}
+            {/* Eye Button - Context Aware, larger when active */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 haptic.light();
-                togglePrivacyMode();
+                if (isInOperar && canSubmit) {
+                  openClientView();
+                } else {
+                  togglePrivacyMode();
+                }
               }}
-              className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-colors ml-1"
-              aria-label="Modo privado"
+              className={cn(
+                "flex items-center justify-center rounded-full transition-all duration-200 ml-2",
+                // Bigger size when in Operar with valid form
+                isInOperar && canSubmit
+                  ? "w-10 h-10 bg-[var(--blue-bg)] text-[var(--blue)] shadow-sm hover:shadow-md"
+                  : "w-8 h-8 text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--bg-hover)]",
+              )}
+              aria-label={
+                isInOperar && canSubmit ? "Mostrar al cliente" : "Modo privado"
+              }
+              title={
+                isInOperar && canSubmit ? "Mostrar al cliente" : "Modo privado"
+              }
             >
-              {privacyMode ? <EyeOff size={14} /> : <Eye size={14} />}
+              {privacyMode && !isInOperar ? (
+                <EyeOff size={isInOperar && canSubmit ? 20 : 16} />
+              ) : (
+                <Eye size={isInOperar && canSubmit ? 20 : 16} />
+              )}
             </button>
           </div>
 
@@ -275,23 +316,70 @@ export function TotalsFooter() {
             <Trash2 size={20} />
           </button>
 
-          {/* Primary Action - Responsive: icon on mobile, text on desktop */}
-          <button
-            onClick={handleUseInTrade}
-            disabled={grandTotal === 0}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-full",
-              "shadow-lg shadow-emerald-500/20 transition-all duration-200",
-              "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-inverted)] font-bold",
-              "disabled:opacity-30 disabled:shadow-none",
-              // Size: circle on mobile, pill on desktop
-              "w-12 h-12 md:w-auto md:h-11 md:px-5",
-            )}
-            aria-label="Operar"
-          >
-            <ArrowRightLeft size={20} strokeWidth={2.5} />
-            <span className="hidden md:inline text-sm">Operar</span>
-          </button>
+          {/* Primary Action - Context Aware with 3 states */}
+          {isInOperar ? (
+            // In Operar tab: Show operation-colored button (enabled or disabled)
+            <button
+              onClick={() => {
+                if (!canSubmit) return;
+                haptic.medium();
+                executeSubmitFromFooter();
+              }}
+              disabled={!canSubmit}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-full",
+                "shadow-lg transition-all duration-200",
+                "text-[var(--text-inverted)] font-bold",
+                // Size: circle on mobile, pill on desktop
+                "w-12 h-12 md:w-auto md:h-11 md:px-5",
+                // Disabled state
+                "disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed",
+                // Color based on operation
+                formState.operation === "EXCHANGE"
+                  ? "bg-[var(--blue)] shadow-blue-500/20"
+                  : formState.operation === "BUY"
+                    ? "bg-[var(--accent)] shadow-emerald-500/20"
+                    : "bg-[var(--status-warning)] shadow-orange-500/20",
+                // Hover only when enabled
+                canSubmit &&
+                  (formState.operation === "EXCHANGE"
+                    ? "hover:opacity-90"
+                    : formState.operation === "BUY"
+                      ? "hover:bg-[var(--accent-hover)]"
+                      : "hover:opacity-90"),
+              )}
+              aria-label={
+                formState.operation === "EXCHANGE" ? "Cambiar" : "Registrar"
+              }
+            >
+              {formState.operation === "EXCHANGE" ? (
+                <RefreshCw size={20} strokeWidth={2.5} />
+              ) : (
+                <Check size={20} strokeWidth={2.5} />
+              )}
+              <span className="hidden md:inline text-sm">
+                {formState.operation === "EXCHANGE" ? "Cambiar" : "Registrar"}
+              </span>
+            </button>
+          ) : (
+            // Not in Operar: Show green "Operar" button
+            <button
+              onClick={handleUseInTrade}
+              disabled={grandTotal === 0}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-full",
+                "shadow-lg shadow-emerald-500/20 transition-all duration-200",
+                "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-inverted)] font-bold",
+                "disabled:opacity-30 disabled:shadow-none",
+                // Size: circle on mobile, pill on desktop
+                "w-12 h-12 md:w-auto md:h-11 md:px-5",
+              )}
+              aria-label="Operar"
+            >
+              <ArrowRightLeft size={20} strokeWidth={2.5} />
+              <span className="hidden md:inline text-sm">Operar</span>
+            </button>
+          )}
         </div>
       </div>
     </footer>
