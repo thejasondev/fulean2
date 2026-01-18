@@ -27,6 +27,11 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { ReceiptCard, type ReceiptData } from "./ReceiptCard";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
+import {
+  $wallets,
+  getWalletColorHex,
+  type Wallet,
+} from "../../stores/walletStore";
 
 // ============================================
 // HistoryDrawer Component
@@ -75,6 +80,13 @@ function TransactionCard({
   const isExchange = transaction.operationType === "EXCHANGE";
   const Icon = isExchange ? RefreshCw : isBuy ? ArrowDownLeft : ArrowUpRight;
   const haptic = useHaptic();
+  const wallets = useStore($wallets);
+
+  // Find wallet for this transaction
+  const wallet = transaction.walletId
+    ? wallets.find((w: Wallet) => w.id === transaction.walletId)
+    : wallets[0]; // Legacy transactions go to first wallet
+  const walletColor = wallet ? getWalletColorHex(wallet.color) : "#06b6d4";
 
   const theme = isExchange
     ? {
@@ -139,6 +151,16 @@ function TransactionCard({
               >
                 {theme.label}
               </span>
+              {/* Wallet indicator badge */}
+              {wallet && (
+                <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-muted)]">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: walletColor }}
+                  />
+                  <span className="max-w-[60px] truncate">{wallet.name}</span>
+                </span>
+              )}
             </div>
             <div className="text-sm font-medium text-[var(--text-primary)] mt-1">
               {isExchange ? (
