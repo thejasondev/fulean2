@@ -14,7 +14,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import {
-  $initialCapital,
+  $walletInitialCapital,
   $totalIn,
   $totalOut,
   $currentBalance,
@@ -23,7 +23,8 @@ import {
   setInitialCapital,
   resetCapital,
 } from "../../stores/capitalStore";
-import { $transactions } from "../../stores/historyStore";
+import { $transactions, $walletTransactions } from "../../stores/historyStore";
+import { WalletSelector } from "./WalletSelector";
 import {
   $sellRates,
   $buyRates,
@@ -56,7 +57,7 @@ import { useEffect } from "react";
 
 // Liquidity Alert Component
 function LiquidityAlert() {
-  const initialCapital = useStore($initialCapital);
+  const initialCapital = useStore($walletInitialCapital);
   const currentBalance = useStore($currentBalance);
 
   // Don't show if no initial capital set
@@ -114,7 +115,7 @@ function LiquidityAlert() {
 
 // Capital Card Component
 function CapitalCard() {
-  const initialCapital = useStore($initialCapital);
+  const initialCapital = useStore($walletInitialCapital);
   const totalIn = useStore($totalIn);
   const totalOut = useStore($totalOut);
   const currentBalance = useStore($currentBalance);
@@ -289,7 +290,7 @@ function CapitalCard() {
 
 // Profit Summary Component
 function ProfitSummary() {
-  const transactions = useStore($transactions);
+  const transactions = useStore($walletTransactions);
   const buyRates = useStore($buyRates) ?? {};
   const currentUsdRate = buyRates["USD"] || 1; // Fallback to 1 to avoid division by zero
 
@@ -430,7 +431,7 @@ function ProfitSummary() {
 
 // Portfolio Card - Unified inventory + valuation
 function PortfolioCard() {
-  const transactions = useStore($transactions);
+  const transactions = useStore($walletTransactions);
   const sellRates = useStore($sellRates);
 
   // Calculate portfolio data per currency
@@ -680,7 +681,7 @@ function PortfolioCard() {
 
 // Sell Simulator Component - Enhanced UX/UI
 function SellSimulator() {
-  const transactions = useStore($transactions);
+  const transactions = useStore($walletTransactions);
   const sellRates = useStore($sellRates);
 
   // Get currencies with available inventory
@@ -1097,6 +1098,11 @@ export function ReportsTab() {
         "space-y-4",
       )}
     >
+      {/* Wallet Selector Header */}
+      <div className="flex items-center justify-between">
+        <WalletSelector />
+      </div>
+
       <LiquidityAlert />
       <CapitalCard />
       <PortfolioCard />

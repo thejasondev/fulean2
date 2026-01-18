@@ -1,8 +1,13 @@
 import { atom, computed } from "nanostores";
+import {
+  $activeWalletId,
+  $defaultWalletId,
+  CONSOLIDATED_ID,
+} from "./walletStore";
 
 // ============================================
-// Capital Store
-// Track operating capital for cambista
+// Capital Store (Per-Wallet)
+// Track operating capital for each wallet
 // ============================================
 
 const STORAGE_KEY = "fulean2_capital";
@@ -14,28 +19,33 @@ export interface CapitalMovement {
   amount: number;
   date: string;
   transactionId?: string; // Link to transaction
+  walletId?: string; // Multi-wallet support
 }
 
 interface CapitalState {
-  initialCapital: number;
+  initialCapital: number; // Legacy: global capital (deprecated)
   movements: CapitalMovement[];
+  // Per-wallet capital
+  walletCapitals: Record<string, number>; // walletId -> initial capital
 }
 
 // Load from localStorage
 function loadFromStorage(): CapitalState {
   if (typeof window === "undefined") {
-    return { initialCapital: 0, movements: [] };
+    return { initialCapital: 0, movements: [], walletCapitals: {} };
   }
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return { initialCapital: 0, movements: [] };
+    if (!stored)
+      return { initialCapital: 0, movements: [], walletCapitals: {} };
     const parsed = JSON.parse(stored);
     return {
       initialCapital: parsed.initialCapital || 0,
       movements: Array.isArray(parsed.movements) ? parsed.movements : [],
+      walletCapitals: parsed.walletCapitals || {},
     };
   } catch {
-    return { initialCapital: 0, movements: [] };
+    return { initialCapital: 0, movements: [], walletCapitals: {} };
   }
 }
 
@@ -53,46 +63,97 @@ function saveToStorage(state: CapitalState): void {
 const initialState = loadFromStorage();
 export const $initialCapital = atom<number>(initialState.initialCapital);
 export const $capitalMovements = atom<CapitalMovement[]>(
-  initialState.movements
+  initialState.movements,
+);
+export const $walletCapitals = atom<Record<string, number>>(
+  initialState.walletCapitals,
 );
 
-// Computed: Total money out (purchases)
-export const $totalOut = computed($capitalMovements, (movements) => {
+// ============================================
+// Per-Wallet Computed Stores
+// ============================================
+
+// Get movements filtered by active wallet
+export const $walletCapitalMovements = computed(
+  [$capitalMovements, $activeWalletId, $defaultWalletId],
+  (movements, activeWalletId, defaultWalletId) => {
+    // Consolidated view: return all movements
+    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
+      return movements;
+    }
+    // Filter by wallet
+    return movements.filter((m) => {
+      if (m.walletId) {
+        return m.walletId === activeWalletId;
+      } else {
+        // Legacy movements only belong to default wallet
+        return activeWalletId === defaultWalletId;
+      }
+    });
+  },
+);
+
+// Get initial capital for active wallet
+export const $walletInitialCapital = computed(
+  [$walletCapitals, $initialCapital, $activeWalletId, $defaultWalletId],
+  (walletCapitals, globalCapital, activeWalletId, defaultWalletId) => {
+    // Consolidated view: sum all wallet capitals + legacy
+    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
+      const walletSum = Object.values(walletCapitals).reduce(
+        (sum, c) => sum + c,
+        0,
+      );
+      return walletSum + globalCapital;
+    }
+    // Specific wallet: use wallet capital or 0, legacy goes to default
+    if (walletCapitals[activeWalletId] !== undefined) {
+      return walletCapitals[activeWalletId];
+    }
+    // Default wallet inherits global/legacy capital
+    if (activeWalletId === defaultWalletId) {
+      return globalCapital;
+    }
+    return 0;
+  },
+);
+
+// Computed: Total money out for active wallet
+export const $totalOut = computed($walletCapitalMovements, (movements) => {
   return movements
     .filter((m) => m.type === "OUT")
     .reduce((sum, m) => sum + m.amount, 0);
 });
 
-// Computed: Total money in (sales)
-export const $totalIn = computed($capitalMovements, (movements) => {
+// Computed: Total money in for active wallet
+export const $totalIn = computed($walletCapitalMovements, (movements) => {
   return movements
     .filter((m) => m.type === "IN")
     .reduce((sum, m) => sum + m.amount, 0);
 });
 
-// Computed: Current balance
+// Computed: Current balance for active wallet
 export const $currentBalance = computed(
-  [$initialCapital, $totalIn, $totalOut],
+  [$walletInitialCapital, $totalIn, $totalOut],
   (initial, totalIn, totalOut) => {
     return initial + totalIn - totalOut;
-  }
+  },
 );
 
-// Computed: Net change (profit/loss from operations)
+// Computed: Net change for active wallet
 export const $netChange = computed(
   [$totalIn, $totalOut],
   (totalIn, totalOut) => {
     return totalIn - totalOut;
-  }
+  },
 );
 
-// Computed: Percentage change
+// Computed: Percentage change for active wallet
 export const $percentageChange = computed(
-  [$initialCapital, $netChange],
+  [$walletInitialCapital, $netChange],
   (initial, netChange) => {
     if (initial === 0) return 0;
     return (netChange / initial) * 100;
-  }
+  },
 );
 
 // ============================================
@@ -103,15 +164,39 @@ function persist() {
   saveToStorage({
     initialCapital: $initialCapital.get(),
     movements: $capitalMovements.get(),
+    walletCapitals: $walletCapitals.get(),
   });
 }
 
 /**
- * Set initial operating capital
+ * Set initial capital for a specific wallet
+ */
+export function setWalletInitialCapital(walletId: string, amount: number) {
+  const validAmount = Math.max(0, Math.floor(amount));
+  const current = $walletCapitals.get();
+  $walletCapitals.set({ ...current, [walletId]: validAmount });
+  persist();
+}
+
+/**
+ * Set initial operating capital (legacy - uses active wallet)
  */
 export function setInitialCapital(amount: number) {
+  const walletId = $activeWalletId.get();
+  const defaultId = $defaultWalletId.get();
   const validAmount = Math.max(0, Math.floor(amount));
-  $initialCapital.set(validAmount);
+
+  // If viewing consolidated or no wallet, set global
+  if (!walletId || walletId === CONSOLIDATED_ID) {
+    $initialCapital.set(validAmount);
+  } else if (walletId === defaultId) {
+    // Default wallet uses legacy global capital for backward compatibility
+    $initialCapital.set(validAmount);
+  } else {
+    // Other wallets use per-wallet capital
+    const current = $walletCapitals.get();
+    $walletCapitals.set({ ...current, [walletId]: validAmount });
+  }
   persist();
 }
 
@@ -127,11 +212,13 @@ function generateId(): string {
  * @param type - IN (received CUP from sale) or OUT (paid CUP for purchase)
  * @param amount - CUP amount
  * @param transactionId - Optional link to transaction
+ * @param walletId - Target wallet ID
  */
 export function recordCapitalMovement(
   type: "IN" | "OUT",
   amount: number,
-  transactionId?: string
+  transactionId?: string,
+  walletId?: string,
 ) {
   const movement: CapitalMovement = {
     id: generateId(),
@@ -139,6 +226,7 @@ export function recordCapitalMovement(
     amount: Math.abs(amount),
     date: new Date().toISOString(),
     transactionId,
+    walletId: walletId ?? $activeWalletId.get() ?? undefined,
   };
 
   $capitalMovements.set([movement, ...$capitalMovements.get()]);
@@ -146,19 +234,56 @@ export function recordCapitalMovement(
 }
 
 /**
- * Clear all capital movements (reset)
+ * Clear capital movements for active wallet
  */
 export function clearCapitalMovements() {
-  $capitalMovements.set([]);
+  const walletId = $activeWalletId.get();
+  const defaultId = $defaultWalletId.get();
+
+  if (!walletId || walletId === CONSOLIDATED_ID) {
+    // Clear all
+    $capitalMovements.set([]);
+  } else {
+    // Clear only for this wallet
+    const movements = $capitalMovements.get();
+    $capitalMovements.set(
+      movements.filter((m) => {
+        if (m.walletId) {
+          return m.walletId !== walletId;
+        } else {
+          // Legacy movements belong to default wallet
+          return walletId !== defaultId;
+        }
+      }),
+    );
+  }
   persist();
 }
 
 /**
- * Reset everything
+ * Reset capital for active wallet
  */
 export function resetCapital() {
-  $initialCapital.set(0);
-  $capitalMovements.set([]);
+  const walletId = $activeWalletId.get();
+  const defaultId = $defaultWalletId.get();
+
+  if (!walletId || walletId === CONSOLIDATED_ID) {
+    // Reset everything
+    $initialCapital.set(0);
+    $capitalMovements.set([]);
+    $walletCapitals.set({});
+  } else if (walletId === defaultId) {
+    // Reset default wallet (legacy)
+    $initialCapital.set(0);
+    clearCapitalMovements();
+  } else {
+    // Reset specific wallet
+    const current = $walletCapitals.get();
+    const updated = { ...current };
+    delete updated[walletId];
+    $walletCapitals.set(updated);
+    clearCapitalMovements();
+  }
   persist();
 }
 
@@ -166,4 +291,5 @@ export function resetCapital() {
 if (typeof window !== "undefined") {
   $initialCapital.subscribe(persist);
   $capitalMovements.subscribe(persist);
+  $walletCapitals.subscribe(persist);
 }

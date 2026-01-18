@@ -35,6 +35,12 @@ import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
 import { useHaptic } from "../../hooks/useHaptic";
+import {
+  $activeWallets,
+  $defaultWalletId,
+  getWalletColorHex,
+} from "../../stores/walletStore";
+import { Wallet } from "lucide-react";
 
 // ============================================
 // TransactionForm Component
@@ -62,6 +68,13 @@ export function TransactionForm() {
   const [toCurrency, setToCurrency] = useState<TransactionCurrency>("USD");
   const [exchangeRate, setExchangeRate] = useState<string>("1.10");
   const [exchangeAmount, setExchangeAmount] = useState<string>("");
+
+  // Wallet selection (for multi-wallet users)
+  const activeWallets = useStore($activeWallets);
+  const defaultWalletId = useStore($defaultWalletId);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const showWalletSelector = activeWallets.length > 1;
+  const targetWalletId = selectedWalletId || defaultWalletId || undefined;
 
   // Get the appropriate rate based on operation
   const getRate = (curr: Currency, op: OperationType) => {
@@ -157,10 +170,23 @@ export function TransactionForm() {
     const spread = sellRate - buyRate;
 
     // Save transaction with spread for profit calculation
-    const txn = saveTransaction(operation, currency, foreign, r, cup, spread);
+    const txn = saveTransaction(
+      operation,
+      currency,
+      foreign,
+      r,
+      cup,
+      spread,
+      targetWalletId,
+    );
 
-    // Record capital movement
-    recordCapitalMovement(operation === "BUY" ? "OUT" : "IN", cup, txn.id);
+    // Record capital movement for the selected wallet
+    recordCapitalMovement(
+      operation === "BUY" ? "OUT" : "IN",
+      cup,
+      txn.id,
+      targetWalletId,
+    );
 
     // Clear the counter (reset bill counts to 0)
     clearAll();
@@ -243,6 +269,42 @@ export function TransactionForm() {
           Cambio
         </button>
       </div>
+
+      {/* Wallet Selector - Only shown when user has multiple wallets */}
+      {showWalletSelector && (
+        <div className="mb-6">
+          <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
+            <Wallet className="w-4 h-4 inline mr-1" />
+            Guardar en cartera
+          </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {activeWallets.map((wallet) => {
+              const isSelected =
+                (selectedWalletId || defaultWalletId) === wallet.id;
+              const colorHex = getWalletColorHex(wallet.color);
+              return (
+                <button
+                  key={wallet.id}
+                  onClick={() => setSelectedWalletId(wallet.id)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
+                    "border transition-all duration-200",
+                    isSelected
+                      ? "border-[var(--accent)] text-[var(--text-primary)] bg-[var(--bg-secondary)]"
+                      : "border-[var(--border-primary)] text-[var(--text-muted)] hover:bg-[var(--bg-hover)]",
+                  )}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: colorHex }}
+                  />
+                  {wallet.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* EXCHANGE Mode UI */}
       {operation === "EXCHANGE" && (

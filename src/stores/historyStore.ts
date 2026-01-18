@@ -1,4 +1,4 @@
-import { atom } from "nanostores";
+import { atom, computed } from "nanostores";
 import {
   DENOMINATIONS,
   type Denomination,
@@ -9,6 +9,12 @@ import {
   consumeInventoryLots,
   getAverageCost,
 } from "./inventoryStore";
+import {
+  $activeWalletId,
+  $defaultWalletId,
+  CONSOLIDATED_ID,
+  initializeWallets,
+} from "./walletStore";
 
 // ============================================
 // History Store
@@ -31,6 +37,7 @@ export type TransactionCurrency =
 export interface Transaction {
   id: string;
   date: string;
+  walletId?: string; // Multi-wallet support
   // Core transaction fields
   operationType: OperationType;
   currency: TransactionCurrency;
@@ -87,9 +94,33 @@ function saveToStorage(transactions: Transaction[]) {
 // Transaction store
 export const $transactions = atom<Transaction[]>(loadFromStorage());
 
+// Computed: Transactions filtered by active wallet
+export const $walletTransactions = computed(
+  [$transactions, $activeWalletId, $defaultWalletId],
+  (transactions, activeWalletId, defaultWalletId) => {
+    // Consolidated view: return all transactions
+    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
+      return transactions;
+    }
+    // Filter by wallet
+    // Legacy transactions (without walletId) only appear in the default wallet
+    return transactions.filter((t) => {
+      if (t.walletId) {
+        // Transaction has explicit wallet assignment
+        return t.walletId === activeWalletId;
+      } else {
+        // Legacy transaction: only show in default wallet
+        return activeWalletId === defaultWalletId;
+      }
+    });
+  },
+);
+
 // Subscribe to persist on changes
 if (typeof window !== "undefined") {
   $transactions.subscribe(saveToStorage);
+  // Initialize wallet system on load
+  initializeWallets();
 }
 
 // ============================================
@@ -116,6 +147,7 @@ export function saveTransaction(
   rate: number,
   totalCUP: number,
   spreadUsed?: number, // Optional: for legacy/estimated profit
+  walletId?: string, // Target wallet ID
 ): Transaction {
   const txnId = generateId();
 
@@ -163,6 +195,7 @@ export function saveTransaction(
   const transaction: Transaction = {
     id: txnId,
     date: new Date().toISOString(),
+    walletId: walletId ?? $activeWalletId.get() ?? undefined,
     operationType,
     currency,
     amountForeign: Math.round(amountForeign * 100) / 100,
@@ -201,6 +234,7 @@ export function saveExchangeTransaction(
   toCurrency: TransactionCurrency,
   amountFrom: number, // Amount of source currency given
   exchangeRate: number, // e.g., 1.13 EUR->USD means 1 EUR = 1.13 USD
+  walletId?: string, // Target wallet ID
 ): Transaction {
   const txnId = generateId();
   const amountReceived = Math.round(amountFrom * exchangeRate * 100) / 100;
@@ -252,6 +286,7 @@ export function saveExchangeTransaction(
   const transaction: Transaction = {
     id: txnId,
     date: new Date().toISOString(),
+    walletId: walletId ?? $activeWalletId.get() ?? undefined,
     operationType: "EXCHANGE",
     // For EXCHANGE, currency field stores the source currency
     currency: fromCurrency,
