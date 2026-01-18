@@ -466,8 +466,48 @@ function PortfolioCard() {
     if (txn.operationType === "BUY") {
       portfolio[currency].bought += amount;
       portfolio[currency].totalCost += txn.totalCUP;
-    } else {
+    } else if (txn.operationType === "SELL") {
       portfolio[currency].sold += amount;
+    } else if (
+      txn.operationType === "EXCHANGE" &&
+      txn.fromCurrency &&
+      txn.toCurrency
+    ) {
+      // EXCHANGE: source currency goes out, target currency comes in
+      const fromCurr = txn.fromCurrency;
+      const toCurr = txn.toCurrency;
+      const amountGiven = txn.amountForeign || 0;
+      const amountReceived = txn.amountReceived || 0;
+      const derivedCostRate = txn.derivedCostRate || 0;
+
+      // Deduct from source currency
+      if (!portfolio[fromCurr]) {
+        portfolio[fromCurr] = {
+          bought: 0,
+          sold: 0,
+          available: 0,
+          totalCost: 0,
+          currentValue: 0,
+          unrealizedGain: 0,
+          gainPercent: 0,
+        };
+      }
+      portfolio[fromCurr].sold += amountGiven;
+
+      // Add to target currency
+      if (!portfolio[toCurr]) {
+        portfolio[toCurr] = {
+          bought: 0,
+          sold: 0,
+          available: 0,
+          totalCost: 0,
+          currentValue: 0,
+          unrealizedGain: 0,
+          gainPercent: 0,
+        };
+      }
+      portfolio[toCurr].bought += amountReceived;
+      portfolio[toCurr].totalCost += amountReceived * derivedCostRate;
     }
   });
 

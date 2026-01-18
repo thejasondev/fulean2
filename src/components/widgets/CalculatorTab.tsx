@@ -18,6 +18,7 @@ import {
   type Denomination,
 } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
+import { calculateBillBreakdown } from "../../lib/algorithms";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
@@ -51,7 +52,7 @@ export function CalculatorTab() {
   // Get rate based on operation
   const currentRate = getRateForOperation(currency, operation);
 
-  // Calculate CUP and breakdown
+  // Calculate CUP and breakdown using optimized algorithm
   const { cupAmount, breakdown, totalBills, remainder } = useMemo(() => {
     const numAmount = parseFloat(amount) || 0;
     const cup = Math.round(numAmount * currentRate);
@@ -60,28 +61,26 @@ export function CalculatorTab() {
       return { cupAmount: 0, breakdown: [], totalBills: 0, remainder: 0 };
     }
 
-    // Calculate breakdown using only selected denominations
+    // Get active denominations as array
     const activeDenoms = DENOMINATIONS.filter((d) => selectedDenoms.has(d));
-    let remaining = cup;
-    const result: { denom: Denomination; count: number; subtotal: number }[] =
-      [];
-    let billCount = 0;
 
-    for (const denom of activeDenoms) {
-      if (remaining >= denom) {
-        const count = Math.floor(remaining / denom);
-        const subtotal = count * denom;
-        result.push({ denom, count, subtotal });
-        remaining -= subtotal;
-        billCount += count;
-      }
-    }
+    // Use optimized algorithm from algorithms.ts
+    const result = calculateBillBreakdown(cup, activeDenoms);
+
+    // Transform to expected format for display
+    const displayBreakdown = result.breakdown
+      .filter((b) => b.count > 0)
+      .map((b) => ({
+        denom: b.denomination,
+        count: b.count,
+        subtotal: b.subtotal,
+      }));
 
     return {
       cupAmount: cup,
-      breakdown: result,
-      totalBills: billCount,
-      remainder: remaining,
+      breakdown: displayBreakdown,
+      totalBills: result.totalBills,
+      remainder: result.remainder,
     };
   }, [amount, currentRate, selectedDenoms]);
 

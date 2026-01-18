@@ -4,6 +4,7 @@ import {
   Trash2,
   ArrowDownLeft,
   ArrowUpRight,
+  RefreshCw,
   History,
   Share2,
   Calendar,
@@ -70,22 +71,33 @@ function TransactionCard({
   onShare: () => void;
 }) {
   const isBuy = transaction.operationType === "BUY";
-  const Icon = isBuy ? ArrowDownLeft : ArrowUpRight;
+  const isSell = transaction.operationType === "SELL";
+  const isExchange = transaction.operationType === "EXCHANGE";
+  const Icon = isExchange ? RefreshCw : isBuy ? ArrowDownLeft : ArrowUpRight;
   const haptic = useHaptic();
 
-  const theme = isBuy
+  const theme = isExchange
     ? {
-        iconBg: "bg-[var(--status-success-bg)]",
-        iconColor: "text-[var(--status-success)]",
-        badge:
-          "bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success)]/20",
+        iconBg: "bg-[var(--blue-bg)]",
+        iconColor: "text-[var(--blue)]",
+        badge: "bg-[var(--blue-bg)] text-[var(--blue)] border-[var(--blue)]/20",
+        label: "CAMBIO",
       }
-    : {
-        iconBg: "bg-[var(--status-warning-bg)]",
-        iconColor: "text-[var(--status-warning)]",
-        badge:
-          "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning)]/20",
-      };
+    : isBuy
+      ? {
+          iconBg: "bg-[var(--status-success-bg)]",
+          iconColor: "text-[var(--status-success)]",
+          badge:
+            "bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success)]/20",
+          label: "COMPRA",
+        }
+      : {
+          iconBg: "bg-[var(--status-warning-bg)]",
+          iconColor: "text-[var(--status-warning)]",
+          badge:
+            "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning)]/20",
+          label: "VENTA",
+        };
 
   const currency = transaction.currency || "USD";
   const amountForeign =
@@ -125,11 +137,18 @@ function TransactionCard({
                   theme.badge,
                 )}
               >
-                {isBuy ? "COMPRA" : "VENTA"}
+                {theme.label}
               </span>
             </div>
             <div className="text-sm font-medium text-[var(--text-primary)] mt-1">
-              {formatNumber(transaction.totalCUP)} CUP
+              {isExchange ? (
+                <>
+                  {transaction.amountForeign} {transaction.fromCurrency} →{" "}
+                  {transaction.amountReceived} {transaction.toCurrency}
+                </>
+              ) : (
+                <>{formatNumber(transaction.totalCUP)} CUP</>
+              )}
             </div>
           </div>
         </div>
@@ -165,19 +184,46 @@ function TransactionCard({
 
       {/* Details Grid */}
       <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--bg-base)]/50 p-3 rounded-lg border border-[var(--border-primary)]/50">
-        <div>
-          <div className="text-[var(--text-faint)] mb-0.5">Operación</div>
-          <div className="font-semibold text-[var(--text-primary)]">
-            {amountForeign} {currency}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[var(--text-faint)] mb-0.5">Tasa</div>
-          <div className="font-semibold text-[var(--text-secondary)]">
-            1 {currency} = {rate} CUP
-          </div>
-        </div>
+        {isExchange ? (
+          <>
+            <div>
+              <div className="text-[var(--text-faint)] mb-0.5">Entregado</div>
+              <div className="font-semibold text-[var(--status-error)]">
+                -{transaction.amountForeign} {transaction.fromCurrency}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[var(--text-faint)] mb-0.5">Recibido</div>
+              <div className="font-semibold text-[var(--status-success)]">
+                +{transaction.amountReceived} {transaction.toCurrency}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <div className="text-[var(--text-faint)] mb-0.5">Operación</div>
+              <div className="font-semibold text-[var(--text-primary)]">
+                {amountForeign} {currency}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[var(--text-faint)] mb-0.5">Tasa</div>
+              <div className="font-semibold text-[var(--text-secondary)]">
+                1 {currency} = {rate} CUP
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Exchange Rate Footer for EXCHANGE */}
+      {isExchange && (
+        <div className="text-xs text-[var(--text-muted)] mt-2 text-center">
+          Tasa: 1 {transaction.fromCurrency} = {transaction.exchangeRate}{" "}
+          {transaction.toCurrency}
+        </div>
+      )}
 
       {/* Date Footer */}
       <div className="flex items-center gap-1 mt-3 text-[10px] text-[var(--text-faint)]">
@@ -299,7 +345,12 @@ export function HistoryDrawer() {
       const amount = txn.amountForeign || txn.conversions?.USD || 0;
       const rate = txn.rate || txn.ratesUsed?.USD || 0;
       const date = formatDateTime(txn.date);
-      const type = txn.operationType === "BUY" ? "🟢 COMPRA" : "🟡 VENTA";
+      const type =
+        txn.operationType === "EXCHANGE"
+          ? "🔵 CAMBIO"
+          : txn.operationType === "BUY"
+            ? "🟢 COMPRA"
+            : "🟡 VENTA";
 
       lines.push(`${index + 1}. ${type}`);
       lines.push(

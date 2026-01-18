@@ -2,7 +2,7 @@ import { DENOMINATIONS, type Denomination } from "./constants";
 
 // ============================================
 // Bill Breakdown Algorithm
-// Greedy algorithm with safety checks
+// Optimal coin-change with dynamic programming
 // ============================================
 
 export interface BillBreakdown {
@@ -30,44 +30,128 @@ function toSafePositiveInt(value: unknown): number {
 
 /**
  * Calculate the optimal breakdown of bills for a target CUP amount
- * Uses a greedy algorithm starting with the largest denomination
+ * Uses dynamic programming to find exact solutions when possible
  *
  * @param targetCUP - The target amount in CUP
+ * @param activeDenominations - Optional array of denominations to use (defaults to all)
  * @returns BreakdownResult with bill counts and any remainder
  */
-export function calculateBillBreakdown(targetCUP: unknown): BreakdownResult {
-  // Ensure we're working with a positive integer
+export function calculateBillBreakdown(
+  targetCUP: unknown,
+  activeDenominations?: Denomination[],
+): BreakdownResult {
   const safeTarget = toSafePositiveInt(targetCUP);
-  let remaining = safeTarget;
+  const denoms = activeDenominations?.length
+    ? [...activeDenominations].sort((a, b) => b - a) // Sort descending
+    : DENOMINATIONS;
+
+  if (safeTarget === 0) {
+    return {
+      targetCUP: 0,
+      breakdown: denoms.map((d) => ({
+        denomination: d,
+        count: 0,
+        subtotal: 0,
+      })),
+      totalBills: 0,
+      remainder: 0,
+    };
+  }
+
+  // Try to find an exact solution using DP
+  const exactSolution = findExactBreakdown(safeTarget, denoms);
+
+  if (exactSolution) {
+    return exactSolution;
+  }
+
+  // Fallback: Find the closest solution (minimize remainder)
+  return findClosestBreakdown(safeTarget, denoms);
+}
+
+/**
+ * Dynamic Programming approach to find exact bill breakdown
+ * Returns null if no exact solution exists
+ */
+function findExactBreakdown(
+  target: number,
+  denoms: Denomination[],
+): BreakdownResult | null {
+  // dp[i] = minimum number of bills to make amount i, or Infinity if impossible
+  // We also track which denomination was used at each step for reconstruction
+  const dp: number[] = new Array(target + 1).fill(Infinity);
+  const parent: (Denomination | null)[] = new Array(target + 1).fill(null);
+
+  dp[0] = 0;
+
+  for (let amount = 1; amount <= target; amount++) {
+    for (const denom of denoms) {
+      if (denom <= amount && dp[amount - denom] + 1 < dp[amount]) {
+        dp[amount] = dp[amount - denom] + 1;
+        parent[amount] = denom;
+      }
+    }
+  }
+
+  // No exact solution found
+  if (dp[target] === Infinity) {
+    return null;
+  }
+
+  // Reconstruct the solution
+  const billCounts = new Map<Denomination, number>();
+  denoms.forEach((d) => billCounts.set(d, 0));
+
+  let remaining = target;
+  while (remaining > 0 && parent[remaining]) {
+    const denom = parent[remaining]!;
+    billCounts.set(denom, (billCounts.get(denom) || 0) + 1);
+    remaining -= denom;
+  }
+
+  const breakdown: BillBreakdown[] = denoms.map((d) => ({
+    denomination: d,
+    count: billCounts.get(d) || 0,
+    subtotal: (billCounts.get(d) || 0) * d,
+  }));
+
+  const totalBills = breakdown.reduce((sum, b) => sum + b.count, 0);
+
+  return {
+    targetCUP: target,
+    breakdown,
+    totalBills,
+    remainder: 0,
+  };
+}
+
+/**
+ * Greedy fallback when no exact solution exists
+ * Finds the combination with minimum remainder
+ */
+function findClosestBreakdown(
+  target: number,
+  denoms: Denomination[],
+): BreakdownResult {
   const breakdown: BillBreakdown[] = [];
+  let remaining = target;
   let totalBills = 0;
 
-  // Greedy approach: start with largest denomination
-  for (const denomination of DENOMINATIONS) {
-    if (remaining >= denomination) {
-      const count = Math.floor(remaining / denomination);
-      const subtotal = count * denomination;
-
-      breakdown.push({
-        denomination,
-        count,
-        subtotal,
-      });
-
+  // Greedy: largest first
+  for (const denom of denoms) {
+    if (remaining >= denom) {
+      const count = Math.floor(remaining / denom);
+      const subtotal = count * denom;
+      breakdown.push({ denomination: denom, count, subtotal });
       remaining -= subtotal;
       totalBills += count;
     } else {
-      // Include zero-count denominations for complete display
-      breakdown.push({
-        denomination,
-        count: 0,
-        subtotal: 0,
-      });
+      breakdown.push({ denomination: denom, count: 0, subtotal: 0 });
     }
   }
 
   return {
-    targetCUP: safeTarget,
+    targetCUP: target,
     breakdown,
     totalBills,
     remainder: remaining,
@@ -139,8 +223,8 @@ export function formatBreakdownText(result: BreakdownResult): string {
     .map(
       (b) =>
         `${b.count}x ${b.denomination} CUP = ${b.subtotal.toLocaleString(
-          "es-CU"
-        )} CUP`
+          "es-CU",
+        )} CUP`,
     );
 
   return lines.join("\n");

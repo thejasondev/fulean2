@@ -158,7 +158,11 @@ export function DonationSheet() {
             <br />
             2. Copia la tarjeta de donación y selecciona la cantidad deseada.
             <br />
-            3. Transfiere a la tarjeta copiada la cantidad deseada.
+            2.1. Sigue los pasos de la transferencia bancaria, pegando la tarjeta y llenando el monto deseado.
+            <br />
+            3. Finaliza la transferencia y espera a que se confirme.
+            <br />
+            4. GRACIAS!!
           </p>
         </div>
       </div>
