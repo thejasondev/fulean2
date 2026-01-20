@@ -218,42 +218,40 @@ export function TotalsFooter() {
 
   // ============================================
   // MINIMAL MODE: Calculadora / Reportes
-  // Just history button, centered - clean view
+  // Compact pill button - entire area clickable
   // ============================================
   if (footerMode === "minimal") {
     return (
       <footer
         className={cn(
-          "fixed bottom-4 left-4 right-4 z-50",
+          "fixed bottom-4 z-50",
+          "left-1/2 -translate-x-1/2", // Center horizontally
           "safe-bottom",
           "transition-all duration-300 ease-out",
         )}
       >
-        <div
+        <button
+          onClick={() => {
+            haptic.light();
+            openHistoryDrawer();
+          }}
           className={cn(
+            "flex items-center gap-2",
+            "px-5 py-3",
             "rounded-full shadow-lg shadow-black/30",
             "bg-[var(--bg-primary)]/90 backdrop-blur-xl",
             "border border-[var(--border-muted)]",
-            "py-2 px-4",
-            "flex items-center justify-center",
+            "text-[var(--text-muted)]",
+            "hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]/90",
+            "hover:border-[var(--border-primary)]",
+            "active:scale-95 active:shadow-md",
+            "transition-all duration-200",
           )}
+          aria-label="Abrir historial"
         >
-          <button
-            onClick={() => {
-              haptic.light();
-              openHistoryDrawer();
-            }}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full",
-              "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
-              "hover:bg-[var(--bg-hover)] transition-colors",
-            )}
-            aria-label="Historial"
-          >
-            <Clock size={18} />
-            <span className="text-sm font-medium">Historial</span>
-          </button>
-        </div>
+          <Clock size={18} />
+          <span className="text-sm font-medium">Historial</span>
+        </button>
       </footer>
     );
   }

@@ -25,20 +25,7 @@ import {
 } from "../../stores/capitalStore";
 import { $transactions, $walletTransactions } from "../../stores/historyStore";
 import { WalletSelector } from "./WalletSelector";
-import {
-  $sellRates,
-  $buyRates,
-  $elToqueRates,
-  $manualElToqueRates,
-  isManualElToqueCurrency,
-} from "../../stores/ratesStore";
-import {
-  $rateHistory,
-  recordRateSnapshot,
-  getRateHistoryForCurrency,
-  getCurrencyTrend,
-  $hasRateHistory,
-} from "../../stores/rateHistoryStore";
+import { $sellRates, $buyRates } from "../../stores/ratesStore";
 import { formatNumber } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -46,9 +33,8 @@ import { Input } from "../ui/Input";
 import { confirm } from "../../stores/confirmStore";
 import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
-import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
-import { useEffect } from "react";
 
 // ============================================
 // ReportsTab Component
@@ -926,167 +912,6 @@ function SellSimulator() {
   );
 }
 
-// Rate Trends Component - Shows rate trends for visible currencies
-// Uses El Toque rates ("la bolsa") when available as they represent true market values
-// Falls back to manual rates for currencies not in API
-function RateTrends() {
-  const sellRates = useStore($sellRates);
-  const elToqueRates = useStore($elToqueRates);
-  const manualRates = useStore($manualElToqueRates);
-  const hasHistory = useStore($hasRateHistory);
-  const rateHistory = useStore($rateHistory);
-  const visibleCurrencies = useStore($visibleCurrencies);
-
-  // Record snapshot using El Toque rates when available (true market values)
-  // Fall back to sell rates for currencies without API data
-  useEffect(() => {
-    // Build rates prioritizing El Toque ("la bolsa") data
-    const ratesToRecord: Record<string, number> = {};
-
-    for (const currency of visibleCurrencies) {
-      // Priority 1: El Toque API rates (true market values)
-      if (
-        elToqueRates &&
-        elToqueRates[currency as keyof typeof elToqueRates] !== undefined
-      ) {
-        const rate = elToqueRates[currency as keyof typeof elToqueRates];
-        if (typeof rate === "number" && rate > 0) {
-          ratesToRecord[currency] = rate;
-          continue;
-        }
-      }
-
-      // Priority 2: Manual El Toque rates (for currencies not in API)
-      if (
-        isManualElToqueCurrency(currency) &&
-        manualRates[currency as keyof typeof manualRates]
-      ) {
-        ratesToRecord[currency] =
-          manualRates[currency as keyof typeof manualRates];
-        continue;
-      }
-
-      // Priority 3: Fallback removed as per user request
-      // Trends now strictly reflect "El Toque" (API or Manual)
-      // to avoid polluting market data with personal set rates.
-    }
-
-    if (Object.values(ratesToRecord).some((r) => r > 0)) {
-      recordRateSnapshot(ratesToRecord as Record<Currency, number>);
-    }
-  }, [sellRates, elToqueRates, manualRates, visibleCurrencies]);
-
-  // Only show if we have at least 2 days of history
-  if (!hasHistory || rateHistory.length < 2) {
-    return null;
-  }
-
-  // Filter to only visible currencies
-
-  return (
-    <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-[var(--cyan-bg)] flex items-center justify-center">
-          <TrendingUp className="w-5 h-5 text-[var(--cyan)]" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">
-            Tendencia de Tasas
-          </h3>
-          <p className="text-xs text-[var(--text-faint)]">
-            Últimos {rateHistory.length} días
-          </p>
-        </div>
-      </div>
-
-      {/* Currency Trends Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {visibleCurrencies.map((currency) => {
-          const trend = getCurrencyTrend(currency, 7);
-          const history = getRateHistoryForCurrency(currency, 7);
-          const meta = CURRENCY_META[currency];
-
-          if (history.length < 2) return null;
-
-          // Simple sparkline: normalize values to 0-100 range
-          const rates = history.map((h) => h.rate);
-          const min = Math.min(...rates);
-          const max = Math.max(...rates);
-          const range = max - min || 1;
-          const normalized = rates.map((r) => ((r - min) / range) * 100);
-
-          // Create SVG sparkline path
-          const width = 60;
-          const height = 20;
-          const points = normalized
-            .map(
-              (val, i) =>
-                `${(i / (normalized.length - 1)) * width},${
-                  height - (val / 100) * height
-                }`,
-            )
-            .join(" ");
-
-          return (
-            <div
-              key={currency}
-              className="bg-[var(--bg-secondary)] rounded-xl p-3 border border-[var(--border-muted)]"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm">{meta?.flag}</span>
-                  <span className="text-xs font-bold text-[var(--text-primary)]">
-                    {currency}
-                  </span>
-                </div>
-                <span
-                  className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded font-bold",
-                    trend.isNeutral
-                      ? "bg-neutral-500/20 text-neutral-400"
-                      : trend.isUp
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-red-500/20 text-red-400",
-                  )}
-                >
-                  {trend.isNeutral ? "•" : trend.isUp ? "▲" : "▼"}{" "}
-                  {Math.abs(trend.changePercent).toFixed(1)}%
-                </span>
-              </div>
-
-              {/* Sparkline */}
-              <svg width={width} height={height} className="w-full">
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={
-                    trend.isNeutral
-                      ? "#9ca3af"
-                      : trend.isUp
-                        ? "#10b981"
-                        : "#ef4444"
-                  }
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-
-              <div className="flex justify-between mt-1 text-[10px] text-[var(--text-muted)] tabular-nums">
-                <span>{formatNumber(trend.startRate)}</span>
-                <span className="font-bold text-[var(--text-primary)]">
-                  {formatNumber(trend.endRate)}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // Main Reports Tab
 export function ReportsTab() {
   return (
@@ -1108,7 +933,6 @@ export function ReportsTab() {
       <PortfolioCard />
       <SellSimulator />
       <ProfitSummary />
-      <RateTrends />
     </main>
   );
 }
