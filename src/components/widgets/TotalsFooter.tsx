@@ -6,6 +6,8 @@ import {
   Trash2,
   Clock,
   ArrowRightLeft,
+  ArrowDownLeft,
+  ArrowUpRight,
   Check,
   RefreshCw,
 } from "lucide-react";
@@ -38,9 +40,12 @@ import type { Currency } from "../../lib/constants";
 
 // ============================================
 // TotalsFooter Component
-// Smart Compact with Currency Carousel
-// Theme-aware using CSS variables
+// Context-Aware: Counter mode for Contar,
+// Transaction preview for Operar,
+// Minimal mode for Calculadora/Reportes
 // ============================================
+
+type FooterMode = "counter" | "transaction" | "minimal";
 
 export function TotalsFooter() {
   const grandTotal = useStore($grandTotalCUP) ?? 0;
@@ -61,6 +66,13 @@ export function TotalsFooter() {
   const visibleCurrencies = useStore($visibleCurrencies);
   const { toast } = useToast();
   const haptic = useHaptic();
+
+  // Determine footer display mode based on active tab
+  const footerMode: FooterMode = useMemo(() => {
+    if (activeTab === "contar") return "counter";
+    if (activeTab === "operar") return "transaction";
+    return "minimal"; // calcular, reportes
+  }, [activeTab]);
 
   // Use only visible currencies for carousel
   const carouselCurrencies = useMemo(
@@ -161,7 +173,7 @@ export function TotalsFooter() {
     }
   };
 
-  // Display Values
+  // Display Values for Counter Mode
   const displayTotal = privacyMode ? "••••" : formatNumber(grandTotal);
   const currentCurrency = carouselCurrencies[carouselIndex] as Currency;
   const currentForeignValue = foreignTotals[currentCurrency] || 0;
@@ -172,6 +184,79 @@ export function TotalsFooter() {
         currentForeignValue,
         currentCurrency,
       )}`;
+
+  // Display Values for Transaction Mode (Operar)
+  const txnDisplayTotal = formState.isValid
+    ? formatNumber(formState.totalCUP)
+    : "0";
+  const txnOperationLabel =
+    formState.operation === "BUY"
+      ? "Compra"
+      : formState.operation === "SELL"
+        ? "Venta"
+        : "Cambio";
+  const txnOperationIcon =
+    formState.operation === "BUY" ? (
+      <ArrowDownLeft size={12} className="text-[var(--accent)]" />
+    ) : formState.operation === "SELL" ? (
+      <ArrowUpRight size={12} className="text-[var(--status-warning)]" />
+    ) : (
+      <RefreshCw size={12} className="text-[var(--blue)]" />
+    );
+
+  // For EXCHANGE: show conversion preview
+  const exchangePreview =
+    formState.operation === "EXCHANGE" && formState.amount > 0
+      ? `${formState.amount} ${formState.fromCurrency} → ${formState.amountReceived?.toFixed(2) || "0"} ${formState.toCurrency}`
+      : null;
+
+  // For BUY/SELL: show amount and currency
+  const buySellSubtitle =
+    formState.operation !== "EXCHANGE" && formState.amount > 0
+      ? `${txnOperationLabel} • ${formatCurrency(formState.amount, formState.currency as Currency)}`
+      : null;
+
+  // ============================================
+  // MINIMAL MODE: Calculadora / Reportes
+  // Just history button, centered - clean view
+  // ============================================
+  if (footerMode === "minimal") {
+    return (
+      <footer
+        className={cn(
+          "fixed bottom-4 left-4 right-4 z-50",
+          "safe-bottom",
+          "transition-all duration-300 ease-out",
+        )}
+      >
+        <div
+          className={cn(
+            "rounded-full shadow-lg shadow-black/30",
+            "bg-[var(--bg-primary)]/90 backdrop-blur-xl",
+            "border border-[var(--border-muted)]",
+            "py-2 px-4",
+            "flex items-center justify-center",
+          )}
+        >
+          <button
+            onClick={() => {
+              haptic.light();
+              openHistoryDrawer();
+            }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full",
+              "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
+              "hover:bg-[var(--bg-hover)] transition-colors",
+            )}
+            aria-label="Historial"
+          >
+            <Clock size={18} />
+            <span className="text-sm font-medium">Historial</span>
+          </button>
+        </div>
+      </footer>
+    );
+  }
 
   // Slim Mode (keyboard visible)
   if (isInputFocused) {
@@ -186,7 +271,7 @@ export function TotalsFooter() {
       >
         <div className="flex items-center gap-2">
           <span className="text-[var(--status-success)] font-bold tabular-nums text-lg">
-            {displayTotal} CUP
+            {footerMode === "transaction" ? txnDisplayTotal : displayTotal} CUP
           </span>
         </div>
         <button
@@ -217,76 +302,139 @@ export function TotalsFooter() {
           "flex items-center gap-3",
         )}
       >
-        {/* LEFT CLUSTER: Total + Carousel */}
+        {/* LEFT CLUSTER: Context-Aware Display */}
         <div className="flex flex-col min-w-0 flex-1">
-          {/* Main Total Row */}
-          <div className="flex items-center gap-1.5">
-            <span
-              className={cn(
-                "text-xl font-bold tabular-nums leading-none",
-                grandTotal > 0 && !privacyMode
-                  ? "text-[var(--status-success)]"
-                  : "text-[var(--text-muted)]",
-                privacyMode && "blur-sm",
-              )}
-            >
-              {displayTotal}
-            </span>
-            <span className="text-xs text-[var(--text-faint)] font-medium">
-              CUP
-            </span>
+          {footerMode === "counter" ? (
+            // ============================================
+            // COUNTER MODE: Show counted totals
+            // ============================================
+            <>
+              {/* Main Total Row */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "text-xl font-bold tabular-nums leading-none",
+                    grandTotal > 0 && !privacyMode
+                      ? "text-[var(--status-success)]"
+                      : "text-[var(--text-muted)]",
+                    privacyMode && "blur-sm",
+                  )}
+                >
+                  {displayTotal}
+                </span>
+                <span className="text-xs text-[var(--text-faint)] font-medium">
+                  CUP
+                </span>
 
-            {/* Eye Button - Context Aware, larger when active */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                haptic.light();
-                if (isInOperar && canSubmit) {
-                  openClientView();
-                } else {
-                  togglePrivacyMode();
-                }
-              }}
-              className={cn(
-                "flex items-center justify-center rounded-full transition-all duration-200 ml-2",
-                // Bigger size when in Operar with valid form
-                isInOperar && canSubmit
-                  ? "w-10 h-10 bg-[var(--blue-bg)] text-[var(--blue)] shadow-sm hover:shadow-md"
-                  : "w-8 h-8 text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--bg-hover)]",
-              )}
-              aria-label={
-                isInOperar && canSubmit ? "Mostrar al cliente" : "Modo privado"
-              }
-              title={
-                isInOperar && canSubmit ? "Mostrar al cliente" : "Modo privado"
-              }
-            >
-              {privacyMode && !isInOperar ? (
-                <EyeOff size={isInOperar && canSubmit ? 20 : 16} />
-              ) : (
-                <Eye size={isInOperar && canSubmit ? 20 : 16} />
-              )}
-            </button>
-          </div>
+                {/* Privacy Toggle */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    togglePrivacyMode();
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--bg-hover)] transition-all duration-200 ml-2"
+                  aria-label="Modo privado"
+                  title="Modo privado"
+                >
+                  {privacyMode ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
 
-          {/* Currency Carousel - Fixed Height */}
-          <button
-            onClick={handleCarouselTap}
-            className={cn(
-              "h-4 overflow-hidden text-left", // Fixed height prevents jumping
-              "mt-0.5",
-            )}
-          >
-            <div
-              className={cn(
-                "text-[11px] text-[var(--text-faint)] font-medium tabular-nums transition-all duration-200",
-                privacyMode && "blur-sm",
-                isAnimating && "opacity-0 -translate-y-2",
-              )}
-            >
-              {displayCarousel}
-            </div>
-          </button>
+              {/* Currency Carousel */}
+              <button
+                onClick={handleCarouselTap}
+                className={cn("h-4 overflow-hidden text-left", "mt-0.5")}
+              >
+                <div
+                  className={cn(
+                    "text-[11px] text-[var(--text-faint)] font-medium tabular-nums transition-all duration-200",
+                    privacyMode && "blur-sm",
+                    isAnimating && "opacity-0 -translate-y-2",
+                  )}
+                >
+                  {displayCarousel}
+                </div>
+              </button>
+            </>
+          ) : (
+            // ============================================
+            // TRANSACTION MODE: Show transaction preview
+            // ============================================
+            <>
+              {/* Main Total Row */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "text-xl font-bold tabular-nums leading-none",
+                    formState.isValid
+                      ? formState.operation === "EXCHANGE"
+                        ? "text-[var(--blue)]"
+                        : formState.operation === "BUY"
+                          ? "text-[var(--status-success)]"
+                          : "text-[var(--status-warning)]"
+                      : "text-[var(--text-muted)]",
+                  )}
+                >
+                  {formState.operation === "EXCHANGE"
+                    ? exchangePreview || "0 → 0"
+                    : txnDisplayTotal}
+                </span>
+                {formState.operation !== "EXCHANGE" && (
+                  <span className="text-xs text-[var(--text-faint)] font-medium">
+                    CUP
+                  </span>
+                )}
+
+                {/* Eye Button - Opens Client View when valid */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    haptic.light();
+                    if (canSubmit) {
+                      openClientView();
+                    }
+                  }}
+                  disabled={!canSubmit}
+                  className={cn(
+                    "flex items-center justify-center rounded-full transition-all duration-200 ml-2",
+                    canSubmit
+                      ? "w-10 h-10 bg-[var(--blue-bg)] text-[var(--blue)] shadow-sm hover:shadow-md"
+                      : "w-8 h-8 text-[var(--text-faint)] opacity-40",
+                  )}
+                  aria-label="Mostrar al cliente"
+                  title="Mostrar al cliente"
+                >
+                  <Eye size={canSubmit ? 20 : 16} />
+                </button>
+              </div>
+
+              {/* Transaction Subtitle */}
+              <div className="h-4 mt-0.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-faint)] font-medium">
+                  {formState.operation === "EXCHANGE" ? (
+                    // Exchange: show rate
+                    formState.exchangeRate ? (
+                      <>
+                        <RefreshCw size={11} className="text-[var(--blue)]" />
+                        <span>@{formState.exchangeRate} • Tasa de cambio</span>
+                      </>
+                    ) : (
+                      <span className="opacity-50">Ingrese monto y tasa</span>
+                    )
+                  ) : buySellSubtitle ? (
+                    // BUY/SELL: show operation + amount
+                    <>
+                      {txnOperationIcon}
+                      <span>{buySellSubtitle}</span>
+                    </>
+                  ) : (
+                    <span className="opacity-50">Ingrese monto</span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* DIVIDER */}
