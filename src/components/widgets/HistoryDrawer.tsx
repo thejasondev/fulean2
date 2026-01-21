@@ -247,6 +247,16 @@ function TransactionCard({
         </div>
       )}
 
+      {/* Note Display */}
+      {transaction.note && (
+        <div className="mt-2 px-3 py-2 bg-[var(--bg-secondary)]/50 rounded-lg border border-[var(--border-muted)]/50">
+          <div className="flex items-start gap-2 text-xs text-[var(--text-muted)]">
+            <span className="opacity-60">📝</span>
+            <span className="italic">{transaction.note}</span>
+          </div>
+        </div>
+      )}
+
       {/* Date Footer */}
       <div className="flex items-center gap-1 mt-3 text-[10px] text-[var(--text-faint)]">
         <Calendar className="w-3 h-3" />

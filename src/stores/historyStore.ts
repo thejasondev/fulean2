@@ -44,6 +44,8 @@ export interface Transaction {
   amountForeign: number;
   rate: number;
   totalCUP: number;
+  // Optional note for tracking clients/debts
+  note?: string;
   // FIFO Profit tracking (NEW - precise calculation)
   costBasis?: number; // Actual cost from FIFO lots (for SELL only)
   realProfitCUP?: number; // totalCUP - costBasis (actual profit)
@@ -148,6 +150,7 @@ export function saveTransaction(
   totalCUP: number,
   spreadUsed?: number, // Optional: for legacy/estimated profit
   walletId?: string, // Target wallet ID
+  note?: string, // Optional note for tracking
 ): Transaction {
   const txnId = generateId();
 
@@ -210,6 +213,7 @@ export function saveTransaction(
       operationType === "SELL" ? (realProfitCUP ?? estimatedProfit) : 0,
     cupImpact,
     spreadUsed: spreadUsed ? Math.round(spreadUsed) : undefined,
+    note: note?.trim() || undefined,
   };
 
   const current = $transactions.get();
@@ -235,6 +239,7 @@ export function saveExchangeTransaction(
   amountFrom: number, // Amount of source currency given
   exchangeRate: number, // e.g., 1.13 EUR->USD means 1 EUR = 1.13 USD
   walletId?: string, // Target wallet ID
+  note?: string, // Optional note for tracking
 ): Transaction {
   const txnId = generateId();
   const amountReceived = Math.round(amountFrom * exchangeRate * 100) / 100;
@@ -304,6 +309,7 @@ export function saveExchangeTransaction(
     lotsConsumed,
     // No CUP impact for exchanges (lateral movement)
     cupImpact: 0,
+    note: note?.trim() || undefined,
   };
 
   const current = $transactions.get();

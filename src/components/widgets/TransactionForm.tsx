@@ -81,6 +81,9 @@ export function TransactionForm() {
   const showWalletSelector = activeWallets.length > 1;
   const targetWalletId = selectedWalletId || defaultWalletId || undefined;
 
+  // Optional note for transaction
+  const [transactionNote, setTransactionNote] = useState<string>("");
+
   // Get the appropriate rate based on operation
   const getRate = (curr: Currency, op: OperationType) => {
     return getRateForOperation(curr, op);
@@ -242,6 +245,7 @@ export function TransactionForm() {
         amount,
         exchRate,
         targetWalletId,
+        transactionNote,
       );
       toast.success(
         `Cambio registrado: ${amount} ${fromCurrency} → ${(amount * exchRate).toFixed(2)} ${toCurrency}`,
@@ -249,6 +253,7 @@ export function TransactionForm() {
 
       // Reset form
       setExchangeAmount("");
+      setTransactionNote("");
       goToCounter();
       return;
     }
@@ -277,6 +282,7 @@ export function TransactionForm() {
       cup,
       spread,
       targetWalletId,
+      transactionNote,
     );
 
     // Record capital movement for the selected wallet
@@ -295,6 +301,7 @@ export function TransactionForm() {
     // Reset form
     setAmountForeign("");
     setTotalCUP("");
+    setTransactionNote("");
 
     // Navigate back to counter tab
     goToCounter();
@@ -560,6 +567,23 @@ export function TransactionForm() {
               </div>
             </div>
           )}
+          {/* Optional Note for Exchange */}
+          <div className="mt-4">
+            <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+              Nota (opcional)
+            </label>
+            <Input
+              type="text"
+              value={transactionNote}
+              onChange={(e) => setTransactionNote(e.target.value)}
+              placeholder="Ej: Cliente X me debe..."
+              className="text-sm"
+              maxLength={100}
+            />
+            <p className="text-[10px] text-[var(--text-faint)] mt-1 opacity-60">
+              La nota aparecerá en el historial
+            </p>
+          </div>
 
           {/* Exchange button moved to footer */}
         </div>
@@ -683,6 +707,24 @@ export function TransactionForm() {
                   CUP
                 </span>
               </div>
+            </div>
+
+            {/* Optional Note */}
+            <div>
+              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                Nota (opcional)
+              </label>
+              <Input
+                type="text"
+                value={transactionNote}
+                onChange={(e) => setTransactionNote(e.target.value)}
+                placeholder="Ej: Cliente Juan, pago parcial..."
+                className="text-sm"
+                maxLength={100}
+              />
+              <p className="text-[10px] text-[var(--text-faint)] mt-1 opacity-60">
+                La nota aparecerá en el historial
+              </p>
             </div>
           </div>
           {/* Buttons moved to footer */}
