@@ -9,7 +9,7 @@ import { atom } from "nanostores";
 export type TabId = "contar" | "calcular" | "operar" | "reportes";
 
 // Active tab
-export const $activeTab = atom<TabId>("contar");
+export const $activeTab = atom<TabId>("operar");
 
 // Modal/Drawer states
 export const $isSettingsOpen = atom<boolean>(false);

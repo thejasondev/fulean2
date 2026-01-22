@@ -218,42 +218,10 @@ export function TotalsFooter() {
 
   // ============================================
   // MINIMAL MODE: Calculadora / Reportes
-  // Compact pill button - entire area clickable
+  // No footer - history accessible from header
   // ============================================
   if (footerMode === "minimal") {
-    return (
-      <footer
-        className={cn(
-          "fixed bottom-4 z-50",
-          "left-1/2 -translate-x-1/2", // Center horizontally
-          "safe-bottom",
-          "transition-all duration-300 ease-out",
-        )}
-      >
-        <button
-          onClick={() => {
-            haptic.light();
-            openHistoryDrawer();
-          }}
-          className={cn(
-            "flex items-center gap-2",
-            "px-5 py-3",
-            "rounded-full shadow-lg shadow-black/30",
-            "bg-[var(--bg-primary)]/90 backdrop-blur-xl",
-            "border border-[var(--border-muted)]",
-            "text-[var(--text-muted)]",
-            "hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]/90",
-            "hover:border-[var(--border-primary)]",
-            "active:scale-95 active:shadow-md",
-            "transition-all duration-200",
-          )}
-          aria-label="Abrir historial"
-        >
-          <Clock size={18} />
-          <span className="text-sm font-medium">Historial</span>
-        </button>
-      </footer>
-    );
+    return null;
   }
 
   // Slim Mode (keyboard visible)

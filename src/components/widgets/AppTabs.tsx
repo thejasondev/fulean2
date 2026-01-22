@@ -14,14 +14,14 @@ import { ReportsTab } from "./ReportsTab";
 
 const TABS = [
   {
-    id: "contar" as TabId,
-    label: "Contar",
-    icon: <Hash className="w-4 h-4" />,
-  },
-  {
     id: "operar" as TabId,
     label: "Operar",
     icon: <ArrowRightLeft className="w-4 h-4" />,
+  },
+  {
+    id: "contar" as TabId,
+    label: "Contar",
+    icon: <Hash className="w-4 h-4" />,
   },
   {
     id: "calcular" as TabId,
@@ -36,7 +36,7 @@ const TABS = [
 ];
 
 export function AppTabs() {
-  const activeTab = useStore($activeTab) ?? "contar";
+  const activeTab = useStore($activeTab) ?? "operar";
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as TabId);
@@ -49,12 +49,13 @@ export function AppTabs() {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden relative">
-        <TabPanel id="contar" activeTab={activeTab}>
-          <MoneyCounter />
-        </TabPanel>
-
+       
         <TabPanel id="operar" activeTab={activeTab}>
           <TransactionForm />
+        </TabPanel>
+
+        <TabPanel id="contar" activeTab={activeTab}>
+          <MoneyCounter />
         </TabPanel>
 
         <TabPanel id="calcular" activeTab={activeTab}>

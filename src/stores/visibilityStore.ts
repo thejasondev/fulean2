@@ -19,10 +19,12 @@ type VisibilityState = {
   currencies: Currency[];
 };
 
-// Default: all visible
+// Default: all visible except BTC and USDT_TRC20 for first-time users
 const defaultState: VisibilityState = {
   denominations: [...DENOMINATIONS],
-  currencies: [...CURRENCIES],
+  currencies: CURRENCIES.filter(
+    (c) => c !== "BTC" && c !== "USDT_TRC20",
+  ) as Currency[],
 };
 
 // Load from localStorage
@@ -34,11 +36,11 @@ function loadFromStorage(): VisibilityState {
       const parsed = JSON.parse(stored);
       // Validate denominations
       const validDenoms = (parsed.denominations || []).filter((d: number) =>
-        DENOMINATIONS.includes(d as Denomination)
+        DENOMINATIONS.includes(d as Denomination),
       );
       // Validate currencies
       const validCurrencies = (parsed.currencies || []).filter((c: string) =>
-        CURRENCIES.includes(c as Currency)
+        CURRENCIES.includes(c as Currency),
       );
       return {
         denominations:
@@ -71,7 +73,7 @@ function saveToStorage(state: VisibilityState) {
 const initialState = loadFromStorage();
 
 export const $visibleDenominations = atom<Denomination[]>(
-  initialState.denominations
+  initialState.denominations,
 );
 export const $visibleCurrencies = atom<Currency[]>(initialState.currencies);
 

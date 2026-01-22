@@ -9,6 +9,7 @@ import {
   Heart,
   Sun,
   Moon,
+  Clock,
 } from "lucide-react";
 import {
   $buyRates,
@@ -23,7 +24,11 @@ import {
   refreshRates,
   loadElToqueRates,
 } from "../../stores/ratesStore";
-import { openSettings, openDonation } from "../../stores/uiStore";
+import {
+  openSettings,
+  openDonation,
+  openHistoryDrawer,
+} from "../../stores/uiStore";
 import { $theme, toggleTheme } from "../../stores/themeStore";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
@@ -235,6 +240,15 @@ export function RatesDashboard() {
               title="Configuración"
             >
               <Settings size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openHistoryDrawer}
+              className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
+              title="Historial"
+            >
+              <Clock size={14} />
             </Button>
             <Button
               variant="ghost"
