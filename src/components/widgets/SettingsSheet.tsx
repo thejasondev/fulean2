@@ -31,7 +31,12 @@ import {
   toggleDenomination,
   toggleCurrency,
 } from "../../stores/visibilityStore";
-import { $theme, toggleTheme } from "../../stores/themeStore";
+import {
+  $theme,
+  $themeMode,
+  toggleTheme,
+  setAutoTheme,
+} from "../../stores/themeStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
 import {
   CURRENCIES,
@@ -188,6 +193,7 @@ function VisibilitySection() {
   const visibleDenominations = useStore($visibleDenominations);
   const visibleCurrencies = useStore($visibleCurrencies);
   const theme = useStore($theme);
+  const themeMode = useStore($themeMode);
   const haptic = useHaptic();
 
   const handleDenomToggle = (denom: Denomination) => {
@@ -205,6 +211,11 @@ function VisibilitySection() {
     toggleTheme();
   };
 
+  const handleAutoTheme = () => {
+    haptic.medium();
+    setAutoTheme();
+  };
+
   return (
     <div className="pt-4 mt-4 border-t border-[var(--border-primary)] space-y-4">
       {/* Section Header */}
@@ -213,6 +224,68 @@ function VisibilitySection() {
         <span className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide">
           Personalización
         </span>
+      </div>
+
+      {/* Theme Mode */}
+      <div>
+        <span className="block text-[10px] text-[var(--text-faint)] mb-2 font-medium">
+          Tema
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {/* Auto Mode Button */}
+          <button
+            onClick={handleAutoTheme}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
+              "border flex items-center gap-1.5",
+              themeMode === "auto"
+                ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/30 text-[var(--status-success)]"
+                : "bg-[var(--bg-primary)] border-[var(--border-secondary)] text-[var(--text-faint)]",
+            )}
+          >
+            <span>🌗</span>
+            <span>Auto</span>
+          </button>
+          {/* Manual Dark */}
+          <button
+            onClick={() => {
+              haptic.medium();
+              if (theme !== "dark") toggleTheme();
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
+              "border flex items-center gap-1.5",
+              themeMode === "manual" && theme === "dark"
+                ? "bg-[var(--blue-bg)] border-[var(--blue)]/30 text-[var(--blue)]"
+                : "bg-[var(--bg-primary)] border-[var(--border-secondary)] text-[var(--text-faint)]",
+            )}
+          >
+            <span>🌙</span>
+            <span>Oscuro</span>
+          </button>
+          {/* Manual Light */}
+          <button
+            onClick={() => {
+              haptic.medium();
+              if (theme !== "sunlight") toggleTheme();
+            }}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-sm font-bold transition-all",
+              "border flex items-center gap-1.5",
+              themeMode === "manual" && theme === "sunlight"
+                ? "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/30 text-[var(--status-warning)]"
+                : "bg-[var(--bg-primary)] border-[var(--border-secondary)] text-[var(--text-faint)]",
+            )}
+          >
+            <span>☀️</span>
+            <span>Claro</span>
+          </button>
+        </div>
+        {themeMode === "auto" && (
+          <p className="text-[10px] text-[var(--text-faint)] mt-2">
+            🌙 6PM - 7:30AM oscuro • ☀️ 7:30AM - 6PM claro
+          </p>
+        )}
       </div>
 
       {/* Denominations */}
