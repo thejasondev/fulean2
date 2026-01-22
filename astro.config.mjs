@@ -33,7 +33,20 @@ export default defineConfig({
         // Stale-While-Revalidate for all navigations
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*$/,
+            // Cache API rates with NetworkFirst (try network, fallback to cache)
+            urlPattern: /\/api\/rates$/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-rates-cache",
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+              networkTimeoutSeconds: 5, // Fallback to cache after 5s
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*/,
             handler: "StaleWhileRevalidate",
             options: {
               cacheName: "external-cache",

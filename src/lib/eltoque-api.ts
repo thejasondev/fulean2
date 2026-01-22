@@ -58,8 +58,75 @@ export function parseElToqueRates(data: unknown): ElToqueRates {
   };
 }
 
+// ============================================
+// El Toque Cache (localStorage)
+// ============================================
+const ELTOQUE_CACHE_KEY = "fulean2_eltoque_cache";
+
+interface CachedElToqueData {
+  rates: ElToqueRates;
+  timestamp: number;
+}
+
 /**
- * Fetch rates from our API proxy
+ * Save El Toque rates to cache
+ */
+function saveElToqueCache(rates: ElToqueRates): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const data: CachedElToqueData = {
+      rates,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(ELTOQUE_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Load El Toque rates from cache
+ * Returns null if cache is older than 24 hours
+ */
+function loadElToqueCache(): ElToqueRates | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(ELTOQUE_CACHE_KEY);
+    if (!stored) return null;
+
+    const data: CachedElToqueData = JSON.parse(stored);
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+    // Return cached rates even if old (better than nothing when offline)
+    if (data.rates) {
+      // Restore Date object from cached data
+      return {
+        ...data.rates,
+        lastUpdate: new Date(data.timestamp),
+      };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
+}
+
+/**
+ * Check if cached rates exist
+ */
+export function hasCachedElToqueRates(): boolean {
+  return loadElToqueCache() !== null;
+}
+
+/**
+ * Get cached El Toque rates (for offline use)
+ */
+export function getCachedElToqueRates(): ElToqueRates | null {
+  return loadElToqueCache();
+}
+
+/**
+ * Fetch rates from our API proxy with caching
  */
 export async function fetchElToqueRates(): Promise<ElToqueRates | null> {
   try {
@@ -67,20 +134,28 @@ export async function fetchElToqueRates(): Promise<ElToqueRates | null> {
 
     if (!response.ok) {
       console.warn("El Toque API error:", response.status);
-      return null;
+      // Return cached rates on error
+      return loadElToqueCache();
     }
 
     const data = await response.json();
 
     if (data.error) {
       console.warn("El Toque API error:", data.error);
-      return null;
+      // Return cached rates on error
+      return loadElToqueCache();
     }
 
-    return parseElToqueRates(data);
+    const rates = parseElToqueRates(data);
+
+    // Cache successful fetch
+    saveElToqueCache(rates);
+
+    return rates;
   } catch (error) {
     console.error("Failed to fetch El Toque rates:", error);
-    return null;
+    // Return cached rates when offline
+    return loadElToqueCache();
   }
 }
 

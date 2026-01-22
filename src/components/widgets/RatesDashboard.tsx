@@ -210,10 +210,10 @@ export function RatesDashboard() {
             </a>
 
             {isOffline && (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/20">
-                <WifiOff size={12} className="text-[var(--status-warning)]" />
-                <span className="text-[10px] font-bold text-[var(--status-warning)]">
-                  OFFLINE
+              <div className="flex items-center gap-1.5 px-2 md:px-2.5 py-1 rounded-full bg-[var(--status-warning-bg)] border border-[var(--status-warning)]/30 animate-pulse">
+                <WifiOff size={14} className="text-[var(--status-warning)]" />
+                <span className="hidden md:inline text-[11px] font-bold text-[var(--status-warning)]">
+                  Sin conexión
                 </span>
               </div>
             )}
@@ -271,17 +271,30 @@ export function RatesDashboard() {
           </div>
         </div>
 
-        {/* Rate Legend */}
-        <div className="flex items-center gap-2 pr-4 mb-2 text-[10px]">
-          <span className="text-[var(--status-success)]">Compra</span>
-          <span className="text-[var(--text-faint)]">/</span>
-          <span className="text-[var(--status-warning)]">Venta</span>
+        {/* Rate Legend + Last Update */}
+        <div className="flex items-center justify-between pr-4 mb-2 text-[10px] flex-wrap gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--status-success)]">Compra</span>
+            <span className="text-[var(--text-faint)]">/</span>
+            <span className="text-[var(--status-warning)]">Venta</span>
+            {elToqueRates && (
+              <>
+                <span className="text-[var(--text-faint)] ml-1">•</span>
+                <Zap size={10} className="text-[var(--blue)]" />
+                <span className="text-[var(--blue)]">El Toque</span>
+              </>
+            )}
+          </div>
+          {/* Timestamp indicator */}
           {elToqueRates && (
-            <>
-              <span className="text-[var(--text-faint)] ml-2">•</span>
-              <Zap size={10} className="text-[var(--blue)]" />
-              <span className="text-[var(--blue)]">El Toque</span>
-            </>
+            <div className="flex items-center gap-1 text-[var(--text-faint)]">
+              <span>{formatLastUpdate(elToqueRates.lastUpdate)}</span>
+              {isOffline && (
+                <span className="text-[var(--status-warning)] font-medium">
+                  (cache)
+                </span>
+              )}
+            </div>
           )}
         </div>
 
