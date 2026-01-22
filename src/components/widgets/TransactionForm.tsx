@@ -111,7 +111,7 @@ export function TransactionForm() {
     }
   }, [pendingCUP]);
 
-  // Update rate when operation changes
+  // Update rate when operation, currency, or global rates change
   useEffect(() => {
     const newRate = getRate(currency as Currency, operation);
     setRate(newRate.toString());
@@ -120,7 +120,7 @@ export function TransactionForm() {
       const foreign = parseFloat(amountForeign) || 0;
       setTotalCUP(Math.round(foreign * newRate).toString());
     }
-  }, [operation]);
+  }, [operation, currency, buyRates, sellRates]);
 
   // Sync form state to transactionFormStore for footer integration
   useEffect(() => {
@@ -186,13 +186,6 @@ export function TransactionForm() {
   // Handle currency change
   const handleCurrencyChange = (newCurr: TransactionCurrency) => {
     setCurrency(newCurr);
-    const newRate = getRate(newCurr as Currency, operation);
-    setRate(newRate.toString());
-
-    if (amountForeign) {
-      const foreign = parseFloat(amountForeign) || 0;
-      setTotalCUP(Math.round(foreign * newRate).toString());
-    }
   };
 
   // Handlers for bi-directional math
