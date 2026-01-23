@@ -38,6 +38,7 @@ import {
   setAutoTheme,
 } from "../../stores/themeStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
+import { PinSettings } from "./PinSettings";
 import {
   CURRENCIES,
   DENOMINATIONS,
@@ -589,6 +590,9 @@ export function SettingsSheet() {
 
         {/* Visibility Customization */}
         <VisibilitySection />
+
+        {/* Security Settings */}
+        <PinSettings />
 
         {/* Actions - Fixed Footer */}
         <div className="flex gap-3 pt-4 mt-4 border-t border-[var(--border-primary)]">

@@ -10,6 +10,7 @@ import { SettingsSheet } from "../widgets/SettingsSheet";
 import { HistoryDrawer } from "../widgets/HistoryDrawer";
 import { ClientViewModal } from "../widgets/ClientViewModal";
 import { DonationSheet } from "../widgets/DonationSheet";
+import { PinScreen } from "../widgets/PinScreen";
 import { initializeRates } from "../../stores/ratesStore";
 import { $theme, initializeTheme } from "../../stores/themeStore";
 
@@ -61,6 +62,7 @@ export function App() {
         <HistoryDrawer />
         <ClientViewModal />
         <DonationSheet />
+        <PinScreen />
       </div>
 
       {/* Confirm Dialog (global) */}
