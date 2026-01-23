@@ -35,6 +35,7 @@ import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
+import { $inventorySummary } from "../../stores/inventoryStore";
 
 // ============================================
 // ReportsTab Component
@@ -417,107 +418,45 @@ function ProfitSummary() {
 
 // Portfolio Card - Unified inventory + valuation
 function PortfolioCard() {
-  const transactions = useStore($walletTransactions);
   const sellRates = useStore($sellRates);
+  const inventorySummary = useStore($inventorySummary);
 
-  // Calculate portfolio data per currency
+  // Use FIFO inventory data for accurate cost tracking
+  let totalPortfolioValue = 0;
+  let totalPortfolioCost = 0;
+
   const portfolio: Record<
     string,
     {
-      bought: number;
-      sold: number;
       available: number;
       totalCost: number;
+      avgCost: number;
       currentValue: number;
       unrealizedGain: number;
       gainPercent: number;
     }
   > = {};
 
-  transactions.forEach((txn) => {
-    const currency = txn.currency || "USD";
-    const amount = txn.amountForeign || 0;
-
-    if (!portfolio[currency]) {
-      portfolio[currency] = {
-        bought: 0,
-        sold: 0,
-        available: 0,
-        totalCost: 0,
-        currentValue: 0,
-        unrealizedGain: 0,
-        gainPercent: 0,
-      };
-    }
-
-    if (txn.operationType === "BUY") {
-      portfolio[currency].bought += amount;
-      portfolio[currency].totalCost += txn.totalCUP;
-    } else if (txn.operationType === "SELL") {
-      portfolio[currency].sold += amount;
-    } else if (
-      txn.operationType === "EXCHANGE" &&
-      txn.fromCurrency &&
-      txn.toCurrency
-    ) {
-      // EXCHANGE: source currency goes out, target currency comes in
-      const fromCurr = txn.fromCurrency;
-      const toCurr = txn.toCurrency;
-      const amountGiven = txn.amountForeign || 0;
-      const amountReceived = txn.amountReceived || 0;
-      const derivedCostRate = txn.derivedCostRate || 0;
-
-      // Deduct from source currency
-      if (!portfolio[fromCurr]) {
-        portfolio[fromCurr] = {
-          bought: 0,
-          sold: 0,
-          available: 0,
-          totalCost: 0,
-          currentValue: 0,
-          unrealizedGain: 0,
-          gainPercent: 0,
-        };
-      }
-      portfolio[fromCurr].sold += amountGiven;
-
-      // Add to target currency
-      if (!portfolio[toCurr]) {
-        portfolio[toCurr] = {
-          bought: 0,
-          sold: 0,
-          available: 0,
-          totalCost: 0,
-          currentValue: 0,
-          unrealizedGain: 0,
-          gainPercent: 0,
-        };
-      }
-      portfolio[toCurr].bought += amountReceived;
-      portfolio[toCurr].totalCost += amountReceived * derivedCostRate;
-    }
-  });
-
-  // Calculate valuations
-  let totalPortfolioValue = 0;
-  let totalPortfolioCost = 0;
-
-  Object.keys(portfolio).forEach((currency) => {
-    const p = portfolio[currency];
-    p.available = p.bought - p.sold;
-
-    if (p.available > 0) {
+  Object.keys(inventorySummary).forEach((currency) => {
+    const inv = inventorySummary[currency];
+    if (inv.quantity > 0) {
       const sellRate = sellRates[currency as Currency] ?? 0;
-      p.currentValue = Math.round(p.available * sellRate);
+      const currentValue = Math.round(inv.quantity * sellRate);
+      const costOfAvailable = Math.round(inv.totalCost);
+      const unrealizedGain = currentValue - costOfAvailable;
+      const gainPercent =
+        costOfAvailable > 0 ? (unrealizedGain / costOfAvailable) * 100 : 0;
 
-      const avgCost = p.bought > 0 ? p.totalCost / p.bought : 0;
-      const costOfAvailable = Math.round(p.available * avgCost);
+      portfolio[currency] = {
+        available: inv.quantity,
+        totalCost: costOfAvailable,
+        avgCost: inv.avgCost,
+        currentValue,
+        unrealizedGain,
+        gainPercent,
+      };
 
-      p.unrealizedGain = p.currentValue - costOfAvailable;
-      p.gainPercent =
-        costOfAvailable > 0 ? (p.unrealizedGain / costOfAvailable) * 100 : 0;
-
-      totalPortfolioValue += p.currentValue;
+      totalPortfolioValue += currentValue;
       totalPortfolioCost += costOfAvailable;
     }
   });
