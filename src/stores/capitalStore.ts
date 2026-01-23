@@ -261,6 +261,18 @@ export function clearCapitalMovements() {
 }
 
 /**
+ * Delete capital movement by transaction ID (for rollback)
+ */
+export function deleteCapitalMovementByTransactionId(
+  transactionId: string,
+): void {
+  const movements = $capitalMovements.get();
+  const filtered = movements.filter((m) => m.transactionId !== transactionId);
+  $capitalMovements.set(filtered);
+  persist();
+}
+
+/**
  * Reset capital for active wallet
  */
 export function resetCapital() {

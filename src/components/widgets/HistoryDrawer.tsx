@@ -278,7 +278,8 @@ export function HistoryDrawer() {
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
       title: "Eliminar transacción",
-      message: "¿Estás seguro de que deseas eliminar esta transacción?",
+      message:
+        "¿Estás seguro de que deseas eliminar esta transacción? Se revertirán los cambios en el inventario y capital asociados.",
       confirmLabel: "Eliminar",
       cancelLabel: "Cancelar",
       variant: "danger",
@@ -287,7 +288,7 @@ export function HistoryDrawer() {
     if (confirmed) {
       haptic.heavy();
       deleteTransaction(id);
-      toast.info("Transacción eliminada");
+      toast.info("Transacción eliminada y revertida");
     }
   };
 

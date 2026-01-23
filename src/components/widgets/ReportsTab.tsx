@@ -35,7 +35,7 @@ import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
-import { $inventorySummary } from "../../stores/inventoryStore";
+import { $inventorySummary, clearInventory } from "../../stores/inventoryStore";
 
 // ============================================
 // ReportsTab Component
@@ -416,6 +416,41 @@ function ProfitSummary() {
   );
 }
 
+// Reset Portfolio Button Component
+function ResetPortfolioButton() {
+  const { toast } = useToast();
+  const haptic = useHaptic();
+
+  const handleReset = async () => {
+    const confirmed = await confirm({
+      title: "Reiniciar Portafolio",
+      message:
+        "¿Estás seguro de que deseas eliminar todo el inventario? Esta acción no se puede deshacer.",
+      confirmLabel: "Sí, reiniciar",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+
+    if (confirmed) {
+      haptic.heavy();
+      clearInventory();
+      toast.info("Portafolio reiniciado");
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleReset}
+      className="w-full text-[var(--status-error)] hover:bg-[var(--status-error)]/10"
+    >
+      <RotateCcw className="w-4 h-4 mr-2" />
+      Reiniciar Portafolio
+    </Button>
+  );
+}
+
 // Portfolio Card - Unified inventory + valuation
 function PortfolioCard() {
   const sellRates = useStore($sellRates);
@@ -599,6 +634,11 @@ function PortfolioCard() {
             </div>
           );
         })}
+      </div>
+
+      {/* Reset Portfolio Button */}
+      <div className="mt-4 pt-4 border-t border-[var(--border-secondary)]">
+        <ResetPortfolioButton />
       </div>
     </div>
   );

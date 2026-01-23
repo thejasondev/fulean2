@@ -78,7 +78,7 @@ export function getLotsForCurrency(currency: Currency): InventoryLot[] {
 export function getAvailableQuantity(currency: Currency): number {
   return getLotsForCurrency(currency).reduce(
     (sum, lot) => sum + lot.remaining,
-    0
+    0,
   );
 }
 
@@ -89,7 +89,7 @@ export function getAverageCost(currency: Currency): number {
 
   const totalCost = lots.reduce(
     (sum, lot) => sum + lot.remaining * lot.costRate,
-    0
+    0,
   );
   const totalQuantity = lots.reduce((sum, lot) => sum + lot.remaining, 0);
 
@@ -137,7 +137,7 @@ export function addInventoryLot(
   currency: Currency,
   quantity: number,
   costRate: number,
-  transactionId?: string
+  transactionId?: string,
 ): InventoryLot {
   const lot: InventoryLot = {
     id: generateLotId(),
@@ -161,7 +161,7 @@ export function addInventoryLot(
  */
 export function consumeInventoryLots(
   currency: Currency,
-  quantityToSell: number
+  quantityToSell: number,
 ): ConsumptionResult | null {
   const lots = getLotsForCurrency(currency);
   const available = lots.reduce((sum, lot) => sum + lot.remaining, 0);
@@ -231,6 +231,82 @@ export function clearInventory() {
 export function cleanupEmptyLots() {
   const lots = $inventoryLots.get().filter((lot) => lot.remaining > 0);
   $inventoryLots.set(lots);
+  persist();
+}
+
+// ============================================
+// Rollback Functions (for transaction deletion)
+// ============================================
+
+/**
+ * Get a lot by its ID
+ */
+export function getLotById(lotId: string): InventoryLot | undefined {
+  return $inventoryLots.get().find((lot) => lot.id === lotId);
+}
+
+/**
+ * Remove a lot by its transaction ID (for BUY rollback)
+ * Returns true if the lot was found and removed
+ */
+export function removeLotByTransactionId(transactionId: string): boolean {
+  const lots = $inventoryLots.get();
+  const lotIndex = lots.findIndex((lot) => lot.transactionId === transactionId);
+
+  if (lotIndex === -1) return false;
+
+  const updatedLots = lots.filter((lot) => lot.transactionId !== transactionId);
+  $inventoryLots.set(updatedLots);
+  persist();
+  return true;
+}
+
+/**
+ * Restore consumed quantity to a lot (for SELL rollback)
+ * Returns true if the lot was found and updated
+ */
+export function restoreLotQuantity(lotId: string, quantity: number): boolean {
+  const lots = $inventoryLots.get();
+  const lotIndex = lots.findIndex((lot) => lot.id === lotId);
+
+  if (lotIndex === -1) return false;
+
+  const lot = lots[lotIndex];
+  const updatedLot: InventoryLot = {
+    ...lot,
+    remaining: Math.round((lot.remaining + quantity) * 100) / 100,
+  };
+
+  const updatedLots = [...lots];
+  updatedLots[lotIndex] = updatedLot;
+  $inventoryLots.set(updatedLots);
+  persist();
+  return true;
+}
+
+/**
+ * Restore multiple lots from a consumption breakdown (for SELL/EXCHANGE rollback)
+ * breakdown: array of { lotId, quantity } to restore
+ */
+export function restoreLotsFromBreakdown(
+  breakdown: { lotId: string; quantity: number }[],
+): void {
+  if (breakdown.length === 0) return;
+
+  const lots = $inventoryLots.get();
+  const updatedLots = lots.map((lot) => {
+    const restoration = breakdown.find((b) => b.lotId === lot.id);
+    if (restoration) {
+      return {
+        ...lot,
+        remaining:
+          Math.round((lot.remaining + restoration.quantity) * 100) / 100,
+      };
+    }
+    return lot;
+  });
+
+  $inventoryLots.set(updatedLots);
   persist();
 }
 

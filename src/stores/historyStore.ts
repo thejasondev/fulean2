@@ -8,7 +8,10 @@ import {
   addInventoryLot,
   consumeInventoryLots,
   getAverageCost,
+  removeLotByTransactionId,
+  restoreLotsFromBreakdown,
 } from "./inventoryStore";
+import { deleteCapitalMovementByTransactionId } from "./capitalStore";
 import {
   $activeWalletId,
   $defaultWalletId,
@@ -50,6 +53,12 @@ export interface Transaction {
   costBasis?: number; // Actual cost from FIFO lots (for SELL only)
   realProfitCUP?: number; // totalCUP - costBasis (actual profit)
   lotsConsumed?: string[]; // IDs of inventory lots used
+  // Detailed breakdown for rollback (stores quantity consumed per lot)
+  consumptionBreakdown?: {
+    lotId: string;
+    quantity: number;
+    costRate: number;
+  }[];
   // EXCHANGE operation fields
   fromCurrency?: TransactionCurrency; // Source currency (what you gave)
   toCurrency?: TransactionCurrency; // Target currency (what you received)
@@ -157,6 +166,9 @@ export function saveTransaction(
   let costBasis: number | undefined;
   let realProfitCUP: number | undefined;
   let lotsConsumed: string[] | undefined;
+  let consumptionBreakdown:
+    | { lotId: string; quantity: number; costRate: number }[]
+    | undefined;
 
   // Legacy estimated profit (based on current spread)
   const estimatedProfit =
@@ -179,6 +191,12 @@ export function saveTransaction(
       costBasis = consumption.totalCost;
       realProfitCUP = Math.round(totalCUP) - costBasis;
       lotsConsumed = consumption.lotsConsumed;
+      // Store breakdown for potential rollback
+      consumptionBreakdown = consumption.breakdown.map((b) => ({
+        lotId: b.lotId,
+        quantity: b.quantity,
+        costRate: b.costRate,
+      }));
     } else {
       // No inventory (selling without prior purchase) - use average or 0
       const avgCost = getAverageCost(currency as Currency);
@@ -208,6 +226,7 @@ export function saveTransaction(
     costBasis,
     realProfitCUP,
     lotsConsumed,
+    consumptionBreakdown,
     // Legacy profit (estimate)
     profitCUP:
       operationType === "SELL" ? (realProfitCUP ?? estimatedProfit) : 0,
@@ -247,6 +266,9 @@ export function saveExchangeTransaction(
   let costBasis: number | undefined;
   let lotsConsumed: string[] | undefined;
   let derivedCostRate: number | undefined;
+  let consumptionBreakdown:
+    | { lotId: string; quantity: number; costRate: number }[]
+    | undefined;
 
   // 1. Consume inventory from source currency (FIFO)
   const consumption = consumeInventoryLots(
@@ -257,6 +279,12 @@ export function saveExchangeTransaction(
   if (consumption) {
     costBasis = consumption.totalCost;
     lotsConsumed = consumption.lotsConsumed;
+    // Store breakdown for potential rollback
+    consumptionBreakdown = consumption.breakdown.map((b) => ({
+      lotId: b.lotId,
+      quantity: b.quantity,
+      costRate: b.costRate,
+    }));
 
     // 2. Calculate derived cost rate for target currency
     // Formula: derivedCostRate = (total cost / amount given) / exchangeRate
@@ -307,6 +335,7 @@ export function saveExchangeTransaction(
     // FIFO tracking
     costBasis,
     lotsConsumed,
+    consumptionBreakdown,
     // No CUP impact for exchanges (lateral movement)
     cupImpact: 0,
     note: note?.trim() || undefined,
@@ -347,10 +376,50 @@ export function saveLegacyTransaction(
 }
 
 /**
- * Delete a transaction by ID
+ * Delete a transaction by ID with full rollback
+ * Reverts inventory lots and capital movements as if the transaction never occurred
  */
 export function deleteTransaction(id: string): void {
   const current = $transactions.get();
+  const transaction = current.find((t) => t.id === id);
+
+  if (!transaction) return; // Transaction not found
+
+  // 1. Revert capital movement
+  deleteCapitalMovementByTransactionId(id);
+
+  // 2. Revert inventory based on operation type
+  switch (transaction.operationType) {
+    case "BUY":
+      // Remove the inventory lot created by this purchase
+      removeLotByTransactionId(id);
+      break;
+
+    case "SELL":
+      // Restore quantities to the lots that were consumed
+      if (
+        transaction.consumptionBreakdown &&
+        transaction.consumptionBreakdown.length > 0
+      ) {
+        restoreLotsFromBreakdown(transaction.consumptionBreakdown);
+      }
+      break;
+
+    case "EXCHANGE":
+      // Remove the lot created for the target currency
+      removeLotByTransactionId(id);
+
+      // Restore quantities to the lots consumed from source currency
+      if (
+        transaction.consumptionBreakdown &&
+        transaction.consumptionBreakdown.length > 0
+      ) {
+        restoreLotsFromBreakdown(transaction.consumptionBreakdown);
+      }
+      break;
+  }
+
+  // 3. Remove the transaction from history
   $transactions.set(current.filter((t) => t.id !== id));
 }
 
