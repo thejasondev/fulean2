@@ -6,40 +6,52 @@ import type { Currency } from "../lib/constants";
 // Tracks purchase lots for accurate profit calculation
 // ============================================
 
-const STORAGE_KEY = "fulean2_inventory";
+import {
+  $activeWalletId,
+  $defaultWalletId,
+  CONSOLIDATED_ID,
+} from "./walletStore";
 
-// A lot represents a purchase of foreign currency
-export interface InventoryLot {
-  id: string;
-  currency: Currency;
-  quantity: number; // Original quantity purchased
-  remaining: number; // Remaining quantity (decreases on sales)
-  costRate: number; // Rate at which you bought (CUP per unit)
-  date: string; // ISO date string
-  transactionId?: string; // Link to purchase transaction
+const STORAGE_PREFIX = "fulean2_inventory_";
+const LEGACY_STORAGE_KEY = "fulean2_inventory";
+
+// Helper: Get storage key for a wallet
+function getStorageKey(walletId: string): string {
+  return `${STORAGE_PREFIX}${walletId}`;
 }
 
-// Result of consuming lots (for a sale)
-export interface ConsumptionResult {
-  totalCost: number; // Total CUP cost basis of sold units
-  lotsConsumed: string[]; // IDs of lots that were used
-  breakdown: {
-    // Detailed breakdown
-    lotId: string;
-    quantity: number;
-    costRate: number;
-    cost: number;
-  }[];
-}
+// Load from localStorage with legacy migration support
+function loadFromStorage(walletId: string | null): InventoryLot[] {
+  if (typeof window === "undefined" || !walletId) return [];
 
-// Load from localStorage
-function loadFromStorage(): InventoryLot[] {
-  if (typeof window === "undefined") return [];
+  // Handle consolidated view (read-only aggregation could be complex, for now return empty or implement later)
+  if (walletId === CONSOLIDATED_ID) return [];
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    const key = getStorageKey(walletId);
+    const stored = localStorage.getItem(key);
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+
+    // MIGRATION: If specific data missing, check if this is the DEFAULT wallet and legacy data exists
+    const defaultId = $defaultWalletId.get();
+    if (walletId === defaultId) {
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (legacy) {
+        console.log("Migrating inventory to default wallet...");
+        const parsed = JSON.parse(legacy);
+        // Save to new key immediately
+        if (Array.isArray(parsed)) {
+          localStorage.setItem(key, legacy);
+          return parsed;
+        }
+      }
+    }
+
+    return [];
   } catch {
     return [];
   }
@@ -48,8 +60,13 @@ function loadFromStorage(): InventoryLot[] {
 // Save to localStorage
 function saveToStorage(lots: InventoryLot[]): void {
   if (typeof window === "undefined") return;
+  const walletId = $activeWalletId.get();
+
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lots));
+    const key = getStorageKey(walletId);
+    localStorage.setItem(key, JSON.stringify(lots));
   } catch {
     // Ignore storage errors
   }
@@ -64,7 +81,15 @@ function generateLotId(): string {
 // State
 // ============================================
 
-export const $inventoryLots = atom<InventoryLot[]>(loadFromStorage());
+// Initialize with current active wallet
+export const $inventoryLots = atom<InventoryLot[]>([]);
+
+// Subscribe to wallet changes to reload data
+$activeWalletId.subscribe((id) => {
+  if (id) {
+    $inventoryLots.set(loadFromStorage(id));
+  }
+});
 
 // Computed: Get lots for a specific currency (sorted oldest first - FIFO)
 export function getLotsForCurrency(currency: Currency): InventoryLot[] {

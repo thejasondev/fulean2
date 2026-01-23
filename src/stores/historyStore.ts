@@ -76,17 +76,69 @@ export interface Transaction {
 }
 
 // LocalStorage key
-const STORAGE_KEY = "fulean2_transactions";
+const STORAGE_PREFIX = "fulean2_transactions_";
+const LEGACY_STORAGE_KEY = "fulean2_transactions";
+
+// Helper: Get storage key for a wallet
+function getStorageKey(walletId: string): string {
+  return `${STORAGE_PREFIX}${walletId}`;
+}
 
 // Load from localStorage (SSR-safe)
-function loadFromStorage(): Transaction[] {
-  if (typeof window === "undefined") return [];
+function loadFromStorage(walletId: string | null): Transaction[] {
+  if (typeof window === "undefined" || !walletId) return [];
+  
+  // Handle consolidated view
+  if (walletId === CONSOLIDATED_ID) {
+      // For consolidated view, we might want to load ALL known wallets. 
+      // This refers to a more complex need. For now, returning empty or handling logic elsewhere.
+      return []; 
+  }
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    const parsed = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    const key = getStorageKey(walletId);
+    const stored = localStorage.getItem(key);
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+
+    // MIGRATION: Perform Smart Split if legacy data exists and specific data is missing
+    // We only trigger this once. We check if legacy exists.
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+        console.log("Migrating history transactions...");
+        try {
+            const allTransactions: Transaction[] = JSON.parse(legacy);
+            if (Array.isArray(allTransactions)) {
+                // Group by wallet
+                const groups: Record<string, Transaction[]> = {};
+                const defaultId = $defaultWalletId.get() || "unknown"; // Fallback shouldn't happen if wallets initialized
+                
+                allTransactions.forEach(t => {
+                    const targetId = t.walletId || defaultId;
+                    if (!groups[targetId]) groups[targetId] = [];
+                    groups[targetId].push(t);
+                });
+
+                // Write ALL groups to new keys
+                Object.entries(groups).forEach(([wId, txs]) => {
+                    localStorage.setItem(getStorageKey(wId), JSON.stringify(txs));
+                });
+                
+                // Remove legacy key to prevent re-migration
+                // localStorage.removeItem(LEGACY_STORAGE_KEY); // Keep for safety for now
+                
+                // Return data for THIS wallet
+                return groups[walletId] || [];
+            }
+        } catch (e) {
+            console.error("Migration failed", e);
+        }
+    }
+
+    return [];
   } catch {
     return [];
   }
@@ -95,44 +147,40 @@ function loadFromStorage(): Transaction[] {
 // Save to localStorage
 function saveToStorage(transactions: Transaction[]) {
   if (typeof window === "undefined") return;
+  const walletId = $activeWalletId.get();
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    localStorage.setItem(getStorageKey(walletId), JSON.stringify(transactions));
   } catch {
     // Ignore storage errors
   }
 }
 
 // Transaction store
-export const $transactions = atom<Transaction[]>(loadFromStorage());
+// Initialize with empty, will load on subscription
+export const $transactions = atom<Transaction[]>([]);
+
+// Subscribe to wallet changes to reload
+$activeWalletId.subscribe((id) => {
+    if (id) {
+        $transactions.set(loadFromStorage(id));
+    }
+});
 
 // Computed: Transactions filtered by active wallet
+// Now redundant as $transactions IS the filtered list, but kept for interface compatibility
 export const $walletTransactions = computed(
-  [$transactions, $activeWalletId, $defaultWalletId],
-  (transactions, activeWalletId, defaultWalletId) => {
-    // Consolidated view: return all transactions
-    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
-      return transactions;
-    }
-    // Filter by wallet
-    // Legacy transactions (without walletId) only appear in the default wallet
-    return transactions.filter((t) => {
-      if (t.walletId) {
-        // Transaction has explicit wallet assignment
-        return t.walletId === activeWalletId;
-      } else {
-        // Legacy transaction: only show in default wallet
-        return activeWalletId === defaultWalletId;
-      }
-    });
-  },
+  $transactions,
+  (transactions) => transactions
 );
 
 // Subscribe to persist on changes
 if (typeof window !== "undefined") {
-  $transactions.subscribe(saveToStorage);
-  // Initialize wallet system on load
+    $transactions.subscribe(saveToStorage);
+}  // Initialize wallet system on load
   initializeWallets();
-}
+
 
 // ============================================
 // Actions

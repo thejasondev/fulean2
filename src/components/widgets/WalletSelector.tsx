@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
 import {
   ChevronDown,
@@ -99,17 +99,67 @@ export function WalletSelector() {
     }
   };
 
-  // Get transaction count for a wallet (using all transactions)
-  const getWalletStats = (walletId: string) => {
-    const walletTxns = allTransactions.filter((t) => {
-      if (t.walletId) {
-        return t.walletId === walletId;
-      } else {
-        // Legacy transactions only belong to default wallet
-        return walletId === defaultWalletId;
+  const [stats, setStats] = useState<Record<string, number>>({});
+
+  // Calculate stats when menu opens
+  useState(() => {
+    // Initial calculation (effect will update)
+  });
+
+  // Effect to load stats when open
+  // We read from localStorage for inactive wallets because their data isn't in memory
+  const updateStats = () => {
+    const newStats: Record<string, number> = {};
+    activeWallets.forEach((w) => {
+      // Optimization: use memory for active wallet
+      if (w.id === activeWallet?.id && !isConsolidated) {
+        newStats[w.id] = allTransactions.length;
+        return;
+      }
+
+      // Read from storage for others
+      try {
+        const key = `fulean2_transactions_${w.id}`;
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          newStats[w.id] = Array.isArray(parsed) ? parsed.length : 0;
+        } else {
+          // Check legacy if it's default wallet and specific file missing
+          // (Only serves as fallback display, real migration happens on load)
+          if (w.id === defaultWalletId) {
+            const legacy = localStorage.getItem("fulean2_transactions");
+            if (legacy) {
+              const parsed = JSON.parse(legacy);
+              // Legacy contained all transactions mixed, but mostly default
+              // Accurate count is hard without parsing all logic, so we estimate/count all
+              newStats[w.id] = Array.isArray(parsed) ? parsed.length : 0;
+            } else {
+              newStats[w.id] = 0;
+            }
+          } else {
+            newStats[w.id] = 0;
+          }
+        }
+      } catch {
+        newStats[w.id] = 0;
       }
     });
-    return walletTxns.length;
+    setStats(newStats);
+  };
+
+  // Update stats when menu opens or data changes
+  if (isOpen && JSON.stringify(stats) === "{}") {
+    updateStats();
+  }
+
+  // React effect for updates
+  useEffect(() => {
+    if (isOpen) updateStats();
+  }, [isOpen, activeWallets, allTransactions, activeWallet]);
+
+  const getWalletStats = (walletId: string) => {
+    return stats[walletId] ?? 0;
   };
 
   const displayName = isConsolidated

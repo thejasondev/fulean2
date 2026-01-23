@@ -10,7 +10,8 @@ import {
 // Track operating capital for each wallet
 // ============================================
 
-const STORAGE_KEY = "fulean2_capital";
+const STORAGE_PREFIX = "fulean2_capital_";
+const LEGACY_STORAGE_KEY = "fulean2_capital";
 
 // Capital movement record
 export interface CapitalMovement {
@@ -19,102 +20,157 @@ export interface CapitalMovement {
   amount: number;
   date: string;
   transactionId?: string; // Link to transaction
-  walletId?: string; // Multi-wallet support
+  walletId?: string; // Multi-wallet support (kept for data shape compatibility)
 }
 
 interface CapitalState {
-  initialCapital: number; // Legacy: global capital (deprecated)
+  initialCapital: number;
   movements: CapitalMovement[];
-  // Per-wallet capital
-  walletCapitals: Record<string, number>; // walletId -> initial capital
+  walletCapitals: Record<string, number>; // Legacy map, kept for type compatibility but unused in new logic
 }
 
 // Load from localStorage
-function loadFromStorage(): CapitalState {
-  if (typeof window === "undefined") {
-    return { initialCapital: 0, movements: [], walletCapitals: {} };
-  }
+function loadFromStorage(walletId: string | null): CapitalState {
+  // Default empty state
+  const empty: CapitalState = {
+    initialCapital: 0,
+    movements: [],
+    walletCapitals: {},
+  };
+
+  if (typeof window === "undefined" || !walletId) return empty;
+
+  if (walletId === CONSOLIDATED_ID) return empty; // Todo: Aggregate view if needed
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored)
-      return { initialCapital: 0, movements: [], walletCapitals: {} };
-    const parsed = JSON.parse(stored);
-    return {
-      initialCapital: parsed.initialCapital || 0,
-      movements: Array.isArray(parsed.movements) ? parsed.movements : [],
-      walletCapitals: parsed.walletCapitals || {},
-    };
+    const key = `${STORAGE_PREFIX}${walletId}`;
+    const stored = localStorage.getItem(key);
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        initialCapital: parsed.initialCapital ?? 0,
+        movements: Array.isArray(parsed.movements) ? parsed.movements : [],
+        walletCapitals: {},
+      };
+    }
+
+    // MIGRATION: Smart Split from Legacy Monolithic Store
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) {
+      console.log(`Migrating capital data for wallet ${walletId}...`);
+      try {
+        const parsed = JSON.parse(legacy);
+        const legacyMovements = Array.isArray(parsed.movements)
+          ? (parsed.movements as CapitalMovement[])
+          : [];
+        const legacyCapitals = parsed.walletCapitals || {};
+        const globalCapital = parsed.initialCapital || 0;
+        const defaultId = $defaultWalletId.get();
+
+        // 1. Determine Initial Capital for THIS wallet
+        let myInitialCapital = 0;
+        if (legacyCapitals[walletId] !== undefined) {
+          myInitialCapital = legacyCapitals[walletId];
+        } else if (walletId === defaultId) {
+          myInitialCapital = globalCapital;
+        }
+
+        // 2. Filter movements for THIS wallet
+        // If movement has no walletId, it belongs to default wallet
+        const myMovements = legacyMovements.filter((m) => {
+          const mWalletId = m.walletId;
+          if (mWalletId) return mWalletId === walletId;
+          // Legacy movement allocation
+          return walletId === defaultId;
+        });
+
+        // 3. Save migrated data for this wallet immediately
+        const newState = {
+          initialCapital: myInitialCapital,
+          movements: myMovements,
+          walletCapitals: {},
+        };
+        localStorage.setItem(key, JSON.stringify(newState));
+
+        return newState;
+      } catch (e) {
+        console.error("Capital migration failed", e);
+      }
+    }
+
+    return empty;
   } catch {
-    return { initialCapital: 0, movements: [], walletCapitals: {} };
+    return empty;
   }
 }
 
 // Save to localStorage
 function saveToStorage(state: CapitalState): void {
   if (typeof window === "undefined") return;
+  const walletId = $activeWalletId.get();
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // Ignore storage errors
-  }
+    const key = `${STORAGE_PREFIX}${walletId}`;
+    // We only save relevant fields, ignoring walletCapitals map
+    const dataToSave = {
+      initialCapital: state.initialCapital,
+      movements: state.movements,
+      walletCapitals: {}, // We don't use this anymore
+    };
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+  } catch {}
 }
 
-// State atoms
-const initialState = loadFromStorage();
-export const $initialCapital = atom<number>(initialState.initialCapital);
-export const $capitalMovements = atom<CapitalMovement[]>(
-  initialState.movements,
+// ============================================
+// State Atoms (representing ACTIVE wallet)
+// ============================================
+
+// Initialize with empty, will be populated by subscription
+export const $initialCapital = atom<number>(0);
+export const $capitalMovements = atom<CapitalMovement[]>([]);
+export const $walletCapitals = atom<Record<string, number>>({}); // Kept for interface compatibility, mostly empty
+
+// Helper computed to aggregate state for saving
+const $currentState = computed(
+  [$initialCapital, $capitalMovements],
+  (initial, movements) => ({
+    initialCapital: initial,
+    movements,
+    walletCapitals: {},
+  }),
 );
-export const $walletCapitals = atom<Record<string, number>>(
-  initialState.walletCapitals,
-);
+
+// Subscribe to wallet changes to reload data
+$activeWalletId.subscribe((id) => {
+  if (id) {
+    const data = loadFromStorage(id);
+    $initialCapital.set(data.initialCapital);
+    $capitalMovements.set(data.movements);
+    // We don't populate $walletCapitals map as logically it's not needed per wallet
+  }
+});
+
+// Subscribe to persist on changes
+if (typeof window !== "undefined") {
+  $currentState.subscribe(saveToStorage);
+}
 
 // ============================================
 // Per-Wallet Computed Stores
 // ============================================
 
-// Get movements filtered by active wallet
+// Return movements for active wallet (Identity)
 export const $walletCapitalMovements = computed(
-  [$capitalMovements, $activeWalletId, $defaultWalletId],
-  (movements, activeWalletId, defaultWalletId) => {
-    // Consolidated view: return all movements
-    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
-      return movements;
-    }
-    // Filter by wallet
-    return movements.filter((m) => {
-      if (m.walletId) {
-        return m.walletId === activeWalletId;
-      } else {
-        // Legacy movements only belong to default wallet
-        return activeWalletId === defaultWalletId;
-      }
-    });
-  },
+  $capitalMovements,
+  (movements) => movements,
 );
 
-// Get initial capital for active wallet
+// Return initial capital for active wallet (Identity)
 export const $walletInitialCapital = computed(
-  [$walletCapitals, $initialCapital, $activeWalletId, $defaultWalletId],
-  (walletCapitals, globalCapital, activeWalletId, defaultWalletId) => {
-    // Consolidated view: sum all wallet capitals + legacy
-    if (!activeWalletId || activeWalletId === CONSOLIDATED_ID) {
-      const walletSum = Object.values(walletCapitals).reduce(
-        (sum, c) => sum + c,
-        0,
-      );
-      return walletSum + globalCapital;
-    }
-    // Specific wallet: use wallet capital or 0, legacy goes to default
-    if (walletCapitals[activeWalletId] !== undefined) {
-      return walletCapitals[activeWalletId];
-    }
-    // Default wallet inherits global/legacy capital
-    if (activeWalletId === defaultWalletId) {
-      return globalCapital;
-    }
-    return 0;
-  },
+  $initialCapital,
+  (capital) => capital,
 );
 
 // Computed: Total money out for active wallet
@@ -160,44 +216,32 @@ export const $percentageChange = computed(
 // Actions
 // ============================================
 
-function persist() {
-  saveToStorage({
-    initialCapital: $initialCapital.get(),
-    movements: $capitalMovements.get(),
-    walletCapitals: $walletCapitals.get(),
-  });
-}
-
 /**
  * Set initial capital for a specific wallet
+ * Note: In isolated architecture, we can only easily set capital for the ACTIVE wallet.
+ * Attempting to set for another wallet will warn or no-op unless loaded.
  */
 export function setWalletInitialCapital(walletId: string, amount: number) {
-  const validAmount = Math.max(0, Math.floor(amount));
-  const current = $walletCapitals.get();
-  $walletCapitals.set({ ...current, [walletId]: validAmount });
-  persist();
+  const activeId = $activeWalletId.get();
+  if (walletId === activeId) {
+    setInitialCapital(amount);
+  } else {
+    console.warn(
+      "Cannot set capital for inactive wallet in isolated mode without switching.",
+    );
+  }
 }
 
 /**
- * Set initial operating capital (legacy - uses active wallet)
+ * Set initial operating capital for ACTIVE wallet
  */
 export function setInitialCapital(amount: number) {
   const walletId = $activeWalletId.get();
-  const defaultId = $defaultWalletId.get();
-  const validAmount = Math.max(0, Math.floor(amount));
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
 
-  // If viewing consolidated or no wallet, set global
-  if (!walletId || walletId === CONSOLIDATED_ID) {
-    $initialCapital.set(validAmount);
-  } else if (walletId === defaultId) {
-    // Default wallet uses legacy global capital for backward compatibility
-    $initialCapital.set(validAmount);
-  } else {
-    // Other wallets use per-wallet capital
-    const current = $walletCapitals.get();
-    $walletCapitals.set({ ...current, [walletId]: validAmount });
-  }
-  persist();
+  const validAmount = Math.max(0, Math.floor(amount));
+  $initialCapital.set(validAmount);
+  // Persist handled by subscription
 }
 
 /**
@@ -209,10 +253,6 @@ function generateId(): string {
 
 /**
  * Record a capital movement from a transaction
- * @param type - IN (received CUP from sale) or OUT (paid CUP for purchase)
- * @param amount - CUP amount
- * @param transactionId - Optional link to transaction
- * @param walletId - Target wallet ID
  */
 export function recordCapitalMovement(
   type: "IN" | "OUT",
@@ -220,17 +260,25 @@ export function recordCapitalMovement(
   transactionId?: string,
   walletId?: string,
 ) {
+  const activeId = $activeWalletId.get();
+
+  // Guard: If trying to record for another wallet, we ignore it in this store instance
+  // (Transactions should typically trigger this for relevant wallet)
+  if (walletId && walletId !== activeId) {
+    console.warn("Ignoring capital movement for inactive wallet", walletId);
+    return;
+  }
+
   const movement: CapitalMovement = {
     id: generateId(),
     type,
     amount: Math.abs(amount),
     date: new Date().toISOString(),
     transactionId,
-    walletId: walletId ?? $activeWalletId.get() ?? undefined,
+    walletId: activeId ?? undefined,
   };
 
   $capitalMovements.set([movement, ...$capitalMovements.get()]);
-  persist();
 }
 
 /**
@@ -238,26 +286,9 @@ export function recordCapitalMovement(
  */
 export function clearCapitalMovements() {
   const walletId = $activeWalletId.get();
-  const defaultId = $defaultWalletId.get();
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
 
-  if (!walletId || walletId === CONSOLIDATED_ID) {
-    // Clear all
-    $capitalMovements.set([]);
-  } else {
-    // Clear only for this wallet
-    const movements = $capitalMovements.get();
-    $capitalMovements.set(
-      movements.filter((m) => {
-        if (m.walletId) {
-          return m.walletId !== walletId;
-        } else {
-          // Legacy movements belong to default wallet
-          return walletId !== defaultId;
-        }
-      }),
-    );
-  }
-  persist();
+  $capitalMovements.set([]);
 }
 
 /**
@@ -269,7 +300,6 @@ export function deleteCapitalMovementByTransactionId(
   const movements = $capitalMovements.get();
   const filtered = movements.filter((m) => m.transactionId !== transactionId);
   $capitalMovements.set(filtered);
-  persist();
 }
 
 /**
@@ -277,31 +307,8 @@ export function deleteCapitalMovementByTransactionId(
  */
 export function resetCapital() {
   const walletId = $activeWalletId.get();
-  const defaultId = $defaultWalletId.get();
+  if (!walletId || walletId === CONSOLIDATED_ID) return;
 
-  if (!walletId || walletId === CONSOLIDATED_ID) {
-    // Reset everything
-    $initialCapital.set(0);
-    $capitalMovements.set([]);
-    $walletCapitals.set({});
-  } else if (walletId === defaultId) {
-    // Reset default wallet (legacy)
-    $initialCapital.set(0);
-    clearCapitalMovements();
-  } else {
-    // Reset specific wallet
-    const current = $walletCapitals.get();
-    const updated = { ...current };
-    delete updated[walletId];
-    $walletCapitals.set(updated);
-    clearCapitalMovements();
-  }
-  persist();
-}
-
-// Subscribe and persist on changes
-if (typeof window !== "undefined") {
-  $initialCapital.subscribe(persist);
-  $capitalMovements.subscribe(persist);
-  $walletCapitals.subscribe(persist);
+  $initialCapital.set(0);
+  $capitalMovements.set([]);
 }
