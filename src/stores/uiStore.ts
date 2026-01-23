@@ -39,6 +39,10 @@ export function goToTransaction() {
   $activeTab.set("operar");
 }
 
+export function goToOperar() {
+  $activeTab.set("operar");
+}
+
 export function goToReports() {
   $activeTab.set("reportes");
 }
