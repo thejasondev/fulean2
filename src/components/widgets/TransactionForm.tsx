@@ -7,11 +7,7 @@ import {
   Check,
   Eye,
 } from "lucide-react";
-import {
-  $pendingCUP,
-  clearPendingCUP,
-  goToCounter,
-} from "../../stores/uiStore";
+import { $pendingCUP, clearPendingCUP, goToOperar } from "../../stores/uiStore";
 import {
   setTransactionFormState,
   clearTransactionFormState,
@@ -247,7 +243,7 @@ export function TransactionForm() {
       // Reset form
       setExchangeAmount("");
       setTransactionNote("");
-      goToCounter();
+      goToOperar();
       return;
     }
 
@@ -296,8 +292,8 @@ export function TransactionForm() {
     setTotalCUP("");
     setTransactionNote("");
 
-    // Navigate back to counter tab
-    goToCounter();
+    // Stay on operar tab
+    goToOperar();
   };
 
   // Theme colors based on operation
