@@ -608,9 +608,7 @@ function PortfolioCard() {
                       Costo
                     </div>
                     <div className="text-sm font-bold text-[var(--text-faint)] tabular-nums">
-                      {formatNumber(
-                        Math.round(p.available * (p.totalCost / p.bought)),
-                      )}
+                      {formatNumber(p.totalCost)}
                     </div>
                   </div>
                   <div className="bg-[var(--bg-tertiary)] rounded-lg p-2">
