@@ -38,7 +38,9 @@ import { formatNumber } from "../../lib/formatters";
 import { useHaptic } from "../../hooks/useHaptic";
 import {
   $activeWallets,
+  $activeWalletId,
   $defaultWalletId,
+  switchWallet,
   getWalletColorHex,
 } from "../../stores/walletStore";
 import { Wallet } from "lucide-react";
@@ -72,10 +74,10 @@ export function TransactionForm() {
 
   // Wallet selection (for multi-wallet users)
   const activeWallets = useStore($activeWallets);
+  const activeWalletId = useStore($activeWalletId);
   const defaultWalletId = useStore($defaultWalletId);
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const showWalletSelector = activeWallets.length > 1;
-  const targetWalletId = selectedWalletId || defaultWalletId || undefined;
+  const targetWalletId = activeWalletId || defaultWalletId || undefined;
 
   // Optional note for transaction
   const [transactionNote, setTransactionNote] = useState<string>("");
@@ -374,13 +376,12 @@ export function TransactionForm() {
           </label>
           <div className="flex gap-1.5 flex-wrap">
             {activeWallets.map((wallet) => {
-              const isSelected =
-                (selectedWalletId || defaultWalletId) === wallet.id;
+              const isSelected = activeWalletId === wallet.id;
               const colorHex = getWalletColorHex(wallet.color);
               return (
                 <button
                   key={wallet.id}
-                  onClick={() => setSelectedWalletId(wallet.id)}
+                  onClick={() => switchWallet(wallet.id)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium",
                     "border transition-all duration-200",

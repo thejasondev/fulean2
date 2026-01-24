@@ -108,6 +108,8 @@ function loadFromStorage(walletId: string | null): CapitalState {
 // Save to localStorage
 function saveToStorage(state: CapitalState): void {
   if (typeof window === "undefined") return;
+  if (isLoadingWallet) return; // Prevent saving during wallet switch
+
   const walletId = $activeWalletId.get();
   if (!walletId || walletId === CONSOLIDATED_ID) return;
 
@@ -122,6 +124,9 @@ function saveToStorage(state: CapitalState): void {
     localStorage.setItem(key, JSON.stringify(dataToSave));
   } catch {}
 }
+
+// Flag to prevent race condition during wallet switching
+let isLoadingWallet = false;
 
 // ============================================
 // State Atoms (representing ACTIVE wallet)
@@ -145,9 +150,11 @@ const $currentState = computed(
 // Subscribe to wallet changes to reload data
 $activeWalletId.subscribe((id) => {
   if (id) {
+    isLoadingWallet = true;
     const data = loadFromStorage(id);
     $initialCapital.set(data.initialCapital);
     $capitalMovements.set(data.movements);
+    isLoadingWallet = false;
     // We don't populate $walletCapitals map as logically it's not needed per wallet
   }
 });

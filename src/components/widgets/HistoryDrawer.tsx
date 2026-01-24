@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useStore } from "@nanostores/react";
 import {
   Trash2,
@@ -9,6 +9,8 @@ import {
   Share2,
   Calendar,
   Download,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   $transactions,
@@ -35,9 +37,55 @@ import {
 
 // ============================================
 // HistoryDrawer Component
-// Enhanced with Volume Summary and Share All
-// Theme-aware using CSS variables
+// Enhanced with Grouped Timeline and Collapsible Sections
 // ============================================
+
+// Grouping helpers
+interface TransactionGroup {
+  label: string;
+  key: string;
+  transactions: Transaction[];
+  isExpanded: boolean;
+}
+
+function getGroupKey(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  if (date >= today) {
+    return "today";
+  } else if (date >= yesterday) {
+    return "yesterday";
+  } else if (date >= weekAgo) {
+    return "this_week";
+  } else {
+    // Group by month-year
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  }
+}
+
+function getGroupLabel(key: string): string {
+  switch (key) {
+    case "today":
+      return "Hoy";
+    case "yesterday":
+      return "Ayer";
+    case "this_week":
+      return "Esta Semana";
+    default:
+      // Parse month-year key
+      const [year, month] = key.split("-");
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      return date.toLocaleDateString("es-CU", {
+        month: "long",
+        year: "numeric",
+      });
+  }
+}
 
 function formatDateTime(isoString: string): string {
   const date = new Date(isoString);
@@ -58,22 +106,16 @@ function formatTime(isoString: string): string {
   });
 }
 
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString("es-CU", {
-    day: "2-digit",
-    month: "short",
-  });
-}
-
 function TransactionCard({
   transaction,
   onDelete,
   onShare,
+  compact = false,
 }: {
   transaction: Transaction;
   onDelete: () => void;
   onShare: () => void;
+  compact?: boolean;
 }) {
   const isBuy = transaction.operationType === "BUY";
   const isSell = transaction.operationType === "SELL";
@@ -85,7 +127,7 @@ function TransactionCard({
   // Find wallet for this transaction
   const wallet = transaction.walletId
     ? wallets.find((w: Wallet) => w.id === transaction.walletId)
-    : wallets[0]; // Legacy transactions go to first wallet
+    : wallets[0];
   const walletColor = wallet ? getWalletColorHex(wallet.color) : "#06b6d4";
 
   const theme = isExchange
@@ -124,22 +166,26 @@ function TransactionCard({
   return (
     <div
       className={cn(
-        "bg-[var(--bg-primary)] rounded-xl p-4",
+        "bg-[var(--bg-primary)] rounded-xl",
         "border border-[var(--border-primary)]",
         "transition-all duration-200",
         "hover:border-[var(--border-secondary)]",
+        compact ? "p-3" : "p-4",
       )}
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center",
+              "rounded-xl flex items-center justify-center",
               theme.iconBg,
+              compact ? "w-8 h-8" : "w-10 h-10",
             )}
           >
-            <Icon className={cn("w-5 h-5", theme.iconColor)} />
+            <Icon
+              className={cn(theme.iconColor, compact ? "w-4 h-4" : "w-5 h-5")}
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -151,7 +197,6 @@ function TransactionCard({
               >
                 {theme.label}
               </span>
-              {/* Wallet indicator badge */}
               {wallet && (
                 <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-muted)]">
                   <span
@@ -204,8 +249,13 @@ function TransactionCard({
         </div>
       </div>
 
-      {/* Details Grid */}
-      <div className="grid grid-cols-2 gap-2 text-xs bg-[var(--bg-base)]/50 p-3 rounded-lg border border-[var(--border-primary)]/50">
+      {/* Compact Details */}
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-2 text-xs rounded-lg border border-[var(--border-primary)]/50",
+          compact ? "bg-[var(--bg-base)]/30 p-2" : "bg-[var(--bg-base)]/50 p-3",
+        )}
+      >
         {isExchange ? (
           <>
             <div>
@@ -239,7 +289,7 @@ function TransactionCard({
         )}
       </div>
 
-      {/* Exchange Rate Footer for EXCHANGE */}
+      {/* Exchange Rate Footer */}
       {isExchange && (
         <div className="text-xs text-[var(--text-muted)] mt-2 text-center">
           Tasa: 1 {transaction.fromCurrency} = {transaction.exchangeRate}{" "}
@@ -258,10 +308,69 @@ function TransactionCard({
       )}
 
       {/* Date Footer */}
-      <div className="flex items-center gap-1 mt-3 text-[10px] text-[var(--text-faint)]">
+      <div className="flex items-center gap-1 mt-2 text-[10px] text-[var(--text-faint)]">
         <Calendar className="w-3 h-3" />
-        <span>{formatDateTime(transaction.date)}</span>
+        <span>{formatTime(transaction.date)}</span>
       </div>
+    </div>
+  );
+}
+
+// Grouped Section Component
+function GroupSection({
+  group,
+  onToggle,
+  onDeleteTransaction,
+  onShareTransaction,
+}: {
+  group: TransactionGroup;
+  onToggle: () => void;
+  onDeleteTransaction: (id: string) => void;
+  onShareTransaction: (txn: Transaction) => void;
+}) {
+  const isRecent = ["today", "yesterday", "this_week"].includes(group.key);
+
+  return (
+    <div className="mb-4">
+      {/* Group Header */}
+      <button
+        onClick={onToggle}
+        className={cn(
+          "w-full flex items-center justify-between py-2 px-3 rounded-lg",
+          "bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)]",
+          "transition-colors duration-200",
+          "sticky top-0 z-10",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {group.isExpanded ? (
+            <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+          )}
+          <span className="text-sm font-semibold text-[var(--text-primary)] capitalize">
+            {group.label}
+          </span>
+        </div>
+        <span className="text-xs text-[var(--text-faint)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
+          {group.transactions.length}
+        </span>
+      </button>
+
+      {/* Transactions */}
+      {group.isExpanded && (
+        <div className="mt-2 space-y-2 pl-2 border-l-2 border-[var(--border-primary)] ml-2">
+          {group.transactions.map((txn) => (
+            <TransactionCard
+              key={txn.id}
+              transaction={txn}
+              compact={!isRecent}
+              onDelete={() => onDeleteTransaction(txn.id)}
+              onShare={() => onShareTransaction(txn)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -274,6 +383,55 @@ export function HistoryDrawer() {
 
   // Receipt modal state
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+
+  // Expanded groups state
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set(["today", "yesterday", "this_week"]),
+  );
+
+  // Group transactions by period
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, Transaction[]> = {};
+
+    transactions.forEach((txn) => {
+      const key = getGroupKey(new Date(txn.date));
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(txn);
+    });
+
+    // Sort groups: recent first, then by date descending
+    const sortOrder = ["today", "yesterday", "this_week"];
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const aIndex = sortOrder.indexOf(a);
+      const bIndex = sortOrder.indexOf(b);
+
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+
+      // Both are month keys, sort descending
+      return b.localeCompare(a);
+    });
+
+    return sortedKeys.map((key) => ({
+      label: getGroupLabel(key),
+      key,
+      transactions: groups[key],
+      isExpanded: expandedGroups.has(key),
+    }));
+  }, [transactions, expandedGroups]);
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   const handleDelete = async (id: string) => {
     const confirmed = await confirm({
@@ -358,9 +516,7 @@ export function HistoryDrawer() {
       const { buy, sell } = volumeByCurrency[currency];
       if (buy > 0 || sell > 0) {
         lines.push(
-          `  ${currency}: Compra ${formatNumber(buy)} | Venta ${formatNumber(
-            sell,
-          )}`,
+          `  ${currency}: Compra ${formatNumber(buy)} | Venta ${formatNumber(sell)}`,
         );
       }
     });
@@ -445,7 +601,7 @@ export function HistoryDrawer() {
                     className="gap-1"
                   >
                     <Download className="w-4 h-4" />
-                    Compartir Todo
+                    Exportar
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleClearAll}>
                     Borrar todo
@@ -453,14 +609,15 @@ export function HistoryDrawer() {
                 </div>
               </div>
 
-              {/* Transaction List */}
-              <div className="space-y-3">
-                {transactions.map((txn) => (
-                  <TransactionCard
-                    key={txn.id}
-                    transaction={txn}
-                    onDelete={() => handleDelete(txn.id)}
-                    onShare={() => handleShare(txn)}
+              {/* Grouped Transaction List */}
+              <div className="space-y-1">
+                {groupedTransactions.map((group) => (
+                  <GroupSection
+                    key={group.key}
+                    group={group}
+                    onToggle={() => toggleGroup(group.key)}
+                    onDeleteTransaction={handleDelete}
+                    onShareTransaction={handleShare}
                   />
                 ))}
               </div>

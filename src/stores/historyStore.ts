@@ -87,12 +87,12 @@ function getStorageKey(walletId: string): string {
 // Load from localStorage (SSR-safe)
 function loadFromStorage(walletId: string | null): Transaction[] {
   if (typeof window === "undefined" || !walletId) return [];
-  
+
   // Handle consolidated view
   if (walletId === CONSOLIDATED_ID) {
-      // For consolidated view, we might want to load ALL known wallets. 
-      // This refers to a more complex need. For now, returning empty or handling logic elsewhere.
-      return []; 
+    // For consolidated view, we might want to load ALL known wallets.
+    // This refers to a more complex need. For now, returning empty or handling logic elsewhere.
+    return [];
   }
 
   try {
@@ -108,34 +108,34 @@ function loadFromStorage(walletId: string | null): Transaction[] {
     // We only trigger this once. We check if legacy exists.
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (legacy) {
-        console.log("Migrating history transactions...");
-        try {
-            const allTransactions: Transaction[] = JSON.parse(legacy);
-            if (Array.isArray(allTransactions)) {
-                // Group by wallet
-                const groups: Record<string, Transaction[]> = {};
-                const defaultId = $defaultWalletId.get() || "unknown"; // Fallback shouldn't happen if wallets initialized
-                
-                allTransactions.forEach(t => {
-                    const targetId = t.walletId || defaultId;
-                    if (!groups[targetId]) groups[targetId] = [];
-                    groups[targetId].push(t);
-                });
+      console.log("Migrating history transactions...");
+      try {
+        const allTransactions: Transaction[] = JSON.parse(legacy);
+        if (Array.isArray(allTransactions)) {
+          // Group by wallet
+          const groups: Record<string, Transaction[]> = {};
+          const defaultId = $defaultWalletId.get() || "unknown"; // Fallback shouldn't happen if wallets initialized
 
-                // Write ALL groups to new keys
-                Object.entries(groups).forEach(([wId, txs]) => {
-                    localStorage.setItem(getStorageKey(wId), JSON.stringify(txs));
-                });
-                
-                // Remove legacy key to prevent re-migration
-                // localStorage.removeItem(LEGACY_STORAGE_KEY); // Keep for safety for now
-                
-                // Return data for THIS wallet
-                return groups[walletId] || [];
-            }
-        } catch (e) {
-            console.error("Migration failed", e);
+          allTransactions.forEach((t) => {
+            const targetId = t.walletId || defaultId;
+            if (!groups[targetId]) groups[targetId] = [];
+            groups[targetId].push(t);
+          });
+
+          // Write ALL groups to new keys
+          Object.entries(groups).forEach(([wId, txs]) => {
+            localStorage.setItem(getStorageKey(wId), JSON.stringify(txs));
+          });
+
+          // Remove legacy key to prevent re-migration
+          // localStorage.removeItem(LEGACY_STORAGE_KEY); // Keep for safety for now
+
+          // Return data for THIS wallet
+          return groups[walletId] || [];
         }
+      } catch (e) {
+        console.error("Migration failed", e);
+      }
     }
 
     return [];
@@ -147,6 +147,8 @@ function loadFromStorage(walletId: string | null): Transaction[] {
 // Save to localStorage
 function saveToStorage(transactions: Transaction[]) {
   if (typeof window === "undefined") return;
+  if (isLoadingWallet) return; // Prevent saving during wallet switch
+
   const walletId = $activeWalletId.get();
   if (!walletId || walletId === CONSOLIDATED_ID) return;
 
@@ -157,30 +159,35 @@ function saveToStorage(transactions: Transaction[]) {
   }
 }
 
+// Flag to prevent race condition during wallet switching
+let isLoadingWallet = false;
+
 // Transaction store
 // Initialize with empty, will load on subscription
 export const $transactions = atom<Transaction[]>([]);
 
 // Subscribe to wallet changes to reload
 $activeWalletId.subscribe((id) => {
-    if (id) {
-        $transactions.set(loadFromStorage(id));
-    }
+  if (id) {
+    isLoadingWallet = true;
+    $transactions.set(loadFromStorage(id));
+    isLoadingWallet = false;
+  }
 });
 
 // Computed: Transactions filtered by active wallet
 // Now redundant as $transactions IS the filtered list, but kept for interface compatibility
 export const $walletTransactions = computed(
   $transactions,
-  (transactions) => transactions
+  (transactions) => transactions,
 );
 
 // Subscribe to persist on changes
 if (typeof window !== "undefined") {
-    $transactions.subscribe(saveToStorage);
-}  // Initialize wallet system on load
+  $transactions.subscribe(saveToStorage);
+  // Initialize wallet system on load
   initializeWallets();
-
+}
 
 // ============================================
 // Actions
