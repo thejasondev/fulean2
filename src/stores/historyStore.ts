@@ -108,30 +108,32 @@ function loadFromStorage(walletId: string | null): Transaction[] {
     // We only trigger this once. We check if legacy exists.
     const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (legacy) {
-      console.log("Migrating history transactions...");
+      // console.log("Checking legacy history for migration...");
       try {
         const allTransactions: Transaction[] = JSON.parse(legacy);
         if (Array.isArray(allTransactions)) {
-          // Group by wallet
-          const groups: Record<string, Transaction[]> = {};
-          const defaultId = $defaultWalletId.get() || "unknown"; // Fallback shouldn't happen if wallets initialized
-
-          allTransactions.forEach((t) => {
+          // Filter transactions relevant for THIS wallet ID
+          const defaultId = $defaultWalletId.get() || "unknown";
+          const myTransactions = allTransactions.filter((t) => {
             const targetId = t.walletId || defaultId;
-            if (!groups[targetId]) groups[targetId] = [];
-            groups[targetId].push(t);
+            return targetId === walletId;
           });
 
-          // Write ALL groups to new keys
-          Object.entries(groups).forEach(([wId, txs]) => {
-            localStorage.setItem(getStorageKey(wId), JSON.stringify(txs));
-          });
+          if (myTransactions.length > 0) {
+            // Only save if we found data for this wallet
+            const myKey = getStorageKey(walletId);
 
-          // Remove legacy key to prevent re-migration
-          // localStorage.removeItem(LEGACY_STORAGE_KEY); // Keep for safety for now
-
-          // Return data for THIS wallet
-          return groups[walletId] || [];
+            // CRITICAL: Double check we aren't overwriting existing data.
+            // Even though we checked if(stored) above, this is a safety net.
+            // If the key exists, we assume it's more current than legacy.
+            if (!localStorage.getItem(myKey)) {
+              console.log(
+                `Migrating ${myTransactions.length} transactions for wallet ${walletId}`,
+              );
+              localStorage.setItem(myKey, JSON.stringify(myTransactions));
+              return myTransactions;
+            }
+          }
         }
       } catch (e) {
         console.error("Migration failed", e);
