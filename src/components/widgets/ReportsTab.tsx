@@ -35,7 +35,11 @@ import { useToast } from "../ui/Toast";
 import { useHaptic } from "../../hooks/useHaptic";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
-import { $inventorySummary, clearInventory } from "../../stores/inventoryStore";
+import {
+  $inventorySummary,
+  clearInventory,
+  simulateFIFO,
+} from "../../stores/inventoryStore";
 
 // ============================================
 // ReportsTab Component
@@ -698,8 +702,15 @@ function SellSimulator() {
   const qty = parseFloat(quantity) || 0;
   const maxQty = currencyData?.available ?? 0;
 
+  // Use FIFO simulation for accurate cost
+  // If no simulation possible (qty > available), fallback to avgCost estimation
+  const fifoSimulation = simulateFIFO(selectedCurrency, qty);
+
   const cupReceived = Math.round(qty * rate);
-  const costBasis = Math.round(qty * (currencyData?.avgCost ?? 0));
+  const costBasis = fifoSimulation
+    ? fifoSimulation.totalCost
+    : Math.round(qty * (currencyData?.avgCost ?? 0));
+
   const profit = cupReceived - costBasis;
   const profitPercent = costBasis > 0 ? (profit / costBasis) * 100 : 0;
 

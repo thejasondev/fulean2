@@ -243,6 +243,37 @@ export function consumeInventoryLots(
 }
 
 /**
+ * Simulate a FIFO sale without modifying inventory
+ * Returns projected cost basis and profit info
+ */
+export function simulateFIFO(
+  currency: Currency,
+  quantityToSell: number,
+): { totalCost: number; avgCost: number } | null {
+  // Logic mirrors consumeInventoryLots but read-only
+  const lots = getLotsForCurrency(currency);
+  const available = lots.reduce((sum, lot) => sum + lot.remaining, 0);
+
+  if (available < quantityToSell) return null;
+
+  let remainingToConsume = quantityToSell;
+  let totalCost = 0;
+
+  for (const lot of lots) {
+    if (remainingToConsume <= 0) break;
+
+    const consume = Math.min(lot.remaining, remainingToConsume);
+    totalCost += consume * lot.costRate;
+    remainingToConsume -= consume;
+  }
+
+  return {
+    totalCost: Math.round(totalCost),
+    avgCost: quantityToSell > 0 ? Math.round(totalCost / quantityToSell) : 0,
+  };
+}
+
+/**
  * Clear all inventory lots
  */
 export function clearInventory() {
