@@ -158,13 +158,63 @@ export function DonationSheet() {
             <br />
             2. Copia la tarjeta de donación y selecciona la cantidad deseada.
             <br />
-            2.1. Sigue los pasos de la transferencia bancaria, pegando la tarjeta y llenando el monto deseado.
+            2.1. Sigue los pasos de la transferencia bancaria, pegando la
+            tarjeta y llenando el monto deseado.
             <br />
             3. Finaliza la transferencia y espera a que se confirme.
             <br />
             4. GRACIAS!!
           </p>
         </div>
+      </div>
+
+      {/* Developer Credit - Premium Design */}
+      <div className="mt-2 mb-4 pt-2 border-t border-[var(--border-muted)]">
+        <a
+          href="https://thejasondev.vercel.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "relative group flex items-center gap-4 p-3 pr-4 rounded-2xl",
+            "bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)]",
+            "border border-[var(--border-primary)] hover:border-[var(--accent)]/50",
+            "shadow-sm hover:shadow-[0_4px_12px_-4px_rgba(var(--accent-rgb),0.2)]",
+            "transition-all duration-300 transform hover:-translate-y-0.5",
+          )}
+        >
+          {/* Avatar Container with Gradient Ring */}
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 bg-gradient-to-tr from-[var(--accent)] to-[var(--blue)] rounded-full blur-[2px] opacity-70 group-hover:opacity-100 transition-opacity" />
+            <div className="relative w-10 h-10 rounded-full bg-[var(--bg-base)] p-0.5 flex items-center justify-center border border-[var(--bg-primary)]">
+              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[var(--accent)] to-[var(--blue)] flex items-center justify-center text-white font-bold text-xs tracking-tighter">
+                JG
+              </div>
+            </div>
+          </div>
+
+          {/* Text Content */}
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] text-[var(--text-faint)] font-medium uppercase tracking-wider mb-0.5">
+              Code & Design
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[var(--accent)] group-hover:to-[var(--blue)] transition-all">
+                @thejasondev
+              </span>
+              <svg
+                className="w-3 h-3 text-[var(--text-muted)] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M7 17l9.2-9.2M17 17V7H7" />
+              </svg>
+            </div>
+          </div>
+        </a>
       </div>
     </Modal>
   );
