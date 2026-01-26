@@ -149,7 +149,21 @@ function CapitalCard() {
     }
   };
 
-  const isPositive = netChange >= 0;
+  // Calculate Total Equity = Cash Balance + Inventory Value (Invested)
+  const inventorySummary = useStore($inventorySummary);
+  const totalInventoryValue = Object.values(inventorySummary).reduce(
+    (sum, item) => sum + item.totalCost,
+    0,
+  );
+
+  const totalEquity = currentBalance + totalInventoryValue;
+  const realNetChange = totalEquity - initialCapital;
+
+  // Percentage change based on Total Equity
+  const realPercentageChange =
+    initialCapital > 0 ? (realNetChange / initialCapital) * 100 : 0;
+
+  const isPositive = realNetChange >= 0;
 
   return (
     <div className="bg-[var(--bg-primary)] rounded-2xl p-5 border border-[var(--border-primary)]">
@@ -164,7 +178,7 @@ function CapitalCard() {
               Capital de Operación
             </h3>
             <p className="text-xs text-[var(--text-faint)]">
-              Gestiona tu efectivo
+              Gestión de patrimonio
             </p>
           </div>
         </div>
@@ -214,64 +228,66 @@ function CapitalCard() {
         </div>
       </div>
 
-      {/* Movement Summary */}
+      {/* Asset Breakdown */}
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-[var(--bg-base)] rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <ArrowDownLeft size={12} className="text-[var(--status-success)]" />
-            <span className="text-xs text-[var(--text-faint)]">(Compras)</span>
+            <span className="text-xs text-[var(--text-faint)]">
+              Efectivo (CUP)
+            </span>
           </div>
-          <span className="text-sm font-bold text-[var(--status-success)] tabular-nums">
-            -{formatNumber(totalOut)} CUP
+          <span className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+            {formatNumber(currentBalance)}
           </span>
         </div>
         <div className="bg-[var(--bg-base)] rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <ArrowUpRight size={12} className="text-[var(--status-warning)]" />
-            <span className="text-xs text-[var(--text-faint)]">(Ventas)</span>
+            <span className="text-xs text-[var(--text-faint)]">
+              Invertido (Divisa)
+            </span>
           </div>
-          <span className="text-sm font-bold text-[var(--status-warning)] tabular-nums">
-            +{formatNumber(totalIn)} CUP
+          <span className="text-sm font-bold text-[var(--status-error)] tabular-nums">
+            {formatNumber(totalInventoryValue)}
           </span>
         </div>
       </div>
 
-      {/* Current Balance */}
-      <div className="bg-gradient-to-r from-[var(--status-success-bg)] to-transparent rounded-xl p-4 border border-[var(--status-success)]/20">
+      {/* Total Equity Summary */}
+      <div className="bg-gradient-to-r from-[var(--status-warning-bg)]/30 to-transparent rounded-xl p-4 border border-[var(--status-warning)]/30">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-xs text-[var(--text-muted)]">
-              Balance Actual
+              Patrimonio Total
             </span>
-            <div className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">
-              {formatNumber(currentBalance)} CUP
+            <div className="text-2xl font-bold text-[var(--status-warning)] tabular-nums shadow-sm">
+              {formatNumber(totalEquity)} CUP
             </div>
           </div>
           <div
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
               isPositive
-                ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
                 : "bg-[var(--status-error-bg)] text-[var(--status-error)]",
             )}
           >
             {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {isPositive ? "+" : ""}
-            {percentageChange.toFixed(1)}%
+            {realPercentageChange.toFixed(1)}%
           </div>
         </div>
         <div className="mt-2 text-sm text-[var(--text-muted)]">
-          Variación:
+          Variación Real:
           <span
             className={cn(
               "font-bold ml-1 tabular-nums",
               isPositive
-                ? "text-[var(--status-success)]"
+                ? "text-[var(--status-warning)]"
                 : "text-[var(--status-error)]",
             )}
           >
             {isPositive ? "+" : ""}
-            {formatNumber(netChange)} CUP
+            {formatNumber(realNetChange)} CUP
           </span>
         </div>
       </div>
