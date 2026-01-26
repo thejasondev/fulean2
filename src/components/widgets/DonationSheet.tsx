@@ -171,7 +171,7 @@ export function DonationSheet() {
       {/* Developer Credit - Premium Design */}
       <div className="mt-6 pt-6 px-4 pb-6 border-t border-[var(--border-muted)]">
         <a
-          href="https://thejasondev.vercel.app"
+          href="https://www.instagram.com/thejasondev?"
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
