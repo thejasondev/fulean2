@@ -169,7 +169,7 @@ export function DonationSheet() {
       </div>
 
       {/* Developer Credit - Premium Design */}
-      <div className="mt-2 mb-4 pt-2 border-t border-[var(--border-muted)]">
+      <div className="mt-6 pt-6 px-4 pb-6 border-t border-[var(--border-muted)]">
         <a
           href="https://thejasondev.vercel.app"
           target="_blank"

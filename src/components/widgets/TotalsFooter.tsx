@@ -261,9 +261,17 @@ export function TotalsFooter() {
     >
       <div
         className={cn(
-          "rounded-2xl shadow-xl shadow-black/50",
-          "bg-[var(--bg-primary)]/90 backdrop-blur-xl",
-          "border border-[var(--border-muted)]",
+          "relative overflow-hidden", // For shine effect
+          "rounded-2xl",
+          // Liquid Glass Base
+          "bg-(--bg-primary)/60 backdrop-blur-3xl saturate-150",
+          // Border & Depth
+          "border border-white/10 dark:border-white/5",
+          "shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]",
+          // Inner Bevel/Light
+          "before:absolute before:inset-0 before:rounded-2xl before:p-px",
+          "before:bg-linear-to-b before:from-white/20 before:to-transparent before:pointer-events-none",
+          "after:absolute after:inset-0 after:bg-linear-to-t after:from-white/5 after:to-transparent after:pointer-events-none",
           "p-3",
           "flex items-center gap-3",
         )}
@@ -402,9 +410,6 @@ export function TotalsFooter() {
             </>
           )}
         </div>
-
-        {/* DIVIDER */}
-        <div className="w-px h-10 bg-[var(--border-muted)] shrink-0" />
 
         {/* RIGHT CLUSTER: Actions */}
         <div className="flex items-center gap-3 shrink-0">
