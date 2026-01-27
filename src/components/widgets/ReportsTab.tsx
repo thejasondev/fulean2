@@ -253,13 +253,13 @@ function CapitalCard() {
       </div>
 
       {/* Total Equity Summary */}
-      <div className="bg-gradient-to-r from-[var(--status-warning-bg)]/30 to-transparent rounded-xl p-4 border border-[var(--status-warning)]/30">
+      <div className="bg-gradient-to-r from-(--blue)/10 to-transparent rounded-xl p-4 border border-(--blue)/20">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-xs text-[var(--text-muted)]">
               Patrimonio Total
             </span>
-            <div className="text-2xl font-bold text-[var(--status-warning)] tabular-nums shadow-sm">
+            <div className="text-2xl font-bold text-(--blue) tabular-nums shadow-sm">
               {formatNumber(totalEquity)} CUP
             </div>
           </div>
@@ -267,8 +267,8 @@ function CapitalCard() {
             className={cn(
               "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold",
               isPositive
-                ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
-                : "bg-[var(--status-error-bg)] text-[var(--status-error)]",
+                ? "bg-(--status-success-bg) text-(--status-success)"
+                : "bg-(--status-error-bg) text-(--status-error)",
             )}
           >
             {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -281,9 +281,7 @@ function CapitalCard() {
           <span
             className={cn(
               "font-bold ml-1 tabular-nums",
-              isPositive
-                ? "text-[var(--status-warning)]"
-                : "text-[var(--status-error)]",
+              isPositive ? "text-(--status-success)" : "text-(--status-error)",
             )}
           >
             {isPositive ? "+" : ""}
