@@ -15,6 +15,7 @@ import { deleteCapitalMovementByTransactionId } from "./capitalStore";
 import {
   $activeWalletId,
   $defaultWalletId,
+  $wallets,
   CONSOLIDATED_ID,
   initializeWallets,
 } from "./walletStore";
@@ -90,9 +91,26 @@ function loadFromStorage(walletId: string | null): Transaction[] {
 
   // Handle consolidated view
   if (walletId === CONSOLIDATED_ID) {
-    // For consolidated view, we might want to load ALL known wallets.
-    // This refers to a more complex need. For now, returning empty or handling logic elsewhere.
-    return [];
+    const wallets = $wallets.get().filter((w) => !w.isArchived);
+    const allTransactions: Transaction[] = [];
+
+    for (const wallet of wallets) {
+      const key = getStorageKey(wallet.id);
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            allTransactions.push(...parsed);
+          }
+        } catch {}
+      }
+    }
+    // Sort by date (newest first)
+    allTransactions.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    return allTransactions;
   }
 
   try {

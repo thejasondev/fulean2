@@ -9,6 +9,7 @@ import type { Currency } from "../lib/constants";
 import {
   $activeWalletId,
   $defaultWalletId,
+  $wallets,
   CONSOLIDATED_ID,
 } from "./walletStore";
 
@@ -24,8 +25,30 @@ function getStorageKey(walletId: string): string {
 function loadFromStorage(walletId: string | null): InventoryLot[] {
   if (typeof window === "undefined" || !walletId) return [];
 
-  // Handle consolidated view (read-only aggregation could be complex, for now return empty or implement later)
-  if (walletId === CONSOLIDATED_ID) return [];
+  // Handle consolidated view
+  if (walletId === CONSOLIDATED_ID) {
+    const wallets = $wallets.get().filter((w) => !w.isArchived);
+    const allLots: InventoryLot[] = [];
+
+    for (const wallet of wallets) {
+      const key = getStorageKey(wallet.id);
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            allLots.push(...parsed);
+          }
+        } catch {}
+      }
+    }
+    // No specific sort needed as they are filtered by currency later,
+    // but stable sort by date helps
+    allLots.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    return allLots;
+  }
 
   try {
     const key = getStorageKey(walletId);

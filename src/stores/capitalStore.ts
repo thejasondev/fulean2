@@ -2,6 +2,7 @@ import { atom, computed } from "nanostores";
 import {
   $activeWalletId,
   $defaultWalletId,
+  $wallets,
   CONSOLIDATED_ID,
 } from "./walletStore";
 
@@ -40,7 +41,36 @@ function loadFromStorage(walletId: string | null): CapitalState {
 
   if (typeof window === "undefined" || !walletId) return empty;
 
-  if (walletId === CONSOLIDATED_ID) return empty; // Todo: Aggregate view if needed
+  if (walletId === CONSOLIDATED_ID) {
+    const wallets = $wallets.get().filter((w) => !w.isArchived);
+    let totalInitial = 0;
+    const allMovements: CapitalMovement[] = [];
+
+    for (const wallet of wallets) {
+      const key = `${STORAGE_PREFIX}${wallet.id}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          totalInitial += parsed.initialCapital || 0;
+          if (Array.isArray(parsed.movements)) {
+            allMovements.push(...parsed.movements);
+          }
+        } catch {}
+      }
+    }
+
+    // Sort combined movements by date (newest first)
+    allMovements.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    return {
+      initialCapital: totalInitial,
+      movements: allMovements,
+      walletCapitals: {},
+    };
+  }
 
   try {
     const key = `${STORAGE_PREFIX}${walletId}`;
