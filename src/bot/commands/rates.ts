@@ -53,10 +53,7 @@ export async function ratesCommand(ctx: Context) {
       `🇺🇸 *USD:* ${rates.USD} CUP\n` +
       `🇪🇺 *EUR:* ${rates.EUR} CUP\n` +
       `💳 *MLC:* ${rates.MLC} CUP\n\n` +
-      `🇨🇦 *CAD:* ${rates.CAD} CUP\n` +
-      `📱 *Zelle:* ${rates.ZELLE} CUP\n` +
-      `🪙 *USDT:* ${rates.USDT_TRC20} CUP\n\n` +
-      `_Fuente: El Toque (No Oficial)_`,
+      `_Fuente: El Toque_`,
     { parse_mode: "Markdown" },
   );
 }
