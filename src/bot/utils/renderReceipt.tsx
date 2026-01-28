@@ -12,42 +12,85 @@ interface ReceiptData {
   date: Date;
 }
 
-// Initialize WASM once
+// Initialize WASM once with robust fallback
 let wasmInitialized = false;
-async function ensureWasm() {
+let wasmInitPromise: Promise<void> | null = null;
+
+async function ensureWasm(): Promise<void> {
   if (wasmInitialized) return;
-  try {
-    // We import the wasm file. Vite handles this as a URL or Asset.
-    // But for @resvg/resvg-wasm, we typically need to load it.
-    // In some setups, just importing initWasm is enough if we satisfy the loader.
-    // For simplicity in Vercel/Node, we rely on the package's index which might require fs/fetch.
 
-    // However, standard @resvg/resvg-wasm usage often expects manual loading in basic envs.
-    // Let's try the simplest: `await initWasm(import(".../index_bg.wasm"))` pattern if supported,
-    // OR just `await initWasm(fetch(...))`
+  // Prevent multiple simultaneous initialization attempts
+  if (wasmInitPromise) return wasmInitPromise;
 
-    // BETTER APPROACH for Vercel/Astro:
-    // Use the index_bg.wasm directly from node_modules if possible, or fetch from CDN to be safe and lazy.
-    const response = await fetch(
-      "https://unpkg.com/@resvg/resvg-wasm/index_bg.wasm",
-    );
-    const buffer = await response.arrayBuffer();
-    await initWasm(buffer);
-    wasmInitialized = true;
-  } catch (e) {
-    console.error("Failed to init Resvg WASM:", e);
-  }
+  wasmInitPromise = (async () => {
+    // Multiple CDN sources for reliability
+    const wasmUrls = [
+      "https://esm.sh/@resvg/resvg-wasm@2.6.2/index_bg.wasm",
+      "https://cdn.jsdelivr.net/npm/@resvg/resvg-wasm@2.6.2/index_bg.wasm",
+      "https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm",
+    ];
+
+    for (const url of wasmUrls) {
+      try {
+        console.log(`Attempting WASM load from: ${url}`);
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(10000), // 10s timeout
+        });
+
+        if (!response.ok) {
+          console.warn(`WASM fetch failed (${response.status}): ${url}`);
+          continue;
+        }
+
+        const buffer = await response.arrayBuffer();
+        await initWasm(buffer);
+        wasmInitialized = true;
+        console.log(`WASM initialized successfully from: ${url}`);
+        return;
+      } catch (e) {
+        console.warn(`WASM init failed from ${url}:`, e);
+      }
+    }
+
+    throw new Error("Failed to load WASM from all sources");
+  })();
+
+  return wasmInitPromise;
 }
 
-// Fetch font once
+// Fetch font once with fallback
 let fontData: ArrayBuffer | null = null;
-async function getFont() {
+
+async function getFont(): Promise<ArrayBuffer> {
   if (fontData) return fontData;
-  const response = await fetch(
-    "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf",
-  );
-  fontData = await response.arrayBuffer();
-  return fontData;
+
+  // Multiple font sources for reliability
+  const fontUrls = [
+    "https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff",
+    "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hjp-Ek-_EeAmM.woff",
+  ];
+
+  for (const url of fontUrls) {
+    try {
+      console.log(`Attempting font load from: ${url}`);
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        console.warn(`Font fetch failed (${response.status}): ${url}`);
+        continue;
+      }
+
+      fontData = await response.arrayBuffer();
+      console.log(`Font loaded successfully from: ${url}`);
+      return fontData;
+    } catch (e) {
+      console.warn(`Font load failed from ${url}:`, e);
+    }
+  }
+
+  throw new Error("Failed to load font from all sources");
 }
 
 export async function generateReceiptImage(data: ReceiptData): Promise<Buffer> {

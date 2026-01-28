@@ -8,6 +8,16 @@ import { inlineQueryHandler } from "./handlers/inline";
 
 // Singleton to avoid multiple instances in dev mode
 let botInstance: Bot | null = null;
+let commandsRegistered = false;
+
+// Command definitions for Telegram autocomplete
+const BOT_COMMANDS = [
+  { command: "start", description: "🚀 Iniciar el bot" },
+  { command: "tasas", description: "📊 Ver tasas de cambio actuales" },
+  { command: "calc", description: "🧮 Calculadora: /calc 100 USD [tasa]" },
+  { command: "recibo", description: "🧾 Generar comprobante de operación" },
+  { command: "help", description: "❓ Ver comandos disponibles" },
+];
 
 export const initBot = () => {
   if (botInstance) return botInstance;
@@ -24,6 +34,17 @@ export const initBot = () => {
       console.log(`Response time: ${ms}ms`);
     });
 
+    // Register commands with Telegram API for autocomplete (once)
+    if (!commandsRegistered && token !== "dummy_token") {
+      bot.api
+        .setMyCommands(BOT_COMMANDS)
+        .then(() => {
+          console.log("✅ Bot commands registered with Telegram");
+          commandsRegistered = true;
+        })
+        .catch((e) => console.warn("Failed to register commands:", e));
+    }
+
     // Register Commands
     bot.command("start", (ctx) =>
       ctx.reply(
@@ -36,7 +57,7 @@ export const initBot = () => {
                   text: "🌐 Abrir App Fulean2",
                   url: "https://fulean2.vercel.app",
                 },
-                { text: "🔄 Consultar Tasas", callback_data: "check_rates" }, // We will handle this callback
+                { text: "🔄 Consultar Tasas", callback_data: "check_rates" },
               ],
             ],
           },
@@ -46,7 +67,12 @@ export const initBot = () => {
 
     bot.command("help", (ctx) =>
       ctx.reply(
-        "Comandos disponibles:\n/recibo - Generar comprobante\n/calc - Calculadora\n/tasas - Ver tasas",
+        "📋 *Comandos disponibles:*\n\n" +
+          "/tasas - Ver tasas de cambio actuales\n" +
+          "/calc `<monto>` `<moneda>` `[tasa]` - Calculadora\n" +
+          "/recibo `<tipo>` `<monto>` `<moneda>` `<tasa>` - Generar comprobante\n\n" +
+          "_También puedes usar inline: @fulean2_bot 100 USD_",
+        { parse_mode: "Markdown" },
       ),
     );
 
@@ -60,8 +86,6 @@ export const initBot = () => {
     // Callback Query for "Consultar Tasas" button
     bot.callbackQuery("check_rates", async (ctx) => {
       await ctx.answerCallbackQuery();
-      // Reuse rates logic (importing command directly is hacky but works for simple bot, or better, call the function logic)
-      // ideally we separate logic from ctx, but for now we can just redirect
       await ratesCommand(ctx);
     });
 
