@@ -7,9 +7,8 @@ import {
   Zap,
   Pencil,
   Heart,
-  Sun,
-  Moon,
   Clock,
+  MessageCircle,
 } from "lucide-react";
 import {
   $buyRates,
@@ -29,7 +28,6 @@ import {
   openDonation,
   openHistoryDrawer,
 } from "../../stores/uiStore";
-import { $theme, toggleTheme } from "../../stores/themeStore";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatLastUpdate } from "../../lib/eltoque-api";
@@ -170,7 +168,6 @@ export function RatesDashboard() {
   const visibleCurrencies = useStore($visibleCurrencies);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
-  const theme = useStore($theme) ?? "dark";
 
   // Load El Toque rates on mount
   useEffect(() => {
@@ -250,15 +247,15 @@ export function RatesDashboard() {
             >
               <Clock size={14} />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="h-8 w-8 p-0 text-[var(--status-warning)] hover:text-[var(--status-warning)]"
-              title={theme === "sunlight" ? "Modo oscuro" : "Modo sunlight"}
+            <a
+              href="https://t.me/fulean2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-8 w-8 flex items-center justify-center rounded-xl transition-all duration-200 hover:bg-[var(--bg-secondary)] text-emerald-400 hover:text-emerald-300"
+              title="Unirse al Grupo Telegram"
             >
-              {theme === "sunlight" ? <Moon size={14} /> : <Sun size={14} />}
-            </Button>
+              <MessageCircle size={14} />
+            </a>
             <Button
               variant="ghost"
               size="sm"

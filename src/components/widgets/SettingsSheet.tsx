@@ -10,6 +10,9 @@ import {
   Heart,
   Smartphone,
   Sun,
+  Shield,
+  Palette,
+  DollarSign,
 } from "lucide-react";
 import {
   $buyRates,
@@ -507,104 +510,160 @@ export function SettingsSheet() {
   const elToqueRates = useStore($elToqueRates);
   const haptic = useHaptic();
 
+  const [activeTab, setActiveTab] = useState<"rates" | "ui" | "security">(
+    "rates",
+  );
+
   const handleRefreshElToque = () => {
     haptic.medium();
     loadElToqueRates();
   };
 
+  const tabs = [
+    { id: "rates", label: "Tasas", icon: <TrendingUp size={16} /> },
+    { id: "ui", label: "Apariencia", icon: <Palette size={16} /> },
+    { id: "security", label: "Seguridad", icon: <Shield size={16} /> },
+  ] as const;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={closeSettings}
-      title="Configurar Tasas"
+      title="Configuración"
       size="md"
     >
-      <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-        {/* Explanation */}
-        <div className="bg-[var(--bg-base)]/50 rounded-xl p-3 border border-[var(--border-primary)]/40">
-          <p className="text-sm text-[var(--text-secondary)] font-medium">
-            Compra / Venta
-          </p>
-          <p className="text-xs text-[var(--text-faint)] mt-1">
-            Define las tasas a las que compras y vendes cada moneda.
-          </p>
+      <div className="flex flex-col h-[70vh]">
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-1 p-2 border-b border-[var(--border-primary)] bg-[var(--bg-base)]">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                haptic.light();
+                setActiveTab(tab.id);
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all",
+                activeTab === tab.id
+                  ? "bg-[var(--bg-secondary)] text-[var(--text-primary)] shadow-xs"
+                  : "text-[var(--text-faint)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]/50",
+              )}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* El Toque Reference Section */}
-        <div className="bg-[var(--blue-bg)] rounded-xl p-3 border border-[var(--blue)]/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap size={16} className="text-[var(--blue)]" />
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* === TASAS TAB === */}
+          {activeTab === "rates" && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* El Toque Reference Section */}
+              <div className="bg-[var(--blue-bg)] rounded-xl p-3 border border-[var(--blue)]/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap size={16} className="text-[var(--blue)]" />
+                    <div>
+                      <p className="text-sm text-[var(--blue)] font-bold">
+                        El Toque
+                      </p>
+                      <p className="text-[10px] text-[var(--blue)]/60">
+                        Referencia mercado informal
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefreshElToque}
+                    className="h-8 w-8 p-0 text-[var(--blue)] hover:text-[var(--blue)]"
+                    title="Actualizar El Toque"
+                  >
+                    <RefreshCw
+                      size={14}
+                      className={cn(isLoadingElToque && "animate-spin")}
+                    />
+                  </Button>
+                </div>
+                {elToqueRates && (
+                  <p className="text-[10px] text-[var(--blue)]/60 mt-2">
+                    Usa estos valores como guía para ajustar tus tasas.
+                  </p>
+                )}
+              </div>
+
+              {/* Cash Currencies */}
               <div>
-                <p className="text-sm text-[var(--blue)] font-bold">El Toque</p>
-                <p className="text-[10px] text-[var(--blue)]/60">
-                  Referencia mercado informal
-                </p>
+                <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[var(--status-success)]" />
+                  Efectivo
+                </div>
+                <div className="space-y-3">
+                  {CASH_CURRENCIES.map((currency) => (
+                    <RateRow key={currency} currency={currency} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Digital Currencies */}
+              <div>
+                <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[var(--purple)]" />
+                  Digital
+                </div>
+                <div className="space-y-3">
+                  {DIGITAL_CURRENCIES.map((currency) => (
+                    <RateRow key={currency} currency={currency} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Reset Actions for Rates */}
+              <div className="pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={resetRates}
+                  className="w-full gap-2 text-xs h-9"
+                >
+                  <RotateCcw size={12} />
+                  Restaurar tasas predeterminadas
+                </Button>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshElToque}
-              className="h-8 w-8 p-0 text-[var(--blue)] hover:text-[var(--blue)]"
-              title="Actualizar El Toque"
-            >
-              <RefreshCw
-                size={14}
-                className={cn(isLoadingElToque && "animate-spin")}
-              />
-            </Button>
-          </div>
-          {elToqueRates && (
-            <p className="text-[10px] text-[var(--blue)]/60 mt-2">
-              Usa estos valores como guía para ajustar tus tasas
-            </p>
+          )}
+
+          {/* === APARIENCIA TAB === */}
+          {activeTab === "ui" && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="bg-[var(--bg-base)]/50 rounded-xl p-3 border border-[var(--border-primary)]/40 mb-2">
+                <p className="text-xs text-[var(--text-faint)]">
+                  Personaliza qué monedas y billetes son visibles en tu panel
+                  para mantenerlo limpio.
+                </p>
+              </div>
+              <VisibilitySection />
+            </div>
+          )}
+
+          {/* === SEGURIDAD TAB === */}
+          {activeTab === "security" && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="bg-[var(--bg-base)]/50 rounded-xl p-3 border border-[var(--border-primary)]/40 mb-2">
+                <p className="text-xs text-[var(--text-faint)]">
+                  Protege tu configuración con un PIN para evitar cambios
+                  accidentales o no autorizados.
+                </p>
+              </div>
+              <PinSettings />
+            </div>
           )}
         </div>
 
-        {/* Cash Currencies */}
-        <div>
-          <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--status-success)]" />
-            Efectivo
-          </div>
-          <div className="space-y-3">
-            {CASH_CURRENCIES.map((currency) => (
-              <RateRow key={currency} currency={currency} />
-            ))}
-          </div>
-        </div>
-
-        {/* Digital Currencies */}
-        <div>
-          <div className="text-xs text-[var(--text-faint)] font-bold uppercase tracking-wide mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[var(--purple)]" />
-            Digital
-          </div>
-          <div className="space-y-3">
-            {DIGITAL_CURRENCIES.map((currency) => (
-              <RateRow key={currency} currency={currency} />
-            ))}
-          </div>
-        </div>
-
-        {/* Visibility Customization */}
-        <VisibilitySection />
-
-        {/* Security Settings */}
-        <PinSettings />
-
-        {/* Actions - Fixed Footer */}
-        <div className="flex gap-3 pt-4 mt-4 border-t border-[var(--border-primary)]">
-          <Button
-            variant="secondary"
-            onClick={resetRates}
-            className="flex-1 gap-2"
-          >
-            <RotateCcw size={14} />
-            Resetear
-          </Button>
-          <Button variant="primary" onClick={closeSettings} className="flex-1">
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-base)]">
+          <Button variant="primary" onClick={closeSettings} className="w-full">
             Listo
           </Button>
         </div>
