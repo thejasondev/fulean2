@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useStore } from "@nanostores/react";
-import { Heart, Smartphone, Copy, Check } from "lucide-react";
+import {
+  Heart,
+  Smartphone,
+  Copy,
+  Check,
+  QrCode,
+  CreditCard,
+} from "lucide-react";
 import { $isDonationOpen, closeDonation } from "../../stores/uiStore";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
@@ -17,6 +24,7 @@ export function DonationSheet() {
   const [customAmount, setCustomAmount] = useState("");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   // Bank card number for receiving donations
   const CARD_NUMBER = "9234 0699 9301 9516";
@@ -73,31 +81,82 @@ export function DonationSheet() {
           ¡Gracias por tu apoyo!
         </p>
 
-        {/* Card Number Display */}
-        <div className="bg-[var(--bg-base)] rounded-xl p-4 border border-[var(--border-primary)]">
-          <p className="text-[10px] text-[var(--text-faint)] uppercase mb-2">
-            Transferir a tarjeta:
-          </p>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-lg sm:text-xl font-mono font-bold text-[var(--text-primary)] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis">
-              {CARD_NUMBER}
-            </span>
+        {/* Card Section with QR Toggle */}
+        <div className="bg-[var(--bg-base)] rounded-xl overflow-hidden border border-[var(--border-primary)]">
+          {/* Toggle Tabs */}
+          <div className="flex border-b border-[var(--border-primary)]">
             <button
-              onClick={handleCopyCard}
+              onClick={() => setShowQR(false)}
               className={cn(
-                "p-2.5 rounded-lg transition-all flex-shrink-0", // Icon button style
-                copied
-                  ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
-                  : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
+                "flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-all",
+                !showQR
+                  ? "bg-[var(--pink-bg)] text-[var(--pink)] border-b-2 border-[var(--pink)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
               )}
-              title="Copiar número de tarjeta"
             >
-              {copied ? (
-                <Check className="w-5 h-5" />
-              ) : (
-                <Copy className="w-5 h-5" />
-              )}
+              <CreditCard className="w-4 h-4" />
+              Número
             </button>
+            <button
+              onClick={() => setShowQR(true)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-all",
+                showQR
+                  ? "bg-[var(--pink-bg)] text-[var(--pink)] border-b-2 border-[var(--pink)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
+              )}
+            >
+              <QrCode className="w-4 h-4" />
+              Escanear QR
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="p-4">
+            {showQR ? (
+              /* QR Code View */
+              <div className="flex flex-col items-center gap-3">
+                <div className="bg-white p-3 rounded-xl shadow-inner">
+                  <img
+                    src="/codigoqr.JPG"
+                    alt="QR de tarjeta bancaria"
+                    className="w-40 h-40 object-contain"
+                  />
+                </div>
+                <p className="text-[11px] text-[var(--text-faint)] text-center">
+                  Escanea este código con <strong>Transfermóvil</strong> para
+                  añadir la tarjeta automáticamente
+                </p>
+              </div>
+            ) : (
+              /* Card Number View */
+              <div>
+                <p className="text-[10px] text-[var(--text-faint)] uppercase mb-2">
+                  Transferir a tarjeta:
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-lg sm:text-xl font-mono font-bold text-[var(--text-primary)] tracking-wider whitespace-nowrap overflow-hidden text-ellipsis">
+                    {CARD_NUMBER}
+                  </span>
+                  <button
+                    onClick={handleCopyCard}
+                    className={cn(
+                      "p-2.5 rounded-lg transition-all flex-shrink-0",
+                      copied
+                        ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                        : "bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
+                    )}
+                    title="Copiar número de tarjeta"
+                  >
+                    {copied ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -149,71 +208,101 @@ export function DonationSheet() {
             : "Selecciona un monto (min. 50 CUP)"}
         </button>
 
-        {/* Instructions */}
+        {/* Instructions - Simplified */}
         <div className="p-3 bg-[var(--bg-base)] rounded-lg border border-[var(--border-primary)]">
           <p className="text-xs text-[var(--text-faint)] leading-relaxed">
-            <strong className="text-[var(--text-muted)]">Cómo donar:</strong>
+            <strong className="text-[var(--text-muted)]">Pasos rápidos:</strong>
             <br />
-            1. Autentícate desde tu app bancaria y vuelve a nuestra app.
+            1. Escanea el QR o copia la tarjeta
             <br />
-            2. Copia la tarjeta de donación y selecciona la cantidad deseada.
+            2. Abre Transfermóvil → Transferir
             <br />
-            2.1. Sigue los pasos de la transferencia bancaria, pegando la
-            tarjeta y llenando el monto deseado.
-            <br />
-            3. Finaliza la transferencia y espera a que se confirme.
-            <br />
-            4. GRACIAS!!
+            3. Pega/selecciona la tarjeta y completa
           </p>
         </div>
       </div>
 
-      {/* Developer Credit - Premium Design */}
-      <div className="mt-6 pt-6 px-4 pb-6 border-t border-[var(--border-muted)]">
+      {/* Developer Credit - Enhanced Premium Design */}
+      <div className="mt-4 pt-4 px-4 pb-4 border-t border-[var(--border-muted)]">
         <a
-          href="https://www.instagram.com/thejasondev?"
+          href="https://www.instagram.com/thejasondev"
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            "relative group flex items-center gap-4 p-3 pr-4 rounded-2xl",
-            "bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)]",
-            "border border-[var(--border-primary)] hover:border-[var(--accent)]/50",
-            "shadow-sm hover:shadow-[0_4px_12px_-4px_rgba(var(--accent-rgb),0.2)]",
-            "transition-all duration-300 transform hover:-translate-y-0.5",
+            "relative group flex items-center gap-4 p-4 rounded-2xl",
+            "bg-gradient-to-br from-[var(--bg-base)] via-[var(--bg-secondary)] to-[var(--bg-primary)]",
+            "border border-[var(--border-primary)]",
+            "hover:border-transparent",
+            "transition-all duration-500",
+            "before:absolute before:inset-0 before:rounded-2xl before:p-[1px]",
+            "before:bg-gradient-to-r before:from-[#833AB4] before:via-[#FD1D1D] before:to-[#F77737]",
+            "before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-500",
+            "before:-z-10",
+            "overflow-hidden",
           )}
         >
-          {/* Avatar Container with Gradient Ring */}
+          {/* Animated Glow Effect */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] blur-xl" />
+
+          {/* Avatar with Instagram Gradient Ring */}
           <div className="relative shrink-0">
-            <div className="absolute inset-0 bg-gradient-to-tr from-[var(--accent)] to-[var(--blue)] rounded-full blur-[2px] opacity-70 group-hover:opacity-100 transition-opacity" />
-            <div className="relative w-10 h-10 rounded-full bg-[var(--bg-base)] p-0.5 flex items-center justify-center border border-[var(--bg-primary)]">
-              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[var(--accent)] to-[var(--blue)] flex items-center justify-center text-white font-bold text-xs tracking-tighter">
-                JG
+            {/* Animated gradient ring */}
+            <div
+              className={cn(
+                "absolute -inset-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                "bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#F77737]",
+                "animate-spin",
+              )}
+              style={{ animationDuration: "3s" }}
+            />
+            <div className="relative w-12 h-12 rounded-full bg-[var(--bg-base)] p-[3px]">
+              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#833AB4] via-[#FD1D1D] to-[#F77737] flex items-center justify-center">
+                <span className="text-white font-black text-sm tracking-tight">
+                  JG
+                </span>
               </div>
             </div>
           </div>
 
           {/* Text Content */}
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] text-[var(--text-faint)] font-medium uppercase tracking-wider mb-0.5">
-              Code & Design
+            <div className="text-[10px] text-[var(--text-faint)] font-medium uppercase tracking-widest mb-1">
+              Desarrollado & diseñado
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-[var(--text-primary)] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[var(--accent)] group-hover:to-[var(--blue)] transition-all">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "text-base font-bold text-[var(--text-primary)]",
+                  "group-hover:text-transparent group-hover:bg-clip-text",
+                  "group-hover:bg-gradient-to-r group-hover:from-[#833AB4] group-hover:via-[#FD1D1D] group-hover:to-[#F77737]",
+                  "transition-all duration-300",
+                )}
+              >
                 @thejasondev
               </span>
+              {/* Instagram Icon */}
               <svg
-                className="w-3 h-3 text-[var(--text-muted)] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
+                className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[#E1306C] transition-colors"
                 viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                fill="currentColor"
               >
-                <path d="M7 17l9.2-9.2M17 17V7H7" />
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
               </svg>
             </div>
           </div>
+
+          {/* Arrow indicator */}
+          <svg
+            className="w-5 h-5 text-[var(--text-faint)] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
         </a>
       </div>
     </Modal>
