@@ -16,26 +16,31 @@ export async function ratesCommand(ctx: Context) {
   });
 
   // Table format using monospace code block
-  // 🇺🇸 USD   325.00
-  // 🇪🇺 EUR   340.00
-  // ...
 
-  const rows = [
+  const officialRows = [
     `🇺🇸 USD   ${formatter.format(rates.USD)}`,
     `🇪🇺 EUR   ${formatter.format(rates.EUR)}`,
     `💳 MLC   ${formatter.format(rates.MLC)}`,
+    `🪙 USDT  ${formatter.format(rates.USDT_TRC20)}`,
+  ];
+
+  const estimatedRows = [
     `🇨🇦 CAD   ${formatter.format(rates.CAD)}`,
     `📱 Zelle ${formatter.format(rates.ZELLE)}`,
-    `🪙 USDT  ${formatter.format(rates.USDT_TRC20)}`,
   ];
 
   await ctx.reply(
     `📊 *Tasas de Cambio Actuales*\n` +
       `📅 _${date} - ${time}_\n\n` +
-      `\`\`\`\n` + // Start code block for alignment
-      rows.join("\n") +
-      `\n\`\`\`` +
-      `\n\n_Fuente: El Toque_`,
+      `*Oficiales (El Toque):*\n` +
+      `\`\`\`\n` +
+      officialRows.join("\n") +
+      `\n\`\`\`\n` +
+      `*Otras (Estimadas):*\n` +
+      `\`\`\`\n` +
+      estimatedRows.join("\n") +
+      `\n\`\`\`\n` +
+      `\n_Fuente: El Toque (Oficiales) & Fulean2 (Estimadas)_`,
     { parse_mode: "Markdown" },
   );
 }

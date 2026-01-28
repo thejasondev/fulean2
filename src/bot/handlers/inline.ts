@@ -69,6 +69,11 @@ export async function inlineQueryHandler(ctx: Context) {
   }).format(total); // Adds CUP symbol
   const fmtRate = new Intl.NumberFormat("es-CU").format(rate);
 
+  const isOfficial = ["USD", "EUR", "MLC", "BTC", "USDT_TRC20"].includes(
+    rateKey as string,
+  );
+  const sourceText = isOfficial ? "El Toque" : "Fulean2 (Estimado)";
+
   // Create Result
   await ctx.answerInlineQuery(
     [
@@ -76,7 +81,7 @@ export async function inlineQueryHandler(ctx: Context) {
         type: "article",
         id: `calc-${Date.now()}`,
         title: `Vender ${fmtAmount} ${meta.code}`,
-        description: `Recibes: ${fmtTotal} (Tasa: ${fmtRate})`,
+        description: `Recibes: ${fmtTotal} (Tasa: ${fmtRate}) ${!isOfficial ? "⚠️ (Est.)" : ""}`,
         thumbnail_url:
           "https://fulean2.vercel.app/web-app-manifest-192x192.png", // Generic logo
         input_message_content: {
@@ -85,7 +90,7 @@ export async function inlineQueryHandler(ctx: Context) {
             `💵 *Venta:* ${fmtAmount} ${meta.code}\n` +
             `💰 *Recibes:* ${fmtTotal}\n` +
             `📊 *Tasa:* ${fmtRate} CUP\n\n` +
-            `_Calculado con @Fulean2_Bot_`,
+            `_Fuente: ${sourceText}_`,
           parse_mode: "Markdown",
         },
       },

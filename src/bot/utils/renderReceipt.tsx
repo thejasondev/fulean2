@@ -1,5 +1,5 @@
 import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
+import { Resvg, initWasm } from "@resvg/resvg-wasm";
 import React from "react";
 
 // Types for our Receipt
@@ -12,11 +12,37 @@ interface ReceiptData {
   date: Date;
 }
 
-// Fetch font once (simple cache in memory for serverless warm starts)
+// Initialize WASM once
+let wasmInitialized = false;
+async function ensureWasm() {
+  if (wasmInitialized) return;
+  try {
+    // We import the wasm file. Vite handles this as a URL or Asset.
+    // But for @resvg/resvg-wasm, we typically need to load it.
+    // In some setups, just importing initWasm is enough if we satisfy the loader.
+    // For simplicity in Vercel/Node, we rely on the package's index which might require fs/fetch.
+
+    // However, standard @resvg/resvg-wasm usage often expects manual loading in basic envs.
+    // Let's try the simplest: `await initWasm(import(".../index_bg.wasm"))` pattern if supported,
+    // OR just `await initWasm(fetch(...))`
+
+    // BETTER APPROACH for Vercel/Astro:
+    // Use the index_bg.wasm directly from node_modules if possible, or fetch from CDN to be safe and lazy.
+    const response = await fetch(
+      "https://unpkg.com/@resvg/resvg-wasm/index_bg.wasm",
+    );
+    const buffer = await response.arrayBuffer();
+    await initWasm(buffer);
+    wasmInitialized = true;
+  } catch (e) {
+    console.error("Failed to init Resvg WASM:", e);
+  }
+}
+
+// Fetch font once
 let fontData: ArrayBuffer | null = null;
 async function getFont() {
   if (fontData) return fontData;
-  // Classic Inter Bold
   const response = await fetch(
     "https://github.com/google/fonts/raw/main/ofl/inter/Inter-Bold.ttf",
   );
@@ -25,6 +51,7 @@ async function getFont() {
 }
 
 export async function generateReceiptImage(data: ReceiptData): Promise<Buffer> {
+  await ensureWasm();
   const font = await getFont();
 
   const isBuy = data.type === "COMPRA";
@@ -33,10 +60,7 @@ export async function generateReceiptImage(data: ReceiptData): Promise<Buffer> {
   const textColor = "#ffffff";
   const textMuted = "#a1a1aa";
 
-  // We use React.createElement or JSX.
-  // Since this file is .tsx and processed by Astro/Vite, we can use JSX.
-  // Satori supports flexbox layout.
-
+  // Satori Element (JSX)
   const element = (
     <div
       style={{
@@ -212,7 +236,7 @@ export async function generateReceiptImage(data: ReceiptData): Promise<Buffer> {
     fonts: [
       {
         name: "Inter",
-        data: font,
+        data: font!,
         weight: 700,
         style: "normal",
       },
@@ -220,8 +244,8 @@ export async function generateReceiptImage(data: ReceiptData): Promise<Buffer> {
   });
 
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: 800 }, // Render at 2x for retina quality
+    fitTo: { mode: "width", value: 800 },
   });
 
-  return resvg.render().asPng();
+  return Buffer.from(resvg.render().asPng());
 }
