@@ -59,6 +59,9 @@ importers:
       nanostores:
         specifier: ^1.1.0
         version: 1.1.0
+      node-cache:
+        specifier: ^5.1.2
+        version: 5.1.2
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -2698,6 +2701,10 @@ packages:
 
   nlcst-to-string@4.0.0:
     resolution: {integrity: sha512-YKLBCcUYKAg0FNlOBT6aI91qFmSiFKiluk655WzPF+DDMA02qIyy8uiRqI8QXtcFpEvll12LpL5MXqEmAZ+dcA==}
+
+  node-cache@5.1.2:
+    resolution: {integrity: sha512-t1QzWwnk4sjLWaQAS8CHgOJ+RAfmHpxFWmc36IWTiWHQfs0w5JDMBS1b1ZxQteo0vVVuWJvIUKHDkkeK7vIGCg==}
+    engines: {node: '>= 8.0.0'}
 
   node-fetch-native@1.6.7:
     resolution: {integrity: sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q==}
@@ -6632,6 +6639,10 @@ snapshots:
   nlcst-to-string@4.0.0:
     dependencies:
       '@types/nlcst': 2.0.3
+
+  node-cache@5.1.2:
+    dependencies:
+      clone: 2.1.2
 
   node-fetch-native@1.6.7: {}
 

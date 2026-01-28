@@ -14,15 +14,38 @@ export async function calcCommand(ctx: Context) {
     });
   }
 
-  const parts = args.trim().split(" ");
+  // Handle formats:
+  // 1. /calc 100 USD (Default rate)
+  // 2. /calc 100 USD 500 (Direct custom rate)
+  // 3. /calc 100 USD x 500 ("x" separator)
+
+  const originalArgs = args.trim();
+  // Remove "x" or "X" if used as separator
+  // Regex: replace " x " with " ", or " X " with " "
+  const cleanArgs = originalArgs.replace(/\s+[xX]\s+/g, " ");
+
+  const parts = cleanArgs.split(/\s+/);
+
   if (parts.length < 2) {
-    return ctx.reply("❌ Falta información.\nEjemplo: `/calc 100 USD`", {
-      parse_mode: "Markdown",
-    });
+    return ctx.reply(
+      "❌ Falta información.\nEjemplo: `/calc 100 USD` o `/calc 100 USD x 500`",
+      {
+        parse_mode: "Markdown",
+      },
+    );
   }
 
   const amount = parseFloat(parts[0]);
   let currencyInput = parts[1].toUpperCase();
+  let customRate: number | undefined;
+
+  // Check for custom rate in 3rd argument
+  if (parts.length >= 3) {
+    customRate = parseFloat(parts[2]);
+    if (isNaN(customRate)) {
+      return ctx.reply("❌ La tasa personalizada no es válida.");
+    }
+  }
 
   if (isNaN(amount)) {
     return ctx.reply("❌ El monto no es válido.");
@@ -40,13 +63,53 @@ export async function calcCommand(ctx: Context) {
   const currencyCode = (aliases[currencyInput] || currencyInput) as Currency;
   const meta = CURRENCY_META[currencyCode];
 
+  // If currency not found but user provided custom rate, we can still calc but generic
+  // But for now strict to supported currencies for consistent UI
+  // ... (validation code above remains same)
+
+  // If currency not found but user provided custom rate, we can still calc but generic
+  // But for now strict to supported currencies for consistent UI
   if (!meta) {
     return ctx.reply(
       `❌ Moneda no soportada: ${currencyInput}\nPrueba con: USD, EUR, MLC, ZELLE, etc.`,
     );
   }
 
-  const rate = DEFAULT_RATES[currencyCode];
+  let rate = customRate;
+  let rateSource = customRate ? "Personalizada" : "El Toque";
+
+  if (!rate) {
+    // Fetch live rate
+    // Notify user we are fetching? (Maybe too verbose, cleaner to just do it)
+    await ctx.replyWithChatAction("typing");
+
+    // Lazy load the fetcher
+    const { getLiveRates } = await import("../services/rates");
+    const rates = await getLiveRates();
+
+    // Map internal currency keys to El Toque keys in our interface
+    // ElToqueRates keys: USD, EUR, TLC, CAD, ZELLE, CLASICA, BTC, USDT_TRC20
+    const keyMap: Record<Currency, keyof typeof rates> = {
+      USD: "USD",
+      EUR: "EUR",
+      MLC: "MLC",
+      CAD: "CAD",
+      ZELLE: "ZELLE",
+      CLASICA: "CLASICA",
+      BTC: "BTC",
+      USDT_TRC20: "USDT_TRC20",
+    };
+
+    const targetKey = keyMap[currencyCode];
+    if (targetKey && rates[targetKey]) {
+      rate = rates[targetKey] as number;
+    } else {
+      // Fallback to strict default if API fails or key missing
+      rate = DEFAULT_RATES[currencyCode];
+      rateSource = "Fulean2 (Offline)";
+    }
+  }
+
   const total = amount * rate;
 
   // Format numbers
@@ -58,7 +121,7 @@ export async function calcCommand(ctx: Context) {
     `${meta.flag} *Cambio de Divisas*\n\n` +
       `💵 *Entrada:* ${fmtAmount} ${meta.code}\n` +
       `💰 *Salida:* ${fmtTotal} CUP\n` +
-      `📊 *Tasa:* ${fmtRate}\n\n` +
+      `📊 *Tasa:* ${fmtRate} _(${rateSource})_\n\n` +
       `_Calculado con Fulean2_`,
     { parse_mode: "Markdown" },
   );
