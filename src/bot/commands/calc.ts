@@ -108,11 +108,6 @@ export async function calcCommand(ctx: Context) {
         targetKey,
       );
       rateSource = isOfficial ? "El Toque" : "Fulean2 (Estimado)";
-      // Check if this key is considered "Official" by El Toque
-      const isOfficial = ["USD", "EUR", "MLC", "BTC", "USDT_TRC20"].includes(
-        targetKey,
-      );
-      rateSource = isOfficial ? "El Toque" : "Fulean2 (Estimado)";
     } else {
       // Fallback to strict default if API fails or key missing
       rate = DEFAULT_RATES[currencyCode];
