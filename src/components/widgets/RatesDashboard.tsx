@@ -135,6 +135,36 @@ function RateTickerCard({
   );
 }
 
+// Special Ticker Card for Refresh (Mobile Only)
+function RefreshTickerCard({
+  isLoading,
+  onClick,
+}: {
+  isLoading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "snap-start shrink-0 md:hidden", // Visible only on mobile
+        "flex flex-col items-center justify-center gap-2 mt-5",
+        "w-[50px] h-full p-2.5",
+        "bg-[var(--blue-bg)]/30 backdrop-blur-sm",
+        "border border-[var(--blue)]/30 rounded-xl",
+        "transition-all duration-200 active:scale-95",
+        "hover:bg-[var(--blue-bg)]/50",
+      )}
+      title="Actualizar Tasas"
+    >
+      <RefreshCw
+        size={18}
+        className={cn("text-[var(--blue)]", isLoading && "animate-spin")}
+      />
+    </button>
+  );
+}
+
 // El Toque Info Banner
 function ElToqueBanner() {
   const elToqueRates = useStore($elToqueRates);
@@ -221,7 +251,7 @@ export function RatesDashboard() {
               variant="ghost"
               size="sm"
               onClick={refreshRates}
-              className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
+              className="hidden md:flex h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
               title="Actualizar tasas"
             >
               <RefreshCw
@@ -318,6 +348,10 @@ export function RatesDashboard() {
               />
             );
           })}
+
+          {/* Refresh Card - Mobile Only (At the end) */}
+          <RefreshTickerCard isLoading={isLoading} onClick={refreshRates} />
+
           <div className="w-1 shrink-0" />
         </div>
       </div>

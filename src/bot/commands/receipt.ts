@@ -1,7 +1,11 @@
-import { InputFile } from "grammy";
 import type { Context } from "grammy";
-import { generateReceiptImage } from "../utils/renderReceipt";
-import { DEFAULT_RATES, CURRENCIES, type Currency } from "../../lib/constants";
+import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
+
+// ============================================
+// Receipt Command - Text-based Receipt Generator
+// Uses formatted Markdown instead of image generation
+// for maximum reliability in serverless environments
+// ============================================
 
 export async function receiptCommand(ctx: Context) {
   const args = ctx.match as string;
@@ -43,32 +47,69 @@ export async function receiptCommand(ctx: Context) {
   }
 
   // Validate Currency
-  // Simple check
-  if (
-    !CURRENCIES.includes(currencyStr as Currency) &&
-    !["USDT", "TRC20"].includes(currencyStr)
-  ) {
+  const normalizedCurrency =
+    currencyStr === "USDT" || currencyStr === "TRC20"
+      ? "USDT_TRC20"
+      : currencyStr;
+
+  if (!CURRENCIES.includes(normalizedCurrency as Currency)) {
     return ctx.reply(`❌ Moneda no soportada: ${currencyStr}`);
   }
 
-  await ctx.replyWithChatAction("upload_photo");
+  // Calculate total
+  const total = amount * rate;
 
-  try {
-    const imageBuffer = await generateReceiptImage({
-      type,
-      amount,
-      currency: currencyStr,
-      rate,
-      total: amount * rate,
-      date: new Date(),
-    });
+  // Get currency metadata for flag
+  const currencyMeta = CURRENCY_META[normalizedCurrency as Currency];
+  const flag = currencyMeta?.flag || "💵";
 
-    await ctx.replyWithPhoto(new InputFile(imageBuffer, "recibo.png"), {
-      caption: `🧾 *Comprobante Generado* con Fulean2`,
-      parse_mode: "Markdown",
-    });
-  } catch (error) {
-    console.error(error);
-    await ctx.reply("❌ Error generando la imagen. Intenta de nuevo.");
-  }
+  // Format numbers with locale
+  const fmtAmount = amount.toLocaleString("es-CU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const fmtRate = rate.toLocaleString("es-CU");
+  const fmtTotal = total.toLocaleString("es-CU", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
+  // Format date/time
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("es-CU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const timeStr = now.toLocaleTimeString("es-CU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  // Build receipt message with Unicode block characters
+  const isBuy = type === "COMPRA";
+  const statusEmoji = isBuy ? "🟢" : "🟡";
+  const actionVerb = isBuy ? "Pagado" : "Recibido";
+
+  const receipt = `
+┌─────────────────────────┐
+│      *Fulean2* 🇨🇺       │
+│   ${dateStr} • ${timeStr}   │
+├─────────────────────────┤
+│                         │
+│   ${statusEmoji} *${type}*                │
+│                         │
+│  ${flag} Monto: *${fmtAmount} ${currencyStr}*    │
+│  📊 Tasa: ${fmtRate} CUP        │
+│                         │
+├─────────────────────────┤
+│                         │
+│  💰 ${actionVerb}:              │
+│  *${fmtTotal} CUP*              │
+│                         │
+└─────────────────────────┘
+      _Comprobante Digital_
+`;
+
+  await ctx.reply(receipt.trim(), { parse_mode: "Markdown" });
 }

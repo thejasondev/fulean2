@@ -68,13 +68,6 @@ export function DonationSheet() {
       size="md"
     >
       <div className="p-4 space-y-4">
-        {/* Heart Icon */}
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--pink-bg)] flex items-center justify-center">
-            <Heart className="w-8 h-8 text-[var(--pink)]" />
-          </div>
-        </div>
-
         {/* Message */}
         <p className="text-sm text-[var(--text-muted)] text-center">
           Tu donación ayuda a mantener Fulean2 gratis y en constante mejora.
