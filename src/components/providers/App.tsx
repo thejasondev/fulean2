@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { Analytics } from "@vercel/analytics/react";
 import { ToastProvider } from "../ui/Toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { TourOverlay } from "../ui/TourOverlay";
 import { RatesDashboard } from "../widgets/RatesDashboard";
 import { AppTabs } from "../widgets/AppTabs";
 import { TotalsFooter } from "../widgets/TotalsFooter";
@@ -13,6 +14,7 @@ import { DonationSheet } from "../widgets/DonationSheet";
 import { PinScreen } from "../widgets/PinScreen";
 import { initializeRates } from "../../stores/ratesStore";
 import { $theme, initializeTheme } from "../../stores/themeStore";
+import { checkFirstVisit, startTour } from "../../stores/onboardingStore";
 
 // ============================================
 // App Component
@@ -27,6 +29,15 @@ export function App() {
   useEffect(() => {
     initializeRates();
     initializeTheme();
+
+    // Check if first visit and start tour with small delay
+    const timer = setTimeout(() => {
+      if (checkFirstVisit()) {
+        startTour();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Apply theme class to document when theme changes
@@ -49,7 +60,9 @@ export function App() {
     <ToastProvider>
       <div className="flex flex-col min-h-dvh">
         {/* Header with exchange rates */}
-        <RatesDashboard />
+        <div data-tour="rates">
+          <RatesDashboard />
+        </div>
 
         {/* Main content with tabs (Counter / Calculator) */}
         <AppTabs />
@@ -67,6 +80,9 @@ export function App() {
 
       {/* Confirm Dialog (global) */}
       <ConfirmDialog />
+
+      {/* Onboarding Tour Overlay */}
+      <TourOverlay />
 
       {/* Vercel Analytics */}
       <Analytics />

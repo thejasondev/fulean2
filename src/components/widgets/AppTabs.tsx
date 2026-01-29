@@ -45,17 +45,22 @@ export function AppTabs() {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Tab Navigation */}
-      <Tabs tabs={TABS} activeTab={activeTab} onChange={handleTabChange} />
+      <div data-tour="tabs">
+        <Tabs tabs={TABS} activeTab={activeTab} onChange={handleTabChange} />
+      </div>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden relative">
-       
         <TabPanel id="operar" activeTab={activeTab}>
-          <TransactionForm />
+          <div data-tour="operar" className="h-full">
+            <TransactionForm />
+          </div>
         </TabPanel>
 
         <TabPanel id="contar" activeTab={activeTab}>
-          <MoneyCounter />
+          <div data-tour="contar" className="h-full">
+            <MoneyCounter />
+          </div>
         </TabPanel>
 
         <TabPanel id="calcular" activeTab={activeTab}>
@@ -63,7 +68,9 @@ export function AppTabs() {
         </TabPanel>
 
         <TabPanel id="reportes" activeTab={activeTab}>
-          <ReportsTab />
+          <div data-tour="reportes" className="h-full">
+            <ReportsTab />
+          </div>
         </TabPanel>
       </div>
     </div>
