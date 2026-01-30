@@ -253,17 +253,19 @@ export function CalculatorTab() {
         amount: parseFloat(amount) || 0,
         rate: currentRate,
       });
-    } else if (mode === "COMPARE" && compareResult) {
+    } else if (mode === "COMPARE") {
       setCalculatorFormState({
         mode: "COMPARE",
-        resultCUP: compareResult.directWins
-          ? Math.round(compareResult.directCUP)
-          : Math.round(compareResult.indirectCUP),
+        resultCUP: compareResult
+          ? compareResult.directWins
+            ? Math.round(compareResult.directCUP)
+            : Math.round(compareResult.indirectCUP)
+          : 0,
         sourceCurrency,
         intermediateCurrency,
-        directWins: compareResult.directWins,
-        difference: Math.round(compareResult.difference),
-        percentDiff: compareResult.percentDiff,
+        directWins: compareResult?.directWins,
+        difference: compareResult ? Math.round(compareResult.difference) : 0,
+        percentDiff: compareResult?.percentDiff,
         compareAmount: parseFloat(compareAmount) || 0,
         forexRate: parseFloat(forexRate) || 1,
       });
