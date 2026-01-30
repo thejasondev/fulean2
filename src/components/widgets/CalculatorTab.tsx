@@ -7,7 +7,6 @@ import {
   RefreshCw,
   Calculator,
   ArrowDownUp,
-  Sparkles,
 } from "lucide-react";
 import {
   $buyRates,
