@@ -7,7 +7,13 @@ import {
   Check,
   Eye,
 } from "lucide-react";
-import { $pendingCUP, clearPendingCUP, goToOperar } from "../../stores/uiStore";
+import {
+  $pendingCUP,
+  clearPendingCUP,
+  goToOperar,
+  $pendingCalculation,
+  clearPendingCalculation,
+} from "../../stores/uiStore";
 import {
   setTransactionFormState,
   clearTransactionFormState,
@@ -53,6 +59,7 @@ import { Wallet } from "lucide-react";
 
 export function TransactionForm() {
   const pendingCUP = useStore($pendingCUP);
+  const pendingCalculation = useStore($pendingCalculation);
   const buyRates = useStore($buyRates);
   const sellRates = useStore($sellRates);
   const visibleCurrencies = useStore($visibleCurrencies);
@@ -91,7 +98,7 @@ export function TransactionForm() {
   const foreignAmount = parseFloat(amountForeign) || 0;
   const profit = calculateProfit(currency as Currency, foreignAmount);
 
-  // Initial load handling
+  // Initial load handling - pendingCUP from Counter
   useEffect(() => {
     if (pendingCUP !== null) {
       setOperation("BUY");
@@ -108,6 +115,37 @@ export function TransactionForm() {
       setRate(r.toString());
     }
   }, [pendingCUP]);
+
+  // Handle Calculator → Transaction flow with full context
+  useEffect(() => {
+    if (pendingCalculation !== null) {
+      if (pendingCalculation.operation === "EXCHANGE") {
+        // EXCHANGE: Pre-fill exchange form
+        setOperation("EXCHANGE");
+        setFromCurrency(
+          (pendingCalculation.fromCurrency as TransactionCurrency) || "EUR",
+        );
+        setToCurrency(
+          (pendingCalculation.toCurrency as TransactionCurrency) || "USD",
+        );
+        setExchangeAmount(pendingCalculation.amount?.toString() || "");
+        setExchangeRate(pendingCalculation.exchangeRate?.toFixed(2) || "1.00");
+      } else {
+        // BUY/SELL: Pre-fill transaction form
+        setOperation(pendingCalculation.operation);
+        setCurrency(
+          (pendingCalculation.currency as TransactionCurrency) || "USD",
+        );
+        setAmountForeign(pendingCalculation.amount?.toString() || "");
+        setRate(pendingCalculation.rate?.toString() || "");
+        setTotalCUP(pendingCalculation.totalCUP?.toString() || "");
+      }
+      // Clear pending data
+      clearPendingCalculation();
+      // Haptic feedback for successful pre-fill
+      haptic.light();
+    }
+  }, [pendingCalculation]);
 
   // Update rate when operation, currency, or global rates change
   useEffect(() => {

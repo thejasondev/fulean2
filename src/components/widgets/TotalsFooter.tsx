@@ -24,6 +24,7 @@ import {
   $activeTab,
   useInTransaction,
   openHistoryDrawer,
+  useCalculationInTransaction,
 } from "../../stores/uiStore";
 import {
   $transactionFormState,
@@ -31,6 +32,10 @@ import {
   openClientView,
   executeSubmitFromFooter,
 } from "../../stores/transactionFormStore";
+import {
+  $calculatorFormState,
+  $canCopyResult,
+} from "../../stores/calculatorFormStore";
 import { confirm } from "../../stores/confirmStore";
 import { formatNumber, formatCurrency } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
@@ -42,10 +47,11 @@ import type { Currency } from "../../lib/constants";
 // TotalsFooter Component
 // Context-Aware: Counter mode for Contar,
 // Transaction preview for Operar,
-// Minimal mode for Calculadora/Reportes
+// Calculator preview for Calcular,
+// Minimal mode for Reportes
 // ============================================
 
-type FooterMode = "counter" | "transaction" | "minimal";
+type FooterMode = "counter" | "transaction" | "calculator" | "minimal";
 
 export function TotalsFooter() {
   const grandTotal = useStore($grandTotalCUP) ?? 0;
@@ -64,6 +70,8 @@ export function TotalsFooter() {
   const canSubmit = useStore($canSubmitTransaction);
   const isInOperar = activeTab === "operar";
   const visibleCurrencies = useStore($visibleCurrencies);
+  const calcState = useStore($calculatorFormState);
+  const canCopyCalc = useStore($canCopyResult);
   const { toast } = useToast();
   const haptic = useHaptic();
 
@@ -71,7 +79,8 @@ export function TotalsFooter() {
   const footerMode: FooterMode = useMemo(() => {
     if (activeTab === "contar") return "counter";
     if (activeTab === "operar") return "transaction";
-    return "minimal"; // calcular, reportes
+    if (activeTab === "calcular") return "calculator";
+    return "minimal"; // reportes only
   }, [activeTab]);
 
   // Use only visible currencies for carousel
@@ -278,7 +287,7 @@ export function TotalsFooter() {
       >
         {/* LEFT CLUSTER: Context-Aware Display */}
         <div className="flex flex-col min-w-0 flex-1">
-          {footerMode === "counter" ? (
+          {footerMode === "counter" && (
             // ============================================
             // COUNTER MODE: Show counted totals
             // ============================================
@@ -331,7 +340,79 @@ export function TotalsFooter() {
                 </div>
               </button>
             </>
-          ) : (
+          )}
+
+          {footerMode === "calculator" && (
+            // ============================================
+            // CALCULATOR MODE: Show calculation result
+            // ============================================
+            <>
+              {/* Main Result Row */}
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "text-xl font-bold tabular-nums leading-none",
+                    canCopyCalc
+                      ? calcState.mode === "COMPARE"
+                        ? "text-[var(--purple)]"
+                        : calcState.mode === "BUY"
+                          ? "text-[var(--status-success)]"
+                          : "text-[var(--status-warning)]"
+                      : "text-[var(--text-muted)]",
+                  )}
+                >
+                  {canCopyCalc ? formatNumber(calcState.resultCUP) : "0"}
+                </span>
+                <span className="text-xs text-[var(--text-faint)] font-medium">
+                  CUP
+                </span>
+              </div>
+
+              {/* Calculator Subtitle */}
+              <div className="h-4 mt-0.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-faint)] font-medium">
+                  {calcState.mode === "COMPARE" ? (
+                    <>
+                      <RefreshCw size={11} className="text-[var(--purple)]" />
+                      <span>
+                        {calcState.directWins
+                          ? `${calcState.sourceCurrency} directo`
+                          : `Vía ${calcState.intermediateCurrency}`}
+                        {calcState.difference && calcState.difference > 0
+                          ? ` • +${formatNumber(calcState.difference)} CUP`
+                          : ""}
+                      </span>
+                    </>
+                  ) : canCopyCalc ? (
+                    <>
+                      {calcState.mode === "BUY" ? (
+                        <ArrowDownLeft
+                          size={11}
+                          className="text-[var(--status-success)]"
+                        />
+                      ) : (
+                        <ArrowUpRight
+                          size={11}
+                          className="text-[var(--status-warning)]"
+                        />
+                      )}
+                      <span>
+                        {calcState.mode === "BUY" ? "Compra" : "Venta"} •{" "}
+                        {formatCurrency(
+                          calcState.amount,
+                          calcState.currency as Currency,
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="opacity-50">Ingrese monto</span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {footerMode === "transaction" && (
             // ============================================
             // TRANSACTION MODE: Show transaction preview
             // ============================================
@@ -413,7 +494,7 @@ export function TotalsFooter() {
 
         {/* RIGHT CLUSTER: Actions */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* History */}
+          {/* History - Always visible */}
           <button
             onClick={() => {
               haptic.light();
@@ -425,19 +506,86 @@ export function TotalsFooter() {
             <Clock size={20} />
           </button>
 
-          {/* Clear */}
-          <button
-            onClick={handleClear}
-            disabled={grandTotal === 0}
-            className="w-10 h-10 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--status-error)] hover:bg-[var(--status-error-bg)] disabled:opacity-30 transition-colors"
-            aria-label="Limpiar"
-          >
-            <Trash2 size={20} />
-          </button>
+          {/* Clear - Only for Counter mode */}
+          {footerMode === "counter" && (
+            <button
+              onClick={handleClear}
+              disabled={grandTotal === 0}
+              className="w-10 h-10 flex items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--status-error)] hover:bg-[var(--status-error-bg)] disabled:opacity-30 transition-colors"
+              aria-label="Limpiar"
+            >
+              <Trash2 size={20} />
+            </button>
+          )}
 
-          {/* Primary Action - Context Aware with 3 states */}
-          {isInOperar ? (
-            // In Operar tab: Show operation-colored button (enabled or disabled)
+          {/* Primary Action - Counter mode */}
+          {footerMode === "counter" && (
+            <button
+              onClick={handleUseInTrade}
+              disabled={grandTotal === 0}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-full",
+                "shadow-lg shadow-emerald-500/20 transition-all duration-200",
+                "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-inverted)] font-bold",
+                "disabled:opacity-30 disabled:shadow-none",
+                "w-12 h-12 md:w-auto md:h-11 md:px-5",
+              )}
+              aria-label="Operar"
+            >
+              <ArrowRightLeft size={20} strokeWidth={2.5} />
+              <span className="hidden md:inline text-sm">Operar</span>
+            </button>
+          )}
+
+          {/* Primary Action - Calculator mode (all modes) */}
+          {footerMode === "calculator" && (
+            <button
+              onClick={() => {
+                if (!canCopyCalc) return;
+                haptic.medium();
+
+                if (calcState.mode === "COMPARE") {
+                  // COMPARE → EXCHANGE: Pre-fill exchange form
+                  useCalculationInTransaction({
+                    operation: "EXCHANGE",
+                    fromCurrency: calcState.sourceCurrency,
+                    toCurrency: calcState.intermediateCurrency,
+                    amount: calcState.compareAmount,
+                    exchangeRate: calcState.forexRate,
+                  });
+                } else {
+                  // BUY/SELL → Pre-fill transaction form
+                  useCalculationInTransaction({
+                    operation: calcState.mode as "BUY" | "SELL",
+                    amount: calcState.amount,
+                    currency: calcState.currency,
+                    rate: calcState.rate,
+                    totalCUP: calcState.resultCUP,
+                  });
+                }
+              }}
+              disabled={!canCopyCalc}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-full",
+                "shadow-lg transition-all duration-200",
+                "text-[var(--text-inverted)] font-bold",
+                "w-12 h-12 md:w-auto md:h-11 md:px-5",
+                "disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed",
+                calcState.mode === "COMPARE"
+                  ? "bg-[var(--purple)] shadow-purple-500/20 hover:opacity-90"
+                  : calcState.mode === "BUY"
+                    ? "bg-[var(--accent)] shadow-emerald-500/20 hover:bg-[var(--accent-hover)]"
+                    : "bg-[var(--status-warning)] shadow-orange-500/20 hover:opacity-90",
+              )}
+              aria-label="Usar en Operación"
+              title="Usar en Operación"
+            >
+              <ArrowRightLeft size={20} strokeWidth={2.5} />
+              <span className="hidden md:inline text-sm">Operar</span>
+            </button>
+          )}
+
+          {footerMode === "transaction" && (
             <button
               onClick={() => {
                 if (!canSubmit) return;
@@ -449,17 +597,13 @@ export function TotalsFooter() {
                 "flex items-center justify-center gap-2 rounded-full",
                 "shadow-lg transition-all duration-200",
                 "text-[var(--text-inverted)] font-bold",
-                // Size: circle on mobile, pill on desktop
                 "w-12 h-12 md:w-auto md:h-11 md:px-5",
-                // Disabled state
                 "disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed",
-                // Color based on operation
                 formState.operation === "EXCHANGE"
                   ? "bg-[var(--blue)] shadow-blue-500/20"
                   : formState.operation === "BUY"
                     ? "bg-[var(--accent)] shadow-emerald-500/20"
                     : "bg-[var(--status-warning)] shadow-orange-500/20",
-                // Hover only when enabled
                 canSubmit &&
                   (formState.operation === "EXCHANGE"
                     ? "hover:opacity-90"
@@ -479,24 +623,6 @@ export function TotalsFooter() {
               <span className="hidden md:inline text-sm">
                 {formState.operation === "EXCHANGE" ? "Cambiar" : "Registrar"}
               </span>
-            </button>
-          ) : (
-            // Not in Operar: Show green "Operar" button
-            <button
-              onClick={handleUseInTrade}
-              disabled={grandTotal === 0}
-              className={cn(
-                "flex items-center justify-center gap-2 rounded-full",
-                "shadow-lg shadow-emerald-500/20 transition-all duration-200",
-                "bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-inverted)] font-bold",
-                "disabled:opacity-30 disabled:shadow-none",
-                // Size: circle on mobile, pill on desktop
-                "w-12 h-12 md:w-auto md:h-11 md:px-5",
-              )}
-              aria-label="Operar"
-            >
-              <ArrowRightLeft size={20} strokeWidth={2.5} />
-              <span className="hidden md:inline text-sm">Operar</span>
             </button>
           )}
         </div>

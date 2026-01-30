@@ -64,6 +64,42 @@ export function clearPendingCUP() {
 }
 
 // ============================================
+// Pending Calculation (from Calculator → Transaction flow)
+// More detailed than pendingCUP, includes operation type
+// ============================================
+
+export interface PendingCalculation {
+  operation: "BUY" | "SELL" | "EXCHANGE";
+  // BUY/SELL fields
+  amount?: number; // Foreign amount
+  currency?: string; // USD, EUR, etc.
+  rate?: number; // Applied rate
+  totalCUP?: number; // Calculated CUP
+  // EXCHANGE fields
+  fromCurrency?: string; // Source currency (e.g., EUR)
+  toCurrency?: string; // Target currency (e.g., USD)
+  exchangeRate?: number; // e.g., 1.13 EUR→USD
+}
+
+export const $pendingCalculation = atom<PendingCalculation | null>(null);
+
+/**
+ * Navigate to Transaction tab with pre-filled values from Calculator
+ * More complete than useInTransaction - includes operation type and rate
+ */
+export function useCalculationInTransaction(data: PendingCalculation) {
+  $pendingCalculation.set(data);
+  $activeTab.set("operar");
+}
+
+/**
+ * Clear pending calculation (after it's been consumed by Transaction form)
+ */
+export function clearPendingCalculation() {
+  $pendingCalculation.set(null);
+}
+
+// ============================================
 // Modal/Drawer Actions
 // ============================================
 

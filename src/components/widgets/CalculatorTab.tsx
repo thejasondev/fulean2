@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useStore } from "@nanostores/react";
 import {
   ArrowRight,
@@ -17,6 +17,10 @@ import {
   $visibleCurrencies,
   $visibleDenominations,
 } from "../../stores/visibilityStore";
+import {
+  setCalculatorFormState,
+  clearCalculatorFormState,
+} from "../../stores/calculatorFormStore";
 import {
   CURRENCY_META,
   DENOMINATIONS,
@@ -238,6 +242,47 @@ export function CalculatorTab() {
       border: "border-[var(--blue)]/30",
     },
   };
+
+  // Sync calculator state to store for footer integration
+  useEffect(() => {
+    if (mode === "BUY" || mode === "SELL") {
+      setCalculatorFormState({
+        mode,
+        resultCUP: cupAmount,
+        currency,
+        amount: parseFloat(amount) || 0,
+        rate: currentRate,
+      });
+    } else if (mode === "COMPARE" && compareResult) {
+      setCalculatorFormState({
+        mode: "COMPARE",
+        resultCUP: compareResult.directWins
+          ? Math.round(compareResult.directCUP)
+          : Math.round(compareResult.indirectCUP),
+        sourceCurrency,
+        intermediateCurrency,
+        directWins: compareResult.directWins,
+        difference: Math.round(compareResult.difference),
+        percentDiff: compareResult.percentDiff,
+        compareAmount: parseFloat(compareAmount) || 0,
+        forexRate: parseFloat(forexRate) || 1,
+      });
+    }
+  }, [
+    mode,
+    cupAmount,
+    currency,
+    amount,
+    currentRate,
+    compareResult,
+    sourceCurrency,
+    intermediateCurrency,
+  ]);
+
+  // Clear calculator state on unmount
+  useEffect(() => {
+    return () => clearCalculatorFormState();
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-32">
@@ -672,8 +717,7 @@ export function CalculatorTab() {
                     : "bg-[var(--blue-bg)] text-[var(--blue)]",
                 )}
               >
-                +
-                {formatNumber(Math.round(compareResult.difference))} CUP (
+                +{formatNumber(Math.round(compareResult.difference))} CUP (
                 {compareResult.percentDiff.toFixed(1)}%)
               </div>
 
