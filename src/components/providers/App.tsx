@@ -15,6 +15,7 @@ import { PinScreen } from "../widgets/PinScreen";
 import { initializeRates } from "../../stores/ratesStore";
 import { $theme, initializeTheme } from "../../stores/themeStore";
 import { checkFirstVisit, startTour } from "../../stores/onboardingStore";
+import { lockApp, $pinState } from "../../stores/pinStore";
 
 // ============================================
 // App Component
@@ -55,6 +56,24 @@ export function App() {
       );
     }
   }, [theme]);
+
+  // Auto-lock when app goes to background (visibility change)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // App went to background - lock if PIN is enabled
+        const pinState = $pinState.get();
+        if (pinState.isEnabled) {
+          lockApp();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   return (
     <ToastProvider>

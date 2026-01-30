@@ -41,7 +41,7 @@ import {
   setAutoTheme,
 } from "../../stores/themeStore";
 import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
-import { PinSettings } from "./PinSettings";
+import { SecuritySettings } from "./SecuritySettings";
 import {
   CURRENCIES,
   DENOMINATIONS,
@@ -650,13 +650,7 @@ export function SettingsSheet() {
           {/* === SEGURIDAD TAB === */}
           {activeTab === "security" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-[var(--bg-base)]/50 rounded-xl p-3 border border-[var(--border-primary)]/40 mb-2">
-                <p className="text-xs text-[var(--text-faint)]">
-                  Protege tu configuración con un PIN para evitar cambios
-                  accidentales o no autorizados.
-                </p>
-              </div>
-              <PinSettings />
+              <SecuritySettings />
             </div>
           )}
         </div>

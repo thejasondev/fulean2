@@ -72,7 +72,7 @@ export function CalculatorTab() {
   );
 
   // === COMPARE STATE ===
-  const [compareAmount, setCompareAmount] = useState<string>("100");
+  const [compareAmount, setCompareAmount] = useState<string>("");
   const [sourceCurrency, setSourceCurrency] = useState<Currency>("EUR");
   const [intermediateCurrency, setIntermediateCurrency] =
     useState<Currency>("USD");
