@@ -4,7 +4,7 @@ import {
   ArrowRight,
   ArrowDownLeft,
   ArrowUpRight,
-  TrendingUp,
+  RefreshCw,
   Calculator,
   ArrowDownUp,
   Sparkles,
@@ -242,12 +242,12 @@ export function CalculatorTab() {
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 pb-32">
-      {/* Mode Selector - 2x2 Grid */}
+      {/* Mode Selector - Styled like TransactionForm */}
       <div className="mb-4">
         <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
           Tipo de cálculo
         </label>
-        <div className="grid grid-cols-3 gap-1 p-1 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-primary)]">
+        <div className="flex p-1 bg-[var(--bg-primary)] rounded-xl border border-[var(--border-primary)]">
           {/* BUY */}
           <button
             onClick={() => {
@@ -255,16 +255,16 @@ export function CalculatorTab() {
               setMode("BUY");
             }}
             className={cn(
-              "flex flex-col items-center justify-center gap-0.5",
-              "py-2 px-1 rounded-lg text-xs font-bold",
+              "flex-1 flex items-center justify-center gap-2",
+              "py-2.5 rounded-lg text-sm font-bold",
               "transition-all duration-200",
               mode === "BUY"
-                ? `${modeStyles.BUY.bg} ${modeStyles.BUY.text} border ${modeStyles.BUY.border}`
+                ? "bg-[var(--status-success-bg)] text-[var(--status-success)] border border-[var(--status-success)]/30"
                 : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
-            <ArrowDownLeft size={14} />
-            <span>Compra</span>
+            <ArrowDownLeft className="w-4 h-4" />
+            Compra
           </button>
 
           {/* SELL */}
@@ -274,35 +274,35 @@ export function CalculatorTab() {
               setMode("SELL");
             }}
             className={cn(
-              "flex flex-col items-center justify-center gap-0.5",
-              "py-2 px-1 rounded-lg text-xs font-bold",
+              "flex-1 flex items-center justify-center gap-2",
+              "py-2.5 rounded-lg text-sm font-bold",
               "transition-all duration-200",
               mode === "SELL"
-                ? `${modeStyles.SELL.bg} ${modeStyles.SELL.text} border ${modeStyles.SELL.border}`
+                ? "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border border-[var(--status-warning)]/30"
                 : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
-            <ArrowUpRight size={14} />
-            <span>Venta</span>
+            <ArrowUpRight className="w-4 h-4" />
+            Venta
           </button>
 
-          {/* COMPARE */}
+          {/* COMPARE (renamed to Cambio) */}
           <button
             onClick={() => {
               haptic.light();
               setMode("COMPARE");
             }}
             className={cn(
-              "flex flex-col items-center justify-center gap-0.5",
-              "py-2 px-1 rounded-lg text-xs font-bold",
+              "flex-1 flex items-center justify-center gap-2",
+              "py-2.5 rounded-lg text-sm font-bold",
               "transition-all duration-200",
               mode === "COMPARE"
-                ? `${modeStyles.COMPARE.bg} ${modeStyles.COMPARE.text} border ${modeStyles.COMPARE.border}`
+                ? "bg-[var(--purple-bg)] text-[var(--purple)] border border-[var(--purple)]/30"
                 : "text-[var(--text-faint)] hover:text-[var(--text-secondary)]",
             )}
           >
-            <TrendingUp size={14} />
-            <span>Comparar</span>
+            <RefreshCw className="w-4 h-4" />
+            Cambio
           </button>
         </div>
       </div>
@@ -673,22 +673,69 @@ export function CalculatorTab() {
                     : "bg-[var(--blue-bg)] text-[var(--blue)]",
                 )}
               >
-                <Sparkles size={12} className="inline mr-1" />+
+                +
                 {formatNumber(Math.round(compareResult.difference))} CUP (
                 {compareResult.percentDiff.toFixed(1)}%)
               </div>
 
               {/* Derived Cost Info */}
-              <div className="text-xs text-center text-[var(--text-muted)] p-2 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-primary)]">
-                Costo derivado: 1 {intermediateCurrency} ={" "}
-                <span className="font-bold text-[var(--text-primary)]">
-                  {formatNumber(
-                    Math.round(
-                      compareResult.directRate / parseFloat(forexRate || "1"),
-                    ),
-                  )}{" "}
-                  CUP
-                </span>
+              {/* Derived Cost Info - Smart Breakdown */}
+              <div className="bg-[var(--bg-secondary)] rounded-xl p-3 border border-[var(--border-primary)] mt-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calculator size={14} className="text-[var(--accent)]" />
+                  <span className="text-xs font-bold text-[var(--text-faint)] uppercase tracking-wider">
+                    Análisis de Tasa Implícita
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  {/* Step 1: Definition */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--text-muted)]">
+                      Valor real de 1 {sourceCurrency}:
+                    </span>
+                    <span className="font-medium text-[var(--text-primary)]">
+                      {formatNumber(compareResult.directRate)} CUP
+                    </span>
+                  </div>
+
+                  {/* Step 2: Forex */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-[var(--text-muted)]">
+                      Tasa de cambio aplicada:
+                    </span>
+                    <span className="font-medium text-[var(--text-primary)]">
+                      {forexRate} {intermediateCurrency}
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-[var(--border-primary)]/50 my-1" />
+
+                  {/* Step 3: Result */}
+                  <div className="flex justify-between items-end">
+                    <div className="flex flex-col text-xs text-[var(--text-muted)]">
+                      <span>Costo derivado:</span>
+                      <span className="opacity-50 font-mono">
+                        {compareResult.directRate} ÷ {forexRate}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs text-[var(--text-faint)] font-medium mr-2">
+                        1 {intermediateCurrency} =
+                      </span>
+                      <span className="text-lg font-bold text-[var(--blue)]">
+                        {formatNumber(
+                          Math.round(
+                            compareResult.directRate /
+                              parseFloat(forexRate || "1"),
+                          ),
+                        )}{" "}
+                        CUP
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
