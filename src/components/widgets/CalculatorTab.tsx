@@ -125,11 +125,11 @@ export function CalculatorTab() {
 
     if (numAmount <= 0) return null;
 
-    const directRate = buyRates[sourceCurrency] || 0;
+    const directRate = sellRates[sourceCurrency] || 0;
     const directCUP = numAmount * directRate;
 
     const intermediateAmount = numAmount * numForexRate;
-    const intermediateRate = buyRates[intermediateCurrency] || 0;
+    const intermediateRate = sellRates[intermediateCurrency] || 0;
     const indirectCUP = intermediateAmount * intermediateRate;
 
     const difference = Math.abs(directCUP - indirectCUP);
@@ -154,7 +154,7 @@ export function CalculatorTab() {
     sourceCurrency,
     intermediateCurrency,
     forexRate,
-    buyRates,
+    sellRates,
   ]);
 
   // DERIVE calculation
