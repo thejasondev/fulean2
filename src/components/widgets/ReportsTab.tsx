@@ -87,7 +87,7 @@ function LiquidityAlert() {
               : "text-[var(--status-warning)]",
           )}
         >
-          {isCritical ? "⚠️ Liquidez crítica" : "Liquidez baja"}
+          {isCritical ? "Liquidez crítica" : "Liquidez baja"}
         </p>
         <p className="text-xs text-[var(--text-muted)] mt-1">
           Solo {liquidityPercent.toFixed(0)}% del capital en CUP (
@@ -297,18 +297,20 @@ function CapitalCard() {
 function ProfitSummary() {
   const transactions = useStore($walletTransactions);
   const buyRates = useStore($buyRates) ?? {};
-  const currentUsdRate = buyRates["USD"] || 1; // Fallback to 1 to avoid division by zero
+  const currentUsdRate = buyRates["USD"] || 1;
 
-  // Helper to get profit (uses realProfitCUP if available, falls back to profitCUP)
+  // Helper to get profit
   const getProfit = (t: (typeof transactions)[0]) =>
     t.realProfitCUP ?? t.profitCUP ?? 0;
 
-  // Calculate profits by time period
+  // Time calculations
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const currentYear = now.getFullYear();
 
+  // Metrics
   const profitToday = transactions
     .filter((t) => new Date(t.date) >= today)
     .reduce((sum, t) => sum + getProfit(t), 0);
@@ -318,12 +320,33 @@ function ProfitSummary() {
     .reduce((sum, t) => sum + getProfit(t), 0);
 
   const profitMonth = transactions
-    .filter((t) => new Date(t.date) >= monthAgo)
+    .filter((t) => new Date(t.date) >= firstDayOfMonth)
     .reduce((sum, t) => sum + getProfit(t), 0);
+
+  // Format current month name
+  const currentMonthName = new Intl.DateTimeFormat("es-ES", {
+    month: "long",
+  }).format(now);
+  const monthLabel =
+    currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
 
   const profitTotal = transactions.reduce((sum, t) => sum + getProfit(t), 0);
 
-  // Count operations by type for each period
+  // Yearly Breakdown
+  const profitsByYear = transactions.reduce(
+    (acc, t) => {
+      const year = new Date(t.date).getFullYear();
+      acc[year] = (acc[year] || 0) + getProfit(t);
+      return acc;
+    },
+    {} as Record<number, number>,
+  );
+
+  const years = Object.keys(profitsByYear)
+    .map(Number)
+    .sort((a, b) => b - a); // Descending
+
+  // Counts for Today/Week tags
   const todayTransactions = transactions.filter(
     (t) => new Date(t.date) >= today,
   );
@@ -362,60 +385,119 @@ function ProfitSummary() {
       </div>
 
       {/* Profit Grid */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between py-3 border-b border-neutral-800">
+      <div className="space-y-0 divide-y divide-[var(--border-primary)]/50">
+        {/* Short Term Metrics */}
+        <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-400">Hoy</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-              {buysTodayCount}C
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
-              {sellsTodayCount}V
-            </span>
+            <span className="text-sm text-[var(--text-muted)]">Hoy</span>
+            <div className="flex gap-1">
+              {buysTodayCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
+                  {buysTodayCount}C
+                </span>
+              )}
+              {sellsTodayCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
+                  {sellsTodayCount}V
+                </span>
+              )}
+            </div>
           </div>
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitToday > 0 ? "text-emerald-400" : "text-neutral-500",
+              profitToday > 0 ? "text-emerald-400" : "text-[var(--text-muted)]",
             )}
           >
             +{formatNumber(profitToday)} CUP
           </span>
         </div>
 
-        <div className="flex items-center justify-between py-3 border-b border-neutral-800">
+        <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-400">Esta Semana</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-              {buysWeekCount}C
+            <span className="text-sm text-[var(--text-muted)]">
+              Esta Semana
             </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
-              {sellsWeekCount}V
-            </span>
+            <div className="flex gap-1">
+              {buysWeekCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
+                  {buysWeekCount}C
+                </span>
+              )}
+              {sellsWeekCount > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium">
+                  {sellsWeekCount}V
+                </span>
+              )}
+            </div>
           </div>
+
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitWeek > 0 ? "text-emerald-400" : "text-neutral-500",
+              profitWeek > 0 ? "text-emerald-400" : "text-[var(--text-muted)]",
             )}
           >
             +{formatNumber(profitWeek)} CUP
           </span>
         </div>
 
-        <div className="flex items-center justify-between py-3 border-b border-neutral-800">
-          <span className="text-sm text-neutral-400">Este Mes</span>
+        <div className="flex items-center justify-between py-3">
+          <span className="text-sm text-[var(--text-muted)]">
+            Este Mes ({monthLabel})
+          </span>
           <span
             className={cn(
               "font-bold tabular-nums",
-              profitMonth > 0 ? "text-emerald-400" : "text-neutral-500",
+              profitMonth > 0 ? "text-emerald-400" : "text-[var(--text-muted)]",
             )}
           >
             +{formatNumber(profitMonth)} CUP
           </span>
         </div>
 
-        <div className="flex items-center justify-between py-3">
+        {/* Yearly Breakdown - Dynamic */}
+        {years.length > 0 && (
+          <div className="py-2">
+            <div className="text-[10px] uppercase text-[var(--text-faint)] font-bold tracking-wider mb-1 mt-1">
+              Historial Anual
+            </div>
+            {years.map((year) => {
+              const profit = profitsByYear[year];
+              const isCurrentYear = year === currentYear;
+              return (
+                <div
+                  key={year}
+                  className="flex items-center justify-between py-2"
+                >
+                  <span
+                    className={cn(
+                      "text-sm",
+                      isCurrentYear
+                        ? "text-[var(--text-primary)] font-medium"
+                        : "text-[var(--text-muted)]",
+                    )}
+                  >
+                    Año {year} {isCurrentYear && "(En curso)"}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums",
+                      profit > 0
+                        ? "text-emerald-400"
+                        : "text-[var(--text-muted)]",
+                    )}
+                  >
+                    +{formatNumber(profit)} CUP
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Grand Total */}
+        <div className="flex items-center justify-between py-3 pt-4 border-t border-[var(--border-secondary)]">
           <span className="text-sm font-bold text-[var(--text-primary)]">
             Total Histórico
           </span>

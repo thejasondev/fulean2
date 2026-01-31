@@ -310,7 +310,7 @@ function TransactionCard({
       {/* Date Footer */}
       <div className="flex items-center gap-1 mt-2 text-[10px] text-[var(--text-faint)]">
         <Calendar className="w-3 h-3" />
-        <span>{formatTime(transaction.date)}</span>
+        <span>{formatDateTime(transaction.date)}</span>
       </div>
     </div>
   );
