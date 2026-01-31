@@ -737,10 +737,10 @@ export function CalculatorTab() {
                   {/* Step 1: Definition */}
                   <div className="flex justify-between items-center">
                     <span className="text-[var(--text-muted)]">
-                      Valor real de 1 {sourceCurrency}:
+                      Valor real de 1 {sourceCurrency} (Compra):
                     </span>
                     <span className="font-medium text-[var(--text-primary)]">
-                      {formatNumber(compareResult.directRate)} CUP
+                      {formatNumber(buyRates[sourceCurrency] || 0)} CUP
                     </span>
                   </div>
 
@@ -762,7 +762,7 @@ export function CalculatorTab() {
                     <div className="flex flex-col text-xs text-[var(--text-muted)]">
                       <span>Costo derivado:</span>
                       <span className="opacity-50 font-mono">
-                        {compareResult.directRate} ÷ {forexRate}
+                        {buyRates[sourceCurrency] || 0} ÷ {forexRate}
                       </span>
                     </div>
                     <div className="text-right">
@@ -772,7 +772,7 @@ export function CalculatorTab() {
                       <span className="text-lg font-bold text-[var(--blue)]">
                         {formatNumber(
                           Math.round(
-                            compareResult.directRate /
+                            (buyRates[sourceCurrency] || 0) /
                               parseFloat(forexRate || "1"),
                           ),
                         )}{" "}

@@ -103,12 +103,22 @@ export function clearPendingCalculation() {
 // Modal/Drawer Actions
 // ============================================
 
-export function openSettings() {
+export type SettingsTab = "rates" | "ui" | "security";
+export const $settingsTab = atom<SettingsTab>("rates");
+
+export function openSettings(initialTab?: SettingsTab) {
+  if (initialTab) {
+    $settingsTab.set(initialTab);
+  }
   $isSettingsOpen.set(true);
 }
 
 export function closeSettings() {
   $isSettingsOpen.set(false);
+}
+
+export function setSettingsTab(tab: SettingsTab) {
+  $settingsTab.set(tab);
 }
 
 export function openSecurityModal() {

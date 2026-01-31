@@ -262,7 +262,7 @@ export function RatesDashboard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={openSettings}
+              onClick={() => openSettings()}
               className="h-8 w-8 p-0 text-[var(--text-faint)] hover:text-[var(--text-primary)]"
               title="Configuración"
             >
@@ -344,7 +344,7 @@ export function RatesDashboard() {
                 elToqueRate={elToqueRate}
                 isManual={isManual}
                 isLoading={isLoading}
-                onClick={openSettings}
+                onClick={() => openSettings("rates")}
               />
             );
           })}

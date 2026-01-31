@@ -40,7 +40,13 @@ import {
   toggleTheme,
   setAutoTheme,
 } from "../../stores/themeStore";
-import { $isSettingsOpen, closeSettings } from "../../stores/uiStore";
+import {
+  $isSettingsOpen,
+  closeSettings,
+  $settingsTab,
+  setSettingsTab,
+  type SettingsTab,
+} from "../../stores/uiStore";
 import { SecuritySettings } from "./SecuritySettings";
 import {
   CURRENCIES,
@@ -508,22 +514,19 @@ export function SettingsSheet() {
   const isOpen = useStore($isSettingsOpen) ?? false;
   const isLoadingElToque = useStore($isLoadingElToque);
   const elToqueRates = useStore($elToqueRates);
+  const activeTab = useStore($settingsTab);
   const haptic = useHaptic();
-
-  const [activeTab, setActiveTab] = useState<"rates" | "ui" | "security">(
-    "rates",
-  );
 
   const handleRefreshElToque = () => {
     haptic.medium();
     loadElToqueRates();
   };
 
-  const tabs = [
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "rates", label: "Tasas", icon: <TrendingUp size={16} /> },
     { id: "ui", label: "Apariencia", icon: <Palette size={16} /> },
     { id: "security", label: "Seguridad", icon: <Shield size={16} /> },
-  ] as const;
+  ];
 
   return (
     <Modal
@@ -540,7 +543,7 @@ export function SettingsSheet() {
               key={tab.id}
               onClick={() => {
                 haptic.light();
-                setActiveTab(tab.id);
+                setSettingsTab(tab.id);
               }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all",
