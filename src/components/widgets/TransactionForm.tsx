@@ -212,6 +212,7 @@ export function TransactionForm() {
     exchangeRate,
     fromCurrency,
     toCurrency,
+    transactionNote,
   ]);
 
   // Clear form state when unmounting
