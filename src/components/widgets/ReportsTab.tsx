@@ -12,6 +12,11 @@ import {
   AlertTriangle,
   Calculator,
   BarChart3,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Receipt,
 } from "lucide-react";
 import {
   $walletInitialCapital,
@@ -40,6 +45,14 @@ import {
   clearInventory,
   simulateFIFO,
 } from "../../stores/inventoryStore";
+import {
+  $expenses,
+  $totalExpenses,
+  addExpense,
+  deleteExpense,
+  EXPENSE_CATEGORIES,
+  type ExpenseCategory,
+} from "../../stores/expensesStore";
 
 // ============================================
 // ReportsTab Component
@@ -113,8 +126,20 @@ function CapitalCard() {
   const netChange = useStore($netChange);
   const percentageChange = useStore($percentageChange);
 
+  // Expenses stores
+  const expenses = useStore($expenses);
+  const totalExpenses = useStore($totalExpenses);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
+
+  // Expense form state
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenseDesc, setExpenseDesc] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] =
+    useState<ExpenseCategory>("transport");
+
   const haptic = useHaptic();
   const { toast } = useToast();
 
@@ -149,6 +174,32 @@ function CapitalCard() {
     }
   };
 
+  // Handle adding expense
+  const handleAddExpense = () => {
+    const amount = parseInt(expenseAmount, 10);
+    if (!expenseDesc.trim() || isNaN(amount) || amount <= 0) {
+      toast.warning("Ingrese descripción y monto válido");
+      return;
+    }
+
+    addExpense(expenseDesc, amount, expenseCategory);
+    haptic.light();
+    toast.success("Gasto registrado");
+
+    // Reset form
+    setExpenseDesc("");
+    setExpenseAmount("");
+    setExpenseCategory("transport");
+    setShowExpenseForm(false);
+  };
+
+  // Handle delete expense
+  const handleDeleteExpense = (id: string) => {
+    deleteExpense(id);
+    haptic.light();
+    toast.info("Gasto eliminado");
+  };
+
   // Calculate Total Equity = Cash Balance + Inventory Value (Invested)
   const inventorySummary = useStore($inventorySummary);
   const totalInventoryValue = Object.values(inventorySummary).reduce(
@@ -157,9 +208,12 @@ function CapitalCard() {
   );
 
   const totalEquity = currentBalance + totalInventoryValue;
-  const realNetChange = totalEquity - initialCapital;
 
-  // Percentage change based on Total Equity
+  // Net Patrimony = Total Equity - Expenses
+  const netPatrimony = totalEquity - totalExpenses;
+  const realNetChange = netPatrimony - initialCapital;
+
+  // Percentage change based on Net Patrimony
   const realPercentageChange =
     initialCapital > 0 ? (realNetChange / initialCapital) * 100 : 0;
 
@@ -252,15 +306,162 @@ function CapitalCard() {
         </div>
       </div>
 
-      {/* Total Equity Summary */}
+      {/* Operational Expenses Section */}
+      <div className="mb-3">
+        <button
+          onClick={() => setShowExpenseForm(!showExpenseForm)}
+          className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--bg-base)] hover:bg-[var(--bg-secondary)] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Receipt size={16} className="text-[var(--status-error)]" />
+            <span className="text-sm font-medium text-[var(--text-primary)]">
+              Gastos Operativos
+            </span>
+            {totalExpenses > 0 && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-[var(--status-error-bg)] text-[var(--status-error)] font-bold tabular-nums">
+                -{formatNumber(totalExpenses)}
+              </span>
+            )}
+          </div>
+          {showExpenseForm ? (
+            <ChevronDown size={16} className="text-[var(--text-muted)]" />
+          ) : (
+            <ChevronRight size={16} className="text-[var(--text-muted)]" />
+          )}
+        </button>
+
+        {showExpenseForm && (
+          <div className="mt-2 p-3 rounded-xl bg-[var(--bg-base)] border border-[var(--border-primary)] space-y-3">
+            {/* Add Expense Form */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={expenseDesc}
+                  onChange={(e) => setExpenseDesc(e.target.value)}
+                  placeholder="Descripción del gasto"
+                  className="flex-1 text-sm"
+                  maxLength={50}
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  placeholder="CUP"
+                  className="w-24 text-sm text-right"
+                  numericOnly
+                />
+              </div>
+
+              {/* Category Selector */}
+              <div className="flex gap-1.5 flex-wrap">
+                {(Object.keys(EXPENSE_CATEGORIES) as ExpenseCategory[]).map(
+                  (cat) => {
+                    const { label, emoji } = EXPENSE_CATEGORIES[cat];
+                    const isSelected = expenseCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setExpenseCategory(cat)}
+                        className={cn(
+                          "px-2 py-1 rounded-lg text-xs font-medium transition-colors",
+                          isSelected
+                            ? "bg-[var(--status-error-bg)] text-[var(--status-error)] border border-[var(--status-error)]/30"
+                            : "bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-transparent hover:border-[var(--border-secondary)]",
+                        )}
+                      >
+                        {emoji} {label}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+
+              <Button
+                onClick={handleAddExpense}
+                variant="primary"
+                size="sm"
+                className="w-full bg-[var(--status-error)] hover:bg-[var(--status-error)]/80"
+              >
+                <Plus size={14} />
+                Agregar Gasto
+              </Button>
+            </div>
+
+            {/* Expense List */}
+            {expenses.length > 0 && (
+              <div className="border-t border-[var(--border-primary)] pt-2 space-y-1 max-h-32 overflow-y-auto">
+                {expenses.slice(0, 5).map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bg-hover)] group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm">
+                        {EXPENSE_CATEGORIES[expense.category].emoji}
+                      </span>
+                      <span className="text-xs text-[var(--text-muted)] truncate">
+                        {expense.description}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-bold text-[var(--status-error)] tabular-nums">
+                        -{formatNumber(expense.amount)}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--status-error-bg)] text-[var(--text-faint)] hover:text-[var(--status-error)] transition-all"
+                        title="Eliminar gasto"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {expenses.length > 5 && (
+                  <p className="text-[10px] text-[var(--text-faint)] text-center py-1">
+                    +{expenses.length - 5} gastos más
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Patrimony Summary - Updated with Expenses */}
       <div className="bg-gradient-to-r from-(--blue)/10 to-transparent rounded-xl p-4 border border-(--blue)/20">
+        {/* Gross Patrimony */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-[var(--text-muted)]">
+            Patrimonio Bruto
+          </span>
+          <span className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+            {formatNumber(totalEquity)} CUP
+          </span>
+        </div>
+
+        {/* Expenses Deduction */}
+        {totalExpenses > 0 && (
+          <div className="flex items-center justify-between mb-2 pb-2 border-b border-[var(--border-primary)]/50">
+            <span className="text-xs text-[var(--status-error)]">
+              Gastos Operativos
+            </span>
+            <span className="text-sm font-bold text-[var(--status-error)] tabular-nums">
+              -{formatNumber(totalExpenses)} CUP
+            </span>
+          </div>
+        )}
+
+        {/* Net Patrimony (Main Display) */}
         <div className="flex items-center justify-between">
           <div>
             <span className="text-xs text-[var(--text-muted)]">
-              Patrimonio Total
+              Patrimonio Neto
             </span>
-            <div className="text-2xl font-bold text-(--blue) tabular-nums shadow-sm">
-              {formatNumber(totalEquity)} CUP
+            <div className="text-2xl font-bold text-(--blue) tabular-nums">
+              {formatNumber(netPatrimony)} CUP
             </div>
           </div>
           <div
