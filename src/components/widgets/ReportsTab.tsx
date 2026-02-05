@@ -289,10 +289,25 @@ function CapitalCard() {
             <span className="text-xs text-[var(--text-faint)]">
               Efectivo (CUP)
             </span>
+            {totalExpenses > 0 && (
+              <span className="text-[10px] text-[var(--status-error)]">
+                *neto
+              </span>
+            )}
           </div>
           <span className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
-            {formatNumber(currentBalance)}
+            {formatNumber(currentBalance - totalExpenses)}
           </span>
+          {totalExpenses > 0 && (
+            <div className="text-[10px] text-[var(--text-faint)] mt-0.5">
+              <span className="line-through opacity-60">
+                {formatNumber(currentBalance)}
+              </span>
+              <span className="text-[var(--status-error)] ml-1">
+                -{formatNumber(totalExpenses)}
+              </span>
+            </div>
+          )}
         </div>
         <div className="bg-[var(--bg-base)] rounded-xl p-3">
           <div className="flex items-center gap-1.5 mb-1">
@@ -391,32 +406,37 @@ function CapitalCard() {
 
             {/* Expense List */}
             {expenses.length > 0 && (
-              <div className="border-t border-[var(--border-primary)] pt-2 space-y-1 max-h-32 overflow-y-auto">
+              <div className="border-t border-[var(--border-primary)] pt-2 space-y-1 max-h-40 overflow-y-auto">
                 {expenses.slice(0, 5).map((expense) => (
                   <div
                     key={expense.id}
-                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-[var(--bg-hover)] group"
+                    className="flex items-center justify-between py-2 px-2 rounded-lg bg-[var(--bg-secondary)]/50 active:bg-[var(--bg-hover)]"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-base shrink-0">
                         {EXPENSE_CATEGORIES[expense.category].emoji}
                       </span>
-                      <span className="text-xs text-[var(--text-muted)] truncate">
-                        {expense.description}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs text-[var(--text-muted)] truncate block">
+                          {expense.description}
+                        </span>
+                        <span className="text-xs font-bold text-[var(--status-error)] tabular-nums">
+                          -{formatNumber(expense.amount)} CUP
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-bold text-[var(--status-error)] tabular-nums">
-                        -{formatNumber(expense.amount)}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--status-error-bg)] text-[var(--text-faint)] hover:text-[var(--status-error)] transition-all"
-                        title="Eliminar gasto"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      className={cn(
+                        "shrink-0 ml-2 p-2.5 rounded-lg",
+                        "bg-[var(--status-error-bg)] text-[var(--status-error)]",
+                        "active:scale-95 transition-transform",
+                        "min-w-[44px] min-h-[44px] flex items-center justify-center",
+                      )}
+                      aria-label={`Eliminar gasto: ${expense.description}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 ))}
                 {expenses.length > 5 && (
