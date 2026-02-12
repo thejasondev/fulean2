@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@nanostores/react";
 import {
   Heart,
@@ -12,6 +12,7 @@ import { $isDonationOpen, closeDonation } from "../../stores/uiStore";
 import { cn } from "../../lib/utils";
 import { Modal } from "../ui/Modal";
 import { Input } from "../ui/Input";
+import QRCode from "qrcode";
 
 // ============================================
 // DonationSheet Component
@@ -25,10 +26,23 @@ export function DonationSheet() {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   // Bank card number for receiving donations
   const CARD_NUMBER = "9234 0699 9301 9516";
   const CARD_NUMBER_CLEAN = CARD_NUMBER.replace(/\s/g, "");
+
+  // Generate QR code programmatically (offline-ready)
+  useEffect(() => {
+    QRCode.toDataURL(CARD_NUMBER_CLEAN, {
+      width: 200,
+      margin: 2,
+      color: { dark: "#000000", light: "#FFFFFF" },
+      errorCorrectionLevel: "M",
+    })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(null));
+  }, []);
 
   const presetAmounts = [250, 500, 1000];
 
@@ -107,14 +121,20 @@ export function DonationSheet() {
           {/* Content Area */}
           <div className="p-4">
             {showQR ? (
-              /* QR Code View */
+              /* QR Code View - Generated offline */
               <div className="flex flex-col items-center gap-3">
                 <div className="bg-white p-3 rounded-xl shadow-inner">
-                  <img
-                    src="/codigoqr.JPG"
-                    alt="QR de tarjeta bancaria"
-                    className="w-40 h-40 object-contain"
-                  />
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="QR de tarjeta bancaria"
+                      className="w-40 h-40 object-contain"
+                    />
+                  ) : (
+                    <div className="w-40 h-40 flex items-center justify-center text-gray-400">
+                      <QrCode className="w-12 h-12 animate-pulse" />
+                    </div>
+                  )}
                 </div>
                 <p className="text-[11px] text-[var(--text-faint)] text-center">
                   Escanea este código con <strong>Transfermóvil</strong> para
@@ -206,11 +226,13 @@ export function DonationSheet() {
           <p className="text-xs text-[var(--text-faint)] leading-relaxed">
             <strong className="text-[var(--text-muted)]">Pasos rápidos:</strong>
             <br />
-            1. Escanea el QR o copia la tarjeta
+            1. Abre Transfermóvil y autentícate
             <br />
-            2. Abre Transfermóvil → Transferir
+            2. Escanea el QR o copia la tarjeta
             <br />
-            3. Pega/selecciona la tarjeta y completa
+            3. Abre Transfermóvil → Transferir
+            <br />
+            4. Pega/selecciona la tarjeta y completa el proceso
           </p>
         </div>
       </div>
