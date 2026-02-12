@@ -29,7 +29,7 @@ export function MoneyCounter() {
     <main
       className={cn(
         // Layout
-        "flex-1 overflow-y-auto",
+        "flex-1",
         // Padding (consistent spacing scale)
         "px-4 py-4",
         // Bottom padding for compact footer (~100px + safe area)

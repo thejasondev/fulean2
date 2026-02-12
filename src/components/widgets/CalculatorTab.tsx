@@ -287,7 +287,7 @@ export function CalculatorTab() {
   }, []);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 pb-32">
+    <div className="flex-1 px-4 py-4 pb-32">
       {/* Mode Selector - Styled like TransactionForm */}
       <div className="mb-4">
         <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">

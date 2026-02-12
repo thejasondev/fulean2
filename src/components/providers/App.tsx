@@ -16,6 +16,7 @@ import { initializeRates } from "../../stores/ratesStore";
 import { $theme, initializeTheme } from "../../stores/themeStore";
 import { checkFirstVisit, startTour } from "../../stores/onboardingStore";
 import { lockApp, $pinState } from "../../stores/pinStore";
+import { $headerVisible } from "../../stores/uiStore";
 
 // ============================================
 // App Component
@@ -25,6 +26,7 @@ import { lockApp, $pinState } from "../../stores/pinStore";
 
 export function App() {
   const theme = useStore($theme);
+  const headerVisible = useStore($headerVisible);
 
   // Initialize rates and theme from localStorage on mount
   useEffect(() => {
@@ -78,8 +80,14 @@ export function App() {
   return (
     <ToastProvider>
       <div className="flex flex-col min-h-dvh">
-        {/* Header with exchange rates */}
-        <div data-tour="rates">
+        {/* Header with exchange rates - Auto-hide on scroll */}
+        <div
+          data-tour="rates"
+          className="sticky top-0 z-40 transition-transform duration-300 ease-out will-change-transform"
+          style={{
+            transform: headerVisible ? "translateY(0)" : "translateY(-100%)",
+          }}
+        >
           <RatesDashboard />
         </div>
 

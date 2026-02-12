@@ -173,3 +173,6 @@ export function openDonation() {
 export function closeDonation() {
   $isDonationOpen.set(false);
 }
+
+// Header Auto-Hide (scroll direction)
+export const $headerVisible = atom<boolean>(true);

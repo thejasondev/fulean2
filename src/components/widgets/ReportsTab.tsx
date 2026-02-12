@@ -1267,14 +1267,7 @@ function SellSimulator() {
 // Main Reports Tab
 export function ReportsTab() {
   return (
-    <main
-      className={cn(
-        "flex-1 overflow-y-auto",
-        "px-4 py-4",
-        "pb-32",
-        "space-y-4",
-      )}
-    >
+    <main className={cn("flex-1", "px-4 py-4", "pb-32", "space-y-4")}>
       {/* Wallet Selector Header */}
       <div className="flex items-center justify-between">
         <WalletSelector />

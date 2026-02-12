@@ -207,7 +207,6 @@ export function RatesDashboard() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40",
         "bg-[var(--bg-base)]/85 backdrop-blur-xl",
         "border-b border-[var(--border-primary)]/60",
       )}

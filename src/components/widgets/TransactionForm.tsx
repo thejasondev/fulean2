@@ -356,7 +356,7 @@ export function TransactionForm() {
         };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-base)] p-4 overflow-y-auto pb-32">
+    <div className="flex flex-col h-full bg-[var(--bg-base)] p-4 pb-32">
       <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
         Tipo de operación
       </label>
