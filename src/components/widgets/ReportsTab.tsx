@@ -519,6 +519,7 @@ function ProfitSummary() {
   const transactions = useStore($walletTransactions);
   const buyRates = useStore($buyRates) ?? {};
   const currentUsdRate = buyRates["USD"] || 1;
+  const totalExpenses = useStore($totalExpenses);
 
   // Helper to get profit
   const getProfit = (t: (typeof transactions)[0]) =>
@@ -717,18 +718,64 @@ function ProfitSummary() {
           </div>
         )}
 
-        {/* Grand Total */}
+        {/* Gross FIFO Profit */}
         <div className="flex items-center justify-between py-3 pt-4 border-t border-[var(--border-secondary)]">
           <span className="text-sm font-bold text-[var(--text-primary)]">
-            Total Histórico
+            Ganancia Bruta
+          </span>
+          <span className="text-sm font-bold text-emerald-400 tabular-nums">
+            +{formatNumber(profitTotal)} CUP
+          </span>
+        </div>
+
+        {/* Expenses Deduction */}
+        {totalExpenses > 0 && (
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-1.5">
+              <Receipt
+                size={13}
+                className="text-[var(--status-error)] opacity-80"
+              />
+              <span className="text-xs text-[var(--status-error)]">
+                Gastos Operativos
+              </span>
+            </div>
+            <span className="text-sm font-bold text-[var(--status-error)] tabular-nums">
+              -{formatNumber(totalExpenses)} CUP
+            </span>
+          </div>
+        )}
+
+        {/* Net Real Profit */}
+        <div
+          className={cn(
+            "flex items-center justify-between py-3 rounded-xl px-3 -mx-1 mt-1",
+            totalExpenses > 0
+              ? "bg-gradient-to-r from-emerald-500/10 to-transparent border border-emerald-500/20"
+              : "",
+          )}
+        >
+          <span className="text-sm font-bold text-[var(--text-primary)]">
+            {totalExpenses > 0 ? "Ganancia Neta Real" : "Total Histórico"}
           </span>
           <div className="text-right">
-            <span className="block text-lg font-bold text-emerald-400 tabular-nums">
-              +{formatNumber(profitTotal)} CUP
+            <span
+              className={cn(
+                "block text-lg font-bold tabular-nums",
+                profitTotal - totalExpenses > 0
+                  ? "text-emerald-400"
+                  : profitTotal - totalExpenses < 0
+                    ? "text-[var(--status-error)]"
+                    : "text-[var(--text-muted)]",
+              )}
+            >
+              {profitTotal - totalExpenses >= 0 ? "+" : ""}
+              {formatNumber(profitTotal - totalExpenses)} CUP
             </span>
             <span className="block text-xs text-[var(--text-muted)] tabular-nums">
-              ≈ +{formatNumber(profitTotal / currentUsdRate)} USD (@
-              {currentUsdRate})
+              ≈ {profitTotal - totalExpenses >= 0 ? "+" : ""}
+              {formatNumber((profitTotal - totalExpenses) / currentUsdRate)} USD
+              (@{currentUsdRate})
             </span>
           </div>
         </div>
