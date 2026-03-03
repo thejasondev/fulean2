@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useStore } from "@nanostores/react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet,
   TrendingUp,
@@ -63,11 +64,15 @@ import {
 function LiquidityAlert() {
   const initialCapital = useStore($walletInitialCapital);
   const currentBalance = useStore($currentBalance);
+  const totalExpenses = useStore($totalExpenses);
 
   // Don't show if no initial capital set
   if (initialCapital <= 0) return null;
 
-  const liquidityPercent = (currentBalance / initialCapital) * 100;
+  // Calculate Real Net Balance
+  const netBalance = Math.max(0, currentBalance - totalExpenses);
+
+  const liquidityPercent = (netBalance / initialCapital) * 100;
   const isLow = liquidityPercent < 20 && liquidityPercent >= 10;
   const isCritical = liquidityPercent < 10;
 
@@ -103,10 +108,16 @@ function LiquidityAlert() {
           {isCritical ? "Liquidez crítica" : "Liquidez baja"}
         </p>
         <p className="text-xs text-[var(--text-muted)] mt-1">
-          Solo {liquidityPercent.toFixed(0)}% del capital en CUP (
-          {formatNumber(currentBalance)} CUP).
+          Solo el {liquidityPercent.toFixed(0)}% del capital inicial está
+          disponible (
+          <span className="font-medium text-[var(--text-primary)]">
+            {formatNumber(netBalance)} CUP netos
+          </span>
+          ).
+          {totalExpenses > 0 &&
+            ` (Se descontaron ${formatNumber(totalExpenses)} CUP en gastos).`}
           {isCritical
-            ? " Considera vender divisas urgentemente."
+            ? " Considera vender divisas con urgencia."
             : " Considera vender algunas divisas."}
         </p>
       </div>
@@ -554,19 +565,49 @@ function ProfitSummary() {
 
   const profitTotal = transactions.reduce((sum, t) => sum + getProfit(t), 0);
 
-  // Yearly Breakdown
-  const profitsByYear = transactions.reduce(
-    (acc, t) => {
-      const year = new Date(t.date).getFullYear();
-      acc[year] = (acc[year] || 0) + getProfit(t);
-      return acc;
-    },
-    {} as Record<number, number>,
-  );
+  // Yearly and Monthly Breakdown
+  type MonthlyProfits = Record<number, number>; // month index 0-11 -> profit
+  type YearlyData = { totalProfit: number; months: MonthlyProfits };
 
-  const years = Object.keys(profitsByYear)
+  const profitsByYearAndMonth = useMemo(() => {
+    return transactions.reduce(
+      (acc, t) => {
+        const d = new Date(t.date);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const profit = getProfit(t);
+
+        if (!acc[year]) acc[year] = { totalProfit: 0, months: {} };
+
+        acc[year].totalProfit += profit;
+        acc[year].months[month] = (acc[year].months[month] || 0) + profit;
+        return acc;
+      },
+      {} as Record<number, YearlyData>,
+    );
+  }, [transactions]);
+
+  const years = Object.keys(profitsByYearAndMonth)
     .map(Number)
     .sort((a, b) => b - a); // Descending
+
+  // Accordion State
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
+
+  const toggleYear = (year: number) => {
+    setExpandedYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(year)) next.delete(year);
+      else next.add(year);
+      return next;
+    });
+  };
+
+  const getMonthName = (monthIndex: number) => {
+    const d = new Date(2000, monthIndex, 1);
+    const name = new Intl.DateTimeFormat("es-ES", { month: "long" }).format(d);
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
 
   // Counts for Today/Week tags
   const todayTransactions = transactions.filter(
@@ -678,40 +719,99 @@ function ProfitSummary() {
           </span>
         </div>
 
-        {/* Yearly Breakdown - Dynamic */}
+        {/* Yearly Breakdown - Dynamic Accordion */}
         {years.length > 0 && (
           <div className="py-2">
             <div className="text-[10px] uppercase text-[var(--text-faint)] font-bold tracking-wider mb-1 mt-1">
               Historial Anual
             </div>
             {years.map((year) => {
-              const profit = profitsByYear[year];
+              const data = profitsByYearAndMonth[year];
+              const profit = data.totalProfit;
               const isCurrentYear = year === currentYear;
+              const isExpanded = expandedYears.has(year);
+
+              const activeMonths = Object.keys(data.months)
+                .map(Number)
+                .sort((a, b) => b - a); // Descending months
+
               return (
                 <div
                   key={year}
-                  className="flex items-center justify-between py-2"
+                  className="flex flex-col border-b border-[var(--border-primary)]/30 last:border-0"
                 >
-                  <span
-                    className={cn(
-                      "text-sm",
-                      isCurrentYear
-                        ? "text-[var(--text-primary)] font-medium"
-                        : "text-[var(--text-muted)]",
-                    )}
+                  <button
+                    onClick={() => toggleYear(year)}
+                    className="flex items-center justify-between py-3 w-full text-left transition-colors hover:bg-[var(--bg-secondary)]/50 rounded-lg -mx-2 px-2"
                   >
-                    Año {year} {isCurrentYear && "(En curso)"}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-bold tabular-nums",
-                      profit > 0
-                        ? "text-emerald-400"
-                        : "text-[var(--text-muted)]",
+                    <div className="flex items-center gap-2">
+                      <ChevronDown
+                        size={16}
+                        className={cn(
+                          "text-[var(--text-muted)] transition-transform duration-300",
+                          isExpanded && "rotate-180",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "text-sm",
+                          isCurrentYear
+                            ? "text-[var(--text-primary)] font-medium"
+                            : "text-[var(--text-muted)]",
+                        )}
+                      >
+                        Año {year} {isCurrentYear && "(En curso)"}
+                      </span>
+                    </div>
+                    <span
+                      className={cn(
+                        "font-bold tabular-nums",
+                        profit > 0
+                          ? "text-emerald-400"
+                          : "text-[var(--text-muted)]",
+                      )}
+                    >
+                      +{formatNumber(profit)} CUP
+                    </span>
+                  </button>
+
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pl-6 pr-2 pb-3 space-y-2 mt-1">
+                          {activeMonths.map((monthIndex) => {
+                            const monthProfit = data.months[monthIndex];
+                            return (
+                              <div
+                                key={monthIndex}
+                                className="flex items-center justify-between py-1"
+                              >
+                                <span className="text-xs text-[var(--text-muted)] capitalize">
+                                  {getMonthName(monthIndex)}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-xs font-bold tabular-nums",
+                                    monthProfit > 0
+                                      ? "text-emerald-400/80"
+                                      : "text-[var(--text-muted)]",
+                                  )}
+                                >
+                                  +{formatNumber(monthProfit)} CUP
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
                     )}
-                  >
-                    +{formatNumber(profit)} CUP
-                  </span>
+                  </AnimatePresence>
                 </div>
               );
             })}
