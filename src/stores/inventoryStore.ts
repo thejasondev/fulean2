@@ -389,6 +389,68 @@ export function restoreLotsFromBreakdown(
   persist();
 }
 
+/**
+ * Transfer all remaining inventory lots from one wallet to another.
+ * Reads/writes directly to localStorage to handle cross-wallet operations.
+ * Preserves costRate, currency, remaining, and date for FIFO integrity.
+ * Returns the number of lots transferred.
+ */
+export function transferInventoryLots(
+  fromWalletId: string,
+  toWalletId: string,
+): number {
+  if (typeof window === "undefined") return 0;
+  if (fromWalletId === toWalletId) return 0;
+
+  try {
+    // Read source lots
+    const fromKey = getStorageKey(fromWalletId);
+    const fromRaw = localStorage.getItem(fromKey);
+    const fromLots: InventoryLot[] = fromRaw ? JSON.parse(fromRaw) : [];
+
+    // Filter lots with remaining > 0
+    const lotsToTransfer = fromLots.filter((lot) => lot.remaining > 0);
+    if (lotsToTransfer.length === 0) return 0;
+
+    // Create new lots for target wallet preserving FIFO cost data
+    const transferredLots: InventoryLot[] = lotsToTransfer.map((lot) => ({
+      id: generateLotId(), // New ID for the target wallet
+      currency: lot.currency,
+      quantity: lot.remaining, // Transfer only what's left
+      remaining: lot.remaining,
+      costRate: lot.costRate, // CRITICAL: preserve original cost
+      date: lot.date, // Preserve original purchase date
+      transactionId: `merge_${lot.id}`, // Track origin
+    }));
+
+    // Read target lots and append
+    const toKey = getStorageKey(toWalletId);
+    const toRaw = localStorage.getItem(toKey);
+    const toLots: InventoryLot[] = toRaw ? JSON.parse(toRaw) : [];
+    localStorage.setItem(
+      toKey,
+      JSON.stringify([...toLots, ...transferredLots]),
+    );
+
+    // Zero out transferred lots in source (set remaining to 0)
+    const updatedFromLots = fromLots.map((lot) =>
+      lot.remaining > 0 ? { ...lot, remaining: 0 } : lot,
+    );
+    localStorage.setItem(fromKey, JSON.stringify(updatedFromLots));
+
+    // Reload in-memory state if either wallet is active
+    const activeId = $activeWalletId.get();
+    if (activeId === fromWalletId || activeId === toWalletId) {
+      $inventoryLots.set(loadFromStorage(activeId));
+    }
+
+    return transferredLots.length;
+  } catch (e) {
+    console.error("Failed to transfer inventory lots:", e);
+    return 0;
+  }
+}
+
 // Subscribe to persist on changes
 if (typeof window !== "undefined") {
   $inventoryLots.subscribe(persist);

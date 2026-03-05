@@ -511,3 +511,60 @@ export function clearAllHistory(): void {
 export function getTransactionCount(): number {
   return $transactions.get().length;
 }
+
+/**
+ * Transfer all transactions from one wallet to another.
+ * Reads/writes directly to localStorage for cross-wallet operations.
+ * Preserves all transaction data. Returns the number of transactions transferred.
+ */
+export function transferTransactions(
+  fromWalletId: string,
+  toWalletId: string,
+  sourceWalletName?: string,
+): number {
+  if (typeof window === "undefined") return 0;
+  if (fromWalletId === toWalletId) return 0;
+
+  try {
+    // Read source transactions
+    const fromKey = getStorageKey(fromWalletId);
+    const fromRaw = localStorage.getItem(fromKey);
+    const fromTransactions: Transaction[] = fromRaw ? JSON.parse(fromRaw) : [];
+
+    if (fromTransactions.length === 0) return 0;
+
+    // Tag transactions with their origin wallet for traceability
+    const mergeTag = sourceWalletName
+      ? `[fusionado desde ${sourceWalletName}]`
+      : "[fusionado]";
+    const taggedTransactions = fromTransactions.map((t) => ({
+      ...t,
+      walletId: toWalletId,
+      note: t.note ? `${t.note} ${mergeTag}` : mergeTag,
+    }));
+
+    // Read target transactions and merge
+    const toKey = getStorageKey(toWalletId);
+    const toRaw = localStorage.getItem(toKey);
+    const toTransactions: Transaction[] = toRaw ? JSON.parse(toRaw) : [];
+
+    // Merge and sort by date (newest first)
+    const merged = [...toTransactions, ...taggedTransactions].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    localStorage.setItem(toKey, JSON.stringify(merged));
+
+    // Reload in-memory state if target wallet is active
+    const activeId = $activeWalletId.get();
+    if (activeId === toWalletId) {
+      isLoadingWallet = true;
+      $transactions.set(merged);
+      isLoadingWallet = false;
+    }
+
+    return taggedTransactions.length;
+  } catch (e) {
+    console.error("Failed to transfer transactions:", e);
+    return 0;
+  }
+}

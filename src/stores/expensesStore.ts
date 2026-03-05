@@ -190,3 +190,58 @@ export function clearExpenses(): void {
 
   $expenses.set([]);
 }
+
+/**
+ * Transfer all expenses from one wallet to another.
+ * Reads/writes directly to localStorage for cross-wallet operations.
+ * Preserves all expense data (description, amount, category, date).
+ * Returns the number of expenses transferred.
+ */
+export function transferExpenses(
+  fromWalletId: string,
+  toWalletId: string,
+): number {
+  if (typeof window === "undefined") return 0;
+  if (fromWalletId === toWalletId) return 0;
+
+  try {
+    // Read source expenses
+    const fromKey = `${STORAGE_PREFIX}${fromWalletId}`;
+    const fromRaw = localStorage.getItem(fromKey);
+    const fromExpenses: Expense[] = fromRaw ? JSON.parse(fromRaw) : [];
+
+    if (fromExpenses.length === 0) return 0;
+
+    // Re-id expenses for the target wallet
+    const transferredExpenses: Expense[] = fromExpenses.map((expense) => ({
+      ...expense,
+      id: `${generateId()}_merged`,
+      walletId: toWalletId,
+    }));
+
+    // Read target expenses and prepend
+    const toKey = `${STORAGE_PREFIX}${toWalletId}`;
+    const toRaw = localStorage.getItem(toKey);
+    const toExpenses: Expense[] = toRaw ? JSON.parse(toRaw) : [];
+    localStorage.setItem(
+      toKey,
+      JSON.stringify([...transferredExpenses, ...toExpenses]),
+    );
+
+    // Clear source expenses
+    localStorage.setItem(fromKey, JSON.stringify([]));
+
+    // Reload in-memory state if either wallet is active
+    const activeId = $activeWalletId.get();
+    if (activeId === fromWalletId || activeId === toWalletId) {
+      isLoadingWallet = true;
+      $expenses.set(loadFromStorage(activeId));
+      isLoadingWallet = false;
+    }
+
+    return transferredExpenses.length;
+  } catch (e) {
+    console.error("Failed to transfer expenses:", e);
+    return 0;
+  }
+}

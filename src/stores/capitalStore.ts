@@ -349,3 +349,161 @@ export function resetCapital() {
   $initialCapital.set(0);
   $capitalMovements.set([]);
 }
+
+/**
+ * Transfer capital (CUP) from one wallet to another.
+ * Creates IN/OUT movements for ad-hoc transfers between wallets during operations.
+ */
+export function transferCapital(
+  fromWalletId: string,
+  toWalletId: string,
+  amount: number,
+): boolean {
+  if (typeof window === "undefined") return false;
+  if (amount <= 0 || fromWalletId === toWalletId) return false;
+
+  const transferId = `transfer_${Date.now()}`;
+  const now = new Date().toISOString();
+
+  const outMovement: CapitalMovement = {
+    id: `${transferId}_out`,
+    type: "OUT",
+    amount: Math.abs(amount),
+    date: now,
+    walletId: fromWalletId,
+  };
+
+  const inMovement: CapitalMovement = {
+    id: `${transferId}_in`,
+    type: "IN",
+    amount: Math.abs(amount),
+    date: now,
+    walletId: toWalletId,
+  };
+
+  try {
+    const fromKey = `${STORAGE_PREFIX}${fromWalletId}`;
+    const fromRaw = localStorage.getItem(fromKey);
+    const fromData = fromRaw
+      ? JSON.parse(fromRaw)
+      : { initialCapital: 0, movements: [], walletCapitals: {} };
+
+    fromData.movements = [outMovement, ...(fromData.movements || [])];
+    localStorage.setItem(fromKey, JSON.stringify(fromData));
+
+    const toKey = `${STORAGE_PREFIX}${toWalletId}`;
+    const toRaw = localStorage.getItem(toKey);
+    const toData = toRaw
+      ? JSON.parse(toRaw)
+      : { initialCapital: 0, movements: [], walletCapitals: {} };
+
+    toData.movements = [inMovement, ...(toData.movements || [])];
+    localStorage.setItem(toKey, JSON.stringify(toData));
+
+    const activeId = $activeWalletId.get();
+    if (activeId === fromWalletId || activeId === toWalletId) {
+      const reloaded = loadFromStorage(activeId);
+      isLoadingWallet = true;
+      $initialCapital.set(reloaded.initialCapital);
+      $capitalMovements.set(reloaded.movements);
+      isLoadingWallet = false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Failed to transfer capital:", e);
+    return false;
+  }
+}
+
+/**
+ * Merge all capital data from source wallet into target wallet.
+ * Unlike transferCapital (which creates IN/OUT movements), this function
+ * merges the initialCapital and all movements, preserving correct
+ * Variación Real calculations.
+ *
+ * Formula preserved: netPatrimony = (initialCapital + totalIn - totalOut) + inventory - expenses
+ * realNetChange = netPatrimony - initialCapital → only real gains/losses
+ */
+export function mergeCapital(fromWalletId: string, toWalletId: string): number {
+  if (typeof window === "undefined") return 0;
+  if (fromWalletId === toWalletId) return 0;
+
+  try {
+    // Read source capital data
+    const fromKey = `${STORAGE_PREFIX}${fromWalletId}`;
+    const fromRaw = localStorage.getItem(fromKey);
+    const fromData = fromRaw
+      ? JSON.parse(fromRaw)
+      : { initialCapital: 0, movements: [], walletCapitals: {} };
+
+    const sourceInitial = fromData.initialCapital || 0;
+    const sourceMovements: CapitalMovement[] = fromData.movements || [];
+
+    // Read target capital data
+    const toKey = `${STORAGE_PREFIX}${toWalletId}`;
+    const toRaw = localStorage.getItem(toKey);
+    const toData = toRaw
+      ? JSON.parse(toRaw)
+      : { initialCapital: 0, movements: [], walletCapitals: {} };
+
+    // Merge: add source initialCapital to target's initialCapital
+    toData.initialCapital = (toData.initialCapital || 0) + sourceInitial;
+
+    // Merge: combine all movements and sort by date (newest first)
+    const allMovements: CapitalMovement[] = [
+      ...(toData.movements || []),
+      ...sourceMovements,
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    toData.movements = allMovements;
+
+    // Save target
+    localStorage.setItem(toKey, JSON.stringify(toData));
+
+    // Calculate how much CUP the source had
+    let sourceBalance = sourceInitial;
+    for (const m of sourceMovements) {
+      sourceBalance += m.type === "IN" ? m.amount : -m.amount;
+    }
+
+    // Reload in-memory state if target is active
+    const activeId = $activeWalletId.get();
+    if (activeId === toWalletId) {
+      const reloaded = loadFromStorage(activeId);
+      isLoadingWallet = true;
+      $initialCapital.set(reloaded.initialCapital);
+      $capitalMovements.set(reloaded.movements);
+      isLoadingWallet = false;
+    }
+
+    return sourceBalance;
+  } catch (e) {
+    console.error("Failed to merge capital:", e);
+    return 0;
+  }
+}
+
+/**
+ * Get the net CUP balance for a specific wallet by reading localStorage directly.
+ */
+export function getWalletBalance(walletId: string): number {
+  if (typeof window === "undefined") return 0;
+
+  try {
+    const key = `${STORAGE_PREFIX}${walletId}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return 0;
+
+    const data = JSON.parse(raw);
+    const initial = data.initialCapital || 0;
+    const movements: CapitalMovement[] = data.movements || [];
+
+    let balance = initial;
+    for (const m of movements) {
+      balance += m.type === "IN" ? m.amount : -m.amount;
+    }
+    return balance;
+  } catch {
+    return 0;
+  }
+}

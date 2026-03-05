@@ -8,6 +8,7 @@ import {
   Trash2,
   Edit2,
   Layers,
+  Merge,
 } from "lucide-react";
 import {
   $wallets,
@@ -27,6 +28,15 @@ import {
   type Wallet as WalletType,
   type WalletColor,
 } from "../../stores/walletStore";
+import {
+  mergeWallet,
+  getWalletInventorySummary,
+  getWalletExpensesTotal,
+  getWalletTransactionCount,
+} from "../../stores/walletMerge";
+import { getWalletBalance } from "../../stores/capitalStore";
+import { useToast } from "../ui/Toast";
+import { formatNumber } from "../../lib/formatters";
 import { $transactions } from "../../stores/historyStore";
 import { confirm } from "../../stores/confirmStore";
 import { cn } from "../../lib/utils";
@@ -46,6 +56,7 @@ export function WalletSelector() {
   const allTransactions = useStore($transactions);
   const defaultWalletId = useStore($defaultWalletId);
   const haptic = useHaptic();
+  const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -89,13 +100,85 @@ export function WalletSelector() {
     const confirmed = await confirm({
       title: "Eliminar Cartera",
       message: `¿Eliminar "${wallet.name}" y todos sus datos? Esta acción no se puede deshacer.`,
-      confirmText: "Eliminar",
-      cancelText: "Cancelar",
+      confirmLabel: "Eliminar",
+      cancelLabel: "Cancelar",
       variant: "danger",
     });
     if (confirmed) {
       haptic.heavy();
       deleteWallet(wallet.id);
+    }
+  };
+
+  const handleMerge = async (sourceWallet: WalletType) => {
+    // Find possible target wallets (all except this one)
+    const targets = activeWallets.filter((w) => w.id !== sourceWallet.id);
+    if (targets.length === 0) return;
+
+    // Default target: the first/main wallet
+    const target = targets[0];
+
+    // Build preview summary
+    const cupBalance = getWalletBalance(sourceWallet.id);
+    const inventory = getWalletInventorySummary(sourceWallet.id);
+    const expensesTotal = getWalletExpensesTotal(sourceWallet.id);
+    const txCount = getWalletTransactionCount(sourceWallet.id);
+
+    const inventoryLines = Object.entries(inventory)
+      .map(
+        ([currency, data]) =>
+          `  • ${data.quantity} ${currency} (${formatNumber(data.totalCost)} CUP invertidos)`,
+      )
+      .join("\n");
+
+    const summaryParts: string[] = [];
+    if (cupBalance > 0) {
+      summaryParts.push(`💰 ${formatNumber(cupBalance)} CUP en efectivo`);
+    }
+    if (inventoryLines) {
+      summaryParts.push(`📦 Inventario:\n${inventoryLines}`);
+    }
+    if (txCount > 0) {
+      summaryParts.push(`📋 ${txCount} operaciones`);
+    }
+    if (expensesTotal > 0) {
+      summaryParts.push(
+        `🧾 ${formatNumber(expensesTotal)} CUP en gastos operativos`,
+      );
+    }
+
+    const isEmpty = summaryParts.length === 0;
+    const summary = isEmpty
+      ? "Esta cartera no tiene activos que transferir.\n\nSe archivará y su historial quedará consultable."
+      : `Se transferirá a "${target.name}":\n\n${summaryParts.join("\n\n")}\n\nLa cartera "${sourceWallet.name}" se archivará.`;
+
+    const confirmed = await confirm({
+      title: `Fusionar "${sourceWallet.name}"`,
+      message: summary,
+      confirmLabel: isEmpty ? "Archivar" : "Fusionar",
+      variant: "warning",
+    });
+
+    if (confirmed) {
+      haptic.heavy();
+      const result = mergeWallet(sourceWallet.id, target.id);
+
+      const parts: string[] = [];
+      if (result.cupTransferred > 0)
+        parts.push(`${formatNumber(result.cupTransferred)} CUP`);
+      if (result.lotsTransferred > 0)
+        parts.push(`${result.lotsTransferred} lotes`);
+      if (result.transactionsTransferred > 0)
+        parts.push(`${result.transactionsTransferred} operaciones`);
+      if (result.expensesTransferred > 0)
+        parts.push(`${result.expensesTransferred} gastos`);
+
+      toast.success(
+        parts.length > 0
+          ? `Fusionado: ${parts.join(", ")} → ${target.name}`
+          : `"${sourceWallet.name}" archivada`,
+      );
+      setIsOpen(false);
     }
   };
 
@@ -320,12 +403,22 @@ export function WalletSelector() {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       {activeWallets.length > 1 && (
-                        <button
-                          onClick={() => handleDelete(wallet)}
-                          className="p-1.5 rounded-lg text-[var(--text-faint)] hover:text-[var(--status-error)] hover:bg-[var(--status-error-bg)]"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleMerge(wallet)}
+                            className="p-1.5 rounded-lg text-[var(--text-faint)] hover:text-(--status-warning) hover:bg-(--status-warning-bg) transition-colors"
+                            title={`Fusionar "${wallet.name}" con otra cartera`}
+                          >
+                            <Merge className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(wallet)}
+                            className="p-1.5 rounded-lg text-[var(--text-faint)] hover:text-[var(--status-error)] hover:bg-[var(--status-error-bg)] transition-colors"
+                            title={`Eliminar "${wallet.name}"`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </>
