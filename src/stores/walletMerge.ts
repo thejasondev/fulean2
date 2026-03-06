@@ -3,6 +3,7 @@ import { mergeCapital, getWalletBalance } from "./capitalStore";
 import { transferInventoryLots } from "./inventoryStore";
 import { transferExpenses } from "./expensesStore";
 import { transferTransactions } from "./historyStore";
+import { transferSavings } from "./savingsStore";
 
 // ============================================
 // Wallet Merge (Reunification)
@@ -15,6 +16,7 @@ export interface MergeResult {
   lotsTransferred: number;
   expensesTransferred: number;
   transactionsTransferred: number;
+  savingsTransferred: number;
   sourceArchived: boolean;
 }
 
@@ -112,6 +114,7 @@ export function mergeWallet(
     lotsTransferred: 0,
     expensesTransferred: 0,
     transactionsTransferred: 0,
+    savingsTransferred: 0,
     sourceArchived: false,
   };
 
@@ -143,10 +146,13 @@ export function mergeWallet(
     source.name,
   );
 
-  // 5. Archive source wallet
+  // 5. Transfer savings
+  result.savingsTransferred = transferSavings(sourceWalletId, targetWalletId);
+
+  // 6. Archive source wallet
   result.sourceArchived = archiveWallet(sourceWalletId);
 
-  // 6. Switch to target wallet
+  // 7. Switch to target wallet
   $activeWalletId.set(targetWalletId);
 
   return result;
