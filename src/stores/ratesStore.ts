@@ -57,7 +57,7 @@ function loadManualElToqueRates(): Record<ManualElToqueCurrency, number> {
 }
 
 export const $manualElToqueRates = atom<Record<ManualElToqueCurrency, number>>(
-  loadManualElToqueRates()
+  loadManualElToqueRates(),
 );
 
 /**
@@ -65,7 +65,7 @@ export const $manualElToqueRates = atom<Record<ManualElToqueCurrency, number>>(
  */
 export function setManualElToqueRate(
   currency: ManualElToqueCurrency,
-  value: number
+  value: number,
 ) {
   const validValue = Math.max(1, Math.floor(value));
   const current = $manualElToqueRates.get();
@@ -86,7 +86,7 @@ export function setManualElToqueRate(
  * Check if a currency uses manual El Toque rate
  */
 export function isManualElToqueCurrency(
-  currency: string
+  currency: string,
 ): currency is ManualElToqueCurrency {
   return ["CAD", "ZELLE", "CLASICA"].includes(currency);
 }
@@ -110,6 +110,7 @@ function saveToStorage() {
 function loadFromStorage(): {
   buyRates: Record<Currency, number>;
   sellRates: Record<Currency, number>;
+  timestamp?: number;
 } | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -136,6 +137,7 @@ function loadFromStorage(): {
         return {
           buyRates: data.buyRates,
           sellRates: data.sellRates,
+          timestamp: data.timestamp,
         };
       }
     }
@@ -149,6 +151,12 @@ function loadFromStorage(): {
 // Computed Values
 // ============================================
 
+// Check if rates are older than 12 hours
+const STALE_THRESHOLD_MS = 12 * 60 * 60 * 1000;
+export const $isRatesStale = computed($lastUpdate, (lastUpdate) => {
+  return Date.now() - lastUpdate.getTime() > STALE_THRESHOLD_MS;
+});
+
 // Spread per currency (sellRate - buyRate = profit margin)
 export const $spreads = computed(
   [$buyRates, $sellRates],
@@ -158,7 +166,7 @@ export const $spreads = computed(
       result[currency] = (sellRates[currency] || 0) - (buyRates[currency] || 0);
     }
     return result;
-  }
+  },
 );
 
 // Use sell rate as "effective rate" for conversions (display purposes)
@@ -200,7 +208,7 @@ export function setSellRate(currency: Currency, value: number) {
 export function setRates(
   currency: Currency,
   buyRate: number,
-  sellRate: number
+  sellRate: number,
 ) {
   setBuyRate(currency, buyRate);
   setSellRate(currency, sellRate);
@@ -253,6 +261,24 @@ export async function loadElToqueRates(): Promise<boolean> {
     const rates = await fetchElToqueRates();
 
     if (rates) {
+      // Check for rate changes before saving
+      const oldRates = $elToqueRates.get();
+      if (oldRates && typeof window !== "undefined") {
+        for (const [curr, newRate] of Object.entries(rates.rates) as [
+          Currency,
+          number,
+        ][]) {
+          const oldRate = oldRates.rates[curr];
+          if (oldRate && Math.abs(oldRate - newRate) >= 1) {
+            window.dispatchEvent(
+              new CustomEvent("rate-changed", {
+                detail: { currency: curr, oldRate, newRate },
+              }),
+            );
+          }
+        }
+      }
+
       $elToqueRates.set(rates);
       $isLoadingElToque.set(false);
       return true;
@@ -297,7 +323,7 @@ export function getEffectiveRate(currency: Currency): number {
  */
 export function getRateForOperation(
   currency: Currency,
-  operation: "BUY" | "SELL"
+  operation: "BUY" | "SELL",
 ): number {
   const rates = operation === "BUY" ? $buyRates.get() : $sellRates.get();
   return rates?.[currency] ?? DEFAULT_RATES[currency];
@@ -308,7 +334,7 @@ export function getRateForOperation(
  */
 export function calculateProfit(
   currency: Currency,
-  foreignAmount: number
+  foreignAmount: number,
 ): number {
   const buyRate = $buyRates.get()[currency] || 0;
   const sellRate = $sellRates.get()[currency] || 0;
@@ -322,8 +348,11 @@ export function initializeRates() {
   const stored = loadFromStorage();
 
   if (stored) {
-    $buyRates.set(stored.buyRates);
-    $sellRates.set(stored.sellRates);
+    if (stored.buyRates) $buyRates.set(stored.buyRates);
+    if (stored.sellRates) $sellRates.set(stored.sellRates);
+    if (stored.timestamp) {
+      $lastUpdate.set(new Date(stored.timestamp));
+    }
   } else {
     saveToStorage();
   }

@@ -9,6 +9,7 @@ import {
   Heart,
   Clock,
   MessageCircle,
+  AlertTriangle,
 } from "lucide-react";
 import {
   $buyRates,
@@ -22,6 +23,8 @@ import {
   isManualElToqueCurrency,
   refreshRates,
   loadElToqueRates,
+  $isRatesStale,
+  $lastUpdate,
 } from "../../stores/ratesStore";
 import {
   openSettings,
@@ -33,6 +36,7 @@ import { CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatLastUpdate } from "../../lib/eltoque-api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
+import { useToast } from "../ui/Toast";
 
 // ============================================
 // RatesDashboard Component
@@ -165,25 +169,51 @@ function RefreshTickerCard({
   );
 }
 
-// El Toque Info Banner
-function ElToqueBanner() {
+function StaleWarning() {
+  const isStale = useStore($isRatesStale);
+  const lastUpdate = useStore($lastUpdate);
+
+  if (!isStale) return null;
+
+  return (
+    <div className="flex items-start gap-2 px-3 py-2 mb-3 mr-4 bg-[var(--status-warning-bg)]/50 border border-[var(--status-warning)]/30 rounded-xl">
+      <AlertTriangle
+        size={14}
+        className="text-[var(--status-warning)] shrink-0 mt-0.5"
+      />
+      <p className="text-[11px] text-[var(--status-warning)] font-bold leading-tight">
+        Tasas de referencia desactualizadas ({formatLastUpdate(lastUpdate)}
+        ). Actualiza o revisa tu conexión.
+      </p>
+    </div>
+  );
+}
+
+function ElToqueIndicator() {
   const elToqueRates = useStore($elToqueRates);
   const isLoading = useStore($isLoadingElToque);
+  const isOffline = useStore($isOffline) ?? false;
 
   if (!elToqueRates && !isLoading) return null;
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1.5 bg-[var(--blue-bg)] border-b border-[var(--blue)]/20">
-      <Zap size={12} className="text-[var(--blue)]" />
-      <span className="text-[10px] text-[var(--blue)] font-medium">
-        {isLoading
-          ? "Cargando El Toque..."
-          : `El Toque: ${formatLastUpdate(
-              elToqueRates?.lastUpdate || new Date(),
-            )}`}
+    <div className="flex items-center gap-1.5 bg-[var(--blue-bg)]/30 px-2 py-0.5 rounded-full border border-[var(--blue)]/20">
+      <Zap size={10} className="text-[var(--blue)]" />
+      <span className="text-[9px] text-[var(--blue)] font-bold uppercase tracking-wider">
+        El Toque
       </span>
-      <span className="text-[10px] text-[var(--blue)]/60">
-        • Referencia mercado informal
+      <span className="text-[var(--blue)]/30 text-[8px]">•</span>
+      <span
+        className={cn(
+          "text-[9px] font-medium",
+          isOffline ? "text-[var(--status-warning)]" : "text-[var(--blue)]/80",
+        )}
+      >
+        {isLoading
+          ? "Cargando..."
+          : isOffline
+            ? `${formatLastUpdate(elToqueRates?.lastUpdate || new Date())} (off)`
+            : formatLastUpdate(elToqueRates?.lastUpdate || new Date())}
       </span>
     </div>
   );
@@ -198,11 +228,35 @@ export function RatesDashboard() {
   const visibleCurrencies = useStore($visibleCurrencies);
   const isLoading = useStore($isLoadingRates) ?? false;
   const isOffline = useStore($isOffline) ?? false;
+  const { toast } = useToast();
 
   // Load El Toque rates on mount
   useEffect(() => {
     loadElToqueRates();
   }, []);
+
+  // Listen for rate changes detected by fetchElToqueRates
+  useEffect(() => {
+    const handleRateChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        currency: Currency;
+        oldRate: number;
+        newRate: number;
+      }>;
+      const { currency, oldRate, newRate } = customEvent.detail;
+      const diff = newRate - oldRate;
+      const direction = diff > 0 ? "subió" : "bajó";
+      const sign = diff > 0 ? "+" : "";
+
+      toast.info(
+        `El ${currency} ${direction} a ${newRate} CUP (${sign}${diff})`,
+        6000,
+      );
+    };
+
+    window.addEventListener("rate-changed", handleRateChange);
+    return () => window.removeEventListener("rate-changed", handleRateChange);
+  }, [toast]);
 
   return (
     <header
@@ -297,31 +351,16 @@ export function RatesDashboard() {
           </div>
         </div>
 
-        {/* Rate Legend + Last Update */}
-        <div className="flex items-center justify-between pr-4 mb-2 text-[10px] flex-wrap gap-1">
-          <div className="flex items-center gap-2">
+        <StaleWarning />
+
+        {/* Rate Legend */}
+        <div className="flex items-center justify-between pr-4 mb-2 mt-1 gap-1">
+          <div className="flex items-center gap-2 text-[10px] font-bold">
             <span className="text-[var(--status-success)]">Compra</span>
             <span className="text-[var(--text-faint)]">/</span>
             <span className="text-[var(--status-warning)]">Venta</span>
-            {elToqueRates && (
-              <>
-                <span className="text-[var(--text-faint)] ml-1">•</span>
-                <Zap size={10} className="text-[var(--blue)]" />
-                <span className="text-[var(--blue)]">El Toque</span>
-              </>
-            )}
           </div>
-          {/* Timestamp indicator */}
-          {elToqueRates && (
-            <div className="flex items-center gap-1 text-[var(--text-faint)]">
-              <span>{formatLastUpdate(elToqueRates.lastUpdate)}</span>
-              {isOffline && (
-                <span className="text-[var(--status-warning)] font-medium">
-                  (cache)
-                </span>
-              )}
-            </div>
-          )}
+          <ElToqueIndicator />
         </div>
 
         {/* Horizontal Ticker Scroll */}

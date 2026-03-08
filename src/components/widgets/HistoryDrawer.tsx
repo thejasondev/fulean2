@@ -11,6 +11,8 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
+  Search,
+  Filter,
 } from "lucide-react";
 import {
   $transactions,
@@ -27,6 +29,7 @@ import { useHaptic } from "../../hooks/useHaptic";
 import { Drawer } from "../ui/Drawer";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { ReceiptCard, type ReceiptData } from "./ReceiptCard";
 import { CURRENCY_META, type Currency } from "../../lib/constants";
 import {
@@ -377,17 +380,49 @@ function GroupSection({
 
 export function HistoryDrawer() {
   const isOpen = useStore($isHistoryDrawerOpen) ?? false;
-  const transactions = useStore($transactions) ?? [];
+  const allTransactions = useStore($transactions) ?? [];
   const { toast } = useToast();
   const haptic = useHaptic();
 
   // Receipt modal state
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "today" | "yesterday" | "this_week"
+  >("all");
+
   // Expanded groups state
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(["today", "yesterday", "this_week"]),
   );
+
+  const transactions = useMemo(() => {
+    return allTransactions.filter((txn) => {
+      // Note / Generic search
+      if (searchQuery.trim() !== "") {
+        const query = searchQuery.toLowerCase();
+        const noteMatch = txn.note?.toLowerCase().includes(query);
+        const amountMatch = String(
+          txn.amountForeign || txn.conversions?.USD || "",
+        ).includes(query);
+        const totalCUPMatch = String(txn.totalCUP).includes(query);
+        const currencyMatch = txn.currency?.toLowerCase().includes(query);
+
+        if (!noteMatch && !amountMatch && !totalCUPMatch && !currencyMatch)
+          return false;
+      }
+
+      // Date filter
+      if (dateFilter !== "all") {
+        const groupKey = getGroupKey(new Date(txn.date));
+        if (groupKey !== dateFilter) return false;
+      }
+
+      return true;
+    });
+  }, [allTransactions, searchQuery, dateFilter]);
 
   // Group transactions by period
   const groupedTransactions = useMemo(() => {
@@ -417,9 +452,9 @@ export function HistoryDrawer() {
       label: getGroupLabel(key),
       key,
       transactions: groups[key],
-      isExpanded: expandedGroups.has(key),
+      isExpanded: searchQuery ? true : expandedGroups.has(key), // Expand all when searching
     }));
-  }, [transactions, expandedGroups]);
+  }, [transactions, expandedGroups, searchQuery]);
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -573,56 +608,107 @@ export function HistoryDrawer() {
   return (
     <>
       <Drawer isOpen={isOpen} onClose={closeHistoryDrawer} title="Historial">
-        <div className="p-4">
-          {transactions.length === 0 ? (
-            // Empty state
-            <div className="empty-state py-16">
-              <History className="empty-state-icon" />
-              <p className="text-[var(--text-muted)] font-medium">
-                No hay transacciones
-              </p>
-              <p className="text-xs text-[var(--text-faint)] mt-1">
-                Las operaciones registradas aparecerán aquí
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Stats & Actions Row */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-[var(--text-faint)]">
-                  {transactions.length} operación
-                  {transactions.length !== 1 ? "es" : ""}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleShareAll}
-                    className="gap-1"
-                  >
-                    <Download className="w-4 h-4" />
-                    Exportar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={handleClearAll}>
-                    Borrar todo
-                  </Button>
-                </div>
+        <div className="flex flex-col h-full bg-(--bg-primary)">
+          {allTransactions.length > 0 && (
+            <div className="p-4 pb-2 bg-(--bg-primary) border-b border-(--border-primary) sticky top-0 z-20">
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--text-muted)" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por notas, cantidad..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-(--bg-secondary) border-transparent focus:border-(--blue) transition-colors text-sm"
+                />
               </div>
-
-              {/* Grouped Transaction List */}
-              <div className="space-y-1">
-                {groupedTransactions.map((group) => (
-                  <GroupSection
-                    key={group.key}
-                    group={group}
-                    onToggle={() => toggleGroup(group.key)}
-                    onDeleteTransaction={handleDelete}
-                    onShareTransaction={handleShare}
-                  />
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {(
+                  [
+                    { id: "all", label: "Todas" },
+                    { id: "today", label: "Hoy" },
+                    { id: "yesterday", label: "Ayer" },
+                    { id: "this_week", label: "Semana" },
+                  ] as const
+                ).map((filter) => (
+                  <button
+                    key={filter.id}
+                    onClick={() => setDateFilter(filter.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors border",
+                      dateFilter === filter.id
+                        ? "bg-(--blue-bg) text-(--blue) border-(--blue)/30"
+                        : "bg-(--bg-secondary) text-(--text-muted) border-transparent hover:border-(--border-primary)",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
                 ))}
               </div>
-            </>
+            </div>
           )}
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {allTransactions.length === 0 ? (
+              // Empty state globally
+              <div className="empty-state py-16">
+                <History className="empty-state-icon" />
+                <p className="text-[var(--text-muted)] font-medium">
+                  No hay transacciones
+                </p>
+                <p className="text-xs text-[var(--text-faint)] mt-1">
+                  Las operaciones registradas aparecerán aquí
+                </p>
+              </div>
+            ) : transactions.length === 0 ? (
+              // Empty state for search
+              <div className="empty-state py-16">
+                <Filter className="empty-state-icon" />
+                <p className="text-(--text-muted) font-medium text-center px-4">
+                  No se encontraron resultados
+                </p>
+                <p className="text-xs text-(--text-faint) mt-1">
+                  Prueba cambiando los filtros o la búsqueda
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Stats & Actions Row */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-[var(--text-faint)]">
+                    {transactions.length} operación
+                    {transactions.length !== 1 ? "es" : ""}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleShareAll}
+                      className="gap-1"
+                    >
+                      <Download className="w-4 h-4" />
+                      Exportar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleClearAll}>
+                      Borrar todo
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Grouped Transaction List */}
+                <div className="space-y-1">
+                  {groupedTransactions.map((group) => (
+                    <GroupSection
+                      key={group.key}
+                      group={group}
+                      onToggle={() => toggleGroup(group.key)}
+                      onDeleteTransaction={handleDelete}
+                      onShareTransaction={handleShare}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </Drawer>
 

@@ -72,6 +72,7 @@ export function TransactionForm() {
   const [amountForeign, setAmountForeign] = useState<string>("");
   const [rate, setRate] = useState<string>("");
   const [totalCUP, setTotalCUP] = useState<string>("");
+  const [isQuickTrade, setIsQuickTrade] = useState<boolean>(false);
 
   // Exchange-specific state
   const [fromCurrency, setFromCurrency] = useState<TransactionCurrency>("EUR");
@@ -91,7 +92,7 @@ export function TransactionForm() {
 
   // Get the appropriate rate based on operation
   const getRate = (curr: Currency, op: OperationType) => {
-    return getRateForOperation(curr, op);
+    return getRateForOperation(curr, op === "BUY" ? "BUY" : "SELL");
   };
 
   // Calculate projected profit
@@ -656,6 +657,61 @@ export function TransactionForm() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Quick Trade Mode Toggle & Chips */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm text-[var(--text-faint)] font-medium">
+                Modo Rápido
+              </label>
+              <button
+                onClick={() => {
+                  haptic.light();
+                  setIsQuickTrade(!isQuickTrade);
+                }}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-colors relative border",
+                  isQuickTrade
+                    ? operation === "BUY"
+                      ? "bg-[var(--status-success)] border-[var(--status-success)]"
+                      : "bg-[var(--status-warning)] border-[var(--status-warning)]"
+                    : "bg-[var(--bg-secondary)] border-[var(--border-primary)]",
+                )}
+                aria-label="Alternar modo rápido"
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 rounded-full bg-white absolute top-1 shadow-sm transition-transform duration-200",
+                    isQuickTrade ? "translate-x-6" : "translate-x-1",
+                  )}
+                />
+              </button>
+            </div>
+
+            {isQuickTrade && (
+              <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                {[10, 20, 50, 100, 200, 500].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => {
+                      haptic.medium();
+                      handleForeignChange(amt.toString());
+                    }}
+                    className={cn(
+                      "flex-1 min-w-[30%] py-2.5 rounded-xl border text-sm font-bold transition-all duration-200",
+                      amountForeign === amt.toString()
+                        ? operation === "BUY"
+                          ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/50 text-[var(--status-success)] scale-[0.98]"
+                          : "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/50 text-[var(--status-warning)] scale-[0.98]"
+                        : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] active:scale-95",
+                    )}
+                  >
+                    {amt} {currency}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Form Inputs */}

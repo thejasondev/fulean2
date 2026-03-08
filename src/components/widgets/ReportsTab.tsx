@@ -7,6 +7,7 @@ import {
   SellSimulator,
   SavingsCard,
   ProfitSummary,
+  DailySummary,
 } from "./reports";
 
 // ============================================
@@ -24,6 +25,7 @@ export function ReportsTab() {
 
       <LiquidityAlert />
       <CapitalCard />
+      <DailySummary />
       <PortfolioCard />
       <SellSimulator />
       <SavingsCard />

@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useStore } from "@nanostores/react";
 import { Calculator } from "lucide-react";
-import { $walletTransactions } from "../../../stores/historyStore";
 import { $sellRates } from "../../../stores/ratesStore";
-import { simulateFIFO } from "../../../stores/inventoryStore";
+import {
+  $inventorySummary,
+  simulateFIFO,
+} from "../../../stores/inventoryStore";
 import { CURRENCY_META, type Currency } from "../../../lib/constants";
 import { formatNumber } from "../../../lib/formatters";
 import { cn } from "../../../lib/utils";
 import { Input } from "../../ui/Input";
 
 export function SellSimulator() {
-  const transactions = useStore($walletTransactions);
+  const inventorySummary = useStore($inventorySummary);
   const sellRates = useStore($sellRates);
 
   const availableCurrencies: {
@@ -19,32 +21,13 @@ export function SellSimulator() {
     avgCost: number;
   }[] = [];
 
-  const inventoryByCurrency: Record<
-    string,
-    { bought: number; sold: number; totalCost: number }
-  > = {};
-
-  transactions.forEach((txn) => {
-    const currency = txn.currency || "USD";
-    if (!inventoryByCurrency[currency]) {
-      inventoryByCurrency[currency] = { bought: 0, sold: 0, totalCost: 0 };
-    }
-    if (txn.operationType === "BUY") {
-      inventoryByCurrency[currency].bought += txn.amountForeign;
-      inventoryByCurrency[currency].totalCost += txn.totalCUP;
-    } else {
-      inventoryByCurrency[currency].sold += txn.amountForeign;
-    }
-  });
-
-  Object.entries(inventoryByCurrency).forEach(([currency, data]) => {
-    const available = data.bought - data.sold;
-    if (available > 0) {
-      const avgCost = data.bought > 0 ? data.totalCost / data.bought : 0;
+  Object.keys(inventorySummary).forEach((currency) => {
+    const inv = inventorySummary[currency];
+    if (inv.quantity > 0) {
       availableCurrencies.push({
         currency: currency as Currency,
-        available,
-        avgCost,
+        available: inv.quantity,
+        avgCost: inv.avgCost,
       });
     }
   });
