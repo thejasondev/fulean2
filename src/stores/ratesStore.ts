@@ -1,6 +1,7 @@
 import { atom, computed } from "nanostores";
 import { CURRENCIES, DEFAULT_RATES, type Currency } from "../lib/constants";
 import { fetchElToqueRates, type ElToqueRates } from "../lib/eltoque-api";
+import { $visibleCurrencies } from "./visibilityStore";
 
 // ============================================
 // Rates Store - Buy/Sell Rate System
@@ -263,6 +264,8 @@ export async function loadElToqueRates(): Promise<boolean> {
     if (rates) {
       // Check for rate changes before saving
       const oldRates = $elToqueRates.get();
+      const visibleCurrs = $visibleCurrencies.get();
+
       if (oldRates && typeof window !== "undefined") {
         for (const [curr, newRate] of Object.entries(rates)) {
           if (curr === "lastUpdate") continue;
@@ -271,7 +274,11 @@ export async function loadElToqueRates(): Promise<boolean> {
           const currentNewRate = newRate as number;
           const oldRate = (oldRates as any)[currency] as number;
 
-          if (oldRate && Math.abs(oldRate - currentNewRate) >= 1) {
+          if (
+            visibleCurrs.includes(currency) && 
+            oldRate && 
+            Math.abs(oldRate - currentNewRate) >= 1
+          ) {
             window.dispatchEvent(
               new CustomEvent("rate-changed", {
                 detail: { currency, oldRate, newRate: currentNewRate },
