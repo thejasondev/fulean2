@@ -301,7 +301,15 @@ export async function refreshRates(): Promise<{ offline: boolean }> {
   $isLoadingRates.set(true);
 
   // Fetch El Toque rates for reference
-  await loadElToqueRates();
+  const success = await loadElToqueRates();
+
+  // If the user actively refreshed and we successfully connected (or are online),
+  // we consider the local rates implicitly validated by the user.
+  // This bumps the timestamp and clears any stale warnings.
+  if (success || !$isOffline.get()) {
+    $lastUpdate.set(new Date());
+    saveToStorage();
+  }
 
   $isLoadingRates.set(false);
   return { offline: $isOffline.get() };
