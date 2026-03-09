@@ -264,15 +264,17 @@ export async function loadElToqueRates(): Promise<boolean> {
       // Check for rate changes before saving
       const oldRates = $elToqueRates.get();
       if (oldRates && typeof window !== "undefined") {
-        for (const [curr, newRate] of Object.entries(rates.rates) as [
-          Currency,
-          number,
-        ][]) {
-          const oldRate = oldRates.rates[curr];
-          if (oldRate && Math.abs(oldRate - newRate) >= 1) {
+        for (const [curr, newRate] of Object.entries(rates)) {
+          if (curr === "lastUpdate") continue;
+
+          const currency = curr as Currency;
+          const currentNewRate = newRate as number;
+          const oldRate = (oldRates as any)[currency] as number;
+
+          if (oldRate && Math.abs(oldRate - currentNewRate) >= 1) {
             window.dispatchEvent(
               new CustomEvent("rate-changed", {
-                detail: { currency: curr, oldRate, newRate },
+                detail: { currency, oldRate, newRate: currentNewRate },
               }),
             );
           }

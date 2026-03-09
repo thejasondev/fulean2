@@ -38,6 +38,7 @@ import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { Drawer } from "../ui/Drawer";
 import { $visibleCurrencies } from "../../stores/visibilityStore";
 import { CURRENCIES, CURRENCY_META, type Currency } from "../../lib/constants";
 import { formatNumber } from "../../lib/formatters";
@@ -73,6 +74,11 @@ export function TransactionForm() {
   const [rate, setRate] = useState<string>("");
   const [totalCUP, setTotalCUP] = useState<string>("");
   const [isQuickTrade, setIsQuickTrade] = useState<boolean>(false);
+  const [quickConfirmData, setQuickConfirmData] = useState<{
+    amount: number;
+    cup: number;
+    rate: number;
+  } | null>(null);
 
   // Exchange-specific state
   const [fromCurrency, setFromCurrency] = useState<TransactionCurrency>("EUR");
@@ -335,6 +341,50 @@ export function TransactionForm() {
     setTransactionNote("");
 
     // Stay on operar tab
+    goToOperar();
+  };
+
+  const handleQuickSubmit = () => {
+    if (!quickConfirmData) return;
+    haptic.medium();
+
+    const { amount, cup, rate: qRate } = quickConfirmData;
+
+    // Calculate spread for profit tracking
+    const buyRate = buyRates[currency] ?? 0;
+    const sellRate = sellRates[currency] ?? 0;
+    const spread = sellRate - buyRate;
+
+    // Save transaction
+    const txn = saveTransaction(
+      operation,
+      currency,
+      amount,
+      qRate,
+      cup,
+      spread,
+      targetWalletId,
+      transactionNote,
+    );
+
+    // Record capital movement
+    recordCapitalMovement(
+      operation === "BUY" ? "OUT" : "IN",
+      cup,
+      txn.id,
+      targetWalletId,
+    );
+
+    // Clear the counter
+    clearAll();
+
+    toast.success("Operación rápida registrada");
+
+    setQuickConfirmData(null);
+    setAmountForeign("");
+    setTotalCUP("");
+    setTransactionNote("");
+
     goToOperar();
   };
 
@@ -690,131 +740,250 @@ export function TransactionForm() {
             </div>
 
             {isQuickTrade && (
-              <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                {[10, 20, 50, 100, 200, 500].map((amt) => (
-                  <button
-                    key={amt}
-                    onClick={() => {
-                      haptic.medium();
-                      handleForeignChange(amt.toString());
-                    }}
-                    className={cn(
-                      "flex-1 min-w-[30%] py-2.5 rounded-xl border text-sm font-bold transition-all duration-200",
-                      amountForeign === amt.toString()
-                        ? operation === "BUY"
-                          ? "bg-[var(--status-success-bg)] border-[var(--status-success)]/50 text-[var(--status-success)] scale-[0.98]"
-                          : "bg-[var(--status-warning-bg)] border-[var(--status-warning)]/50 text-[var(--status-warning)] scale-[0.98]"
-                        : "bg-[var(--bg-primary)] border-[var(--border-primary)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] active:scale-95",
-                    )}
-                  >
-                    {amt} {currency}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                {[10, 20, 50, 100, 200, 500].map((amt) => {
+                  const currentRate = parseFloat(rate) || 0;
+                  const estimatedCup = Math.round(amt * currentRate);
+
+                  return (
+                    <button
+                      key={amt}
+                      onClick={() => {
+                        haptic.medium();
+                        setQuickConfirmData({
+                          amount: amt,
+                          cup: estimatedCup,
+                          rate: currentRate,
+                        });
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200",
+                        operation === "BUY"
+                          ? "bg-[var(--status-success-bg)]/50 border-[var(--status-success)]/30 hover:bg-[var(--status-success-bg)] hover:border-[var(--status-success)]/60 text-[var(--status-success)] active:scale-95"
+                          : "bg-[var(--status-warning-bg)]/50 border-[var(--status-warning)]/30 hover:bg-[var(--status-warning-bg)] hover:border-[var(--status-warning)]/60 text-[var(--status-warning)] active:scale-95",
+                      )}
+                    >
+                      <span className="text-xl font-black tracking-tight">
+                        {amt} {currency}
+                      </span>
+                      <span className="text-xs font-bold opacity-70 mt-1">
+                        ≈ {formatNumber(estimatedCup)} CUP
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Form Inputs */}
-          <div
-            className={cn(
-              "space-y-4 p-5 rounded-2xl border mb-6",
-              theme.bg,
-              theme.border,
-            )}
-          >
-            {/* Foreign Amount */}
-            <div>
-              <label
-                className={cn(
-                  "block text-xs font-medium mb-1.5 uppercase tracking-wide",
-                  theme.text,
-                )}
-              >
-                Monto ({currency})
-              </label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={amountForeign}
-                  onChange={(e) => handleForeignChange(e.target.value)}
+          {/* Form Inputs (Hidden in Quick Mode) */}
+          {!isQuickTrade && (
+            <div
+              className={cn(
+                "space-y-4 p-5 rounded-2xl border mb-6",
+                theme.bg,
+                theme.border,
+              )}
+            >
+              {/* Foreign Amount */}
+              <div>
+                <label
                   className={cn(
-                    "text-lg font-bold tabular-nums pr-12",
-                    theme.input,
+                    "block text-xs font-medium mb-1.5 uppercase tracking-wide",
+                    theme.text,
                   )}
-                  placeholder="0.00"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
-                  {currency}
-                </span>
-              </div>
-            </div>
-
-            {/* Exchange Rate */}
-            <div>
-              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
-                Tasa de cambio
-              </label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  value={rate}
-                  onChange={(e) => handleRateChange(e.target.value)}
-                  className="text-lg font-bold tabular-nums pr-12 text-center"
-                  placeholder="0"
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs">
-                  CUP/1{currency}
+                >
+                  Monto ({currency})
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={amountForeign}
+                    onChange={(e) => handleForeignChange(e.target.value)}
+                    className={cn(
+                      "text-lg font-bold tabular-nums pr-12",
+                      theme.input,
+                    )}
+                    placeholder="0.00"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
+                    {currency}
+                  </span>
                 </div>
               </div>
-            </div>
 
-            {/* Total CUP */}
-            <div>
-              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
-                Total a pagar/recibir
-              </label>
-              <div className="relative">
+              {/* Exchange Rate */}
+              <div>
+                <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                  Tasa de cambio
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={rate}
+                    onChange={(e) => handleRateChange(e.target.value)}
+                    className="text-lg font-bold tabular-nums pr-12 text-center"
+                    placeholder="0"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] text-xs">
+                    CUP/1{currency}
+                  </div>
+                </div>
+              </div>
+
+              {/* Total CUP */}
+              <div>
+                <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                  Total a pagar/recibir
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={totalCUP}
+                    onChange={(e) => handleCUPChange(e.target.value)}
+                    className={cn(
+                      "text-2xl font-bold tabular-nums pr-12",
+                      theme.text,
+                      theme.input,
+                    )}
+                    placeholder="0"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
+                    CUP
+                  </span>
+                </div>
+              </div>
+
+              {/* Optional Note */}
+              <div>
+                <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
+                  Nota (opcional)
+                </label>
                 <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={totalCUP}
-                  onChange={(e) => handleCUPChange(e.target.value)}
-                  className={cn(
-                    "text-2xl font-bold tabular-nums pr-12",
-                    theme.text,
-                    theme.input,
-                  )}
-                  placeholder="0"
+                  type="text"
+                  value={transactionNote}
+                  onChange={(e) => setTransactionNote(e.target.value)}
+                  placeholder="Ej: Cliente Juan, pago parcial..."
+                  className="text-sm"
+                  maxLength={100}
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-faint)] font-bold text-sm">
-                  CUP
-                </span>
+                <p className="text-[10px] text-[var(--text-faint)] mt-1 opacity-60">
+                  La nota aparecerá en el historial
+                </p>
               </div>
             </div>
+          )}
 
-            {/* Optional Note */}
-            <div>
-              <label className="block text-xs text-[var(--text-faint)] font-medium mb-1.5 uppercase tracking-wide">
-                Nota (opcional)
-              </label>
-              <Input
-                type="text"
-                value={transactionNote}
-                onChange={(e) => setTransactionNote(e.target.value)}
-                placeholder="Ej: Cliente Juan, pago parcial..."
-                className="text-sm"
-                maxLength={100}
-              />
-              <p className="text-[10px] text-[var(--text-faint)] mt-1 opacity-60">
-                La nota aparecerá en el historial
-              </p>
-            </div>
-          </div>
           {/* Buttons moved to footer */}
         </>
       )}
+
+      {/* Quick Confirm Drawer */}
+      <Drawer
+        isOpen={quickConfirmData !== null}
+        onClose={() => setQuickConfirmData(null)}
+        title="Confirmar Operación Rápida"
+      >
+        <div className="p-4 sm:p-5 flex flex-col gap-4 sm:gap-6 pb-8 sm:pb-6">
+          <div className="flex flex-col items-center justify-center text-center p-4 sm:p-6 bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-primary)] shadow-inner">
+            <div
+              className={cn(
+                "w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-4 shadow-sm",
+                operation === "BUY"
+                  ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
+                  : "bg-[var(--status-warning-bg)] text-[var(--status-warning)]",
+              )}
+            >
+              {operation === "BUY" ? (
+                <ArrowDownLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+              ) : (
+                <ArrowUpRight className="w-6 h-6 sm:w-8 sm:h-8" />
+              )}
+            </div>
+
+            <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-1">
+              {operation === "BUY" ? "Comprar" : "Vender"}{" "}
+              {quickConfirmData?.amount} {currency}
+            </h3>
+
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-3 sm:mb-4">
+              Tasa:{" "}
+              <span className="font-bold text-[var(--text-primary)]">
+                {quickConfirmData?.rate} CUP
+              </span>
+            </p>
+
+            <div
+              className={cn(
+                "w-full py-2 sm:py-3 px-3 sm:px-4 rounded-xl border border-dashed flex flex-col items-center",
+                operation === "BUY"
+                  ? "bg-[var(--status-error-bg)]/20 border-[var(--status-error)]/30"
+                  : "bg-[var(--status-success-bg)]/20 border-[var(--status-success)]/30",
+              )}
+            >
+              <span className="text-[10px] sm:text-xs font-bold text-[var(--text-faint)] uppercase tracking-wider mb-0.5 sm:mb-1">
+                {operation === "BUY"
+                  ? "A Pagar (Salida)"
+                  : "A Recibir (Entrada)"}
+              </span>
+              <span
+                className={cn(
+                  "text-2xl sm:text-3xl font-black tabular-nums tracking-tighter",
+                  operation === "BUY"
+                    ? "text-[var(--status-error)]"
+                    : "text-[var(--status-success)]",
+                )}
+              >
+                {formatNumber(quickConfirmData?.cup || 0)} CUP
+              </span>
+            </div>
+          </div>
+
+          {/* Note Input in Drawer */}
+          <div>
+            <label className="block text-[10px] sm:text-xs text-[var(--text-faint)] font-medium mb-1 uppercase tracking-wide">
+              Nota (opcional)
+            </label>
+            <Input
+              type="text"
+              value={transactionNote}
+              onChange={(e) => setTransactionNote(e.target.value)}
+              placeholder="Ej: Cliente rápido..."
+              className="text-sm bg-[var(--bg-primary)] border-[var(--border-primary)] shadow-sm h-10 sm:h-11"
+              maxLength={100}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 mt-1 sm:mt-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                haptic.light();
+                setQuickConfirmData(null);
+                setTransactionNote("");
+              }}
+              className="w-full py-3.5 sm:py-4 rounded-xl font-bold"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleQuickSubmit}
+              className={cn(
+                "w-full py-3.5 sm:py-4 rounded-xl text-white font-bold shadow-lg transition-transform active:scale-95",
+                operation === "BUY"
+                  ? "bg-[var(--status-success)] hover:bg-[var(--status-success)]/90 shadow-[var(--status-success)]/20"
+                  : "bg-[var(--status-warning)] hover:bg-[var(--status-warning)]/90 shadow-[var(--status-warning)]/20",
+              )}
+            >
+              Confirmar
+            </Button>
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }
