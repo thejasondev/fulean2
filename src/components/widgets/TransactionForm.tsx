@@ -710,7 +710,7 @@ export function TransactionForm() {
           </div>
 
           {/* Quick Trade Mode Toggle & Chips */}
-          <div className="mb-6">
+          <div className="mb-6" data-tour="quick-trade">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm text-[var(--text-faint)] font-medium">
                 Modo Rápido

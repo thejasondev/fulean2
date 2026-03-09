@@ -70,37 +70,40 @@ export const TOUR_STEPS: TourStep[] = [
     id: "rates",
     target: "[data-tour='rates']",
     title: "📊 Tasas de Cambio",
-    description: "Aquí ves tus tasas de compra y venta. Toca para editar.",
+    description:
+      "Aquí monitoreas tus tasas de compra y venta. Toca cada tarjeta para configurar tus propias tasas contra el mercado.",
     position: "bottom",
   },
   {
-    id: "tabs",
-    target: "[data-tour='tabs']",
-    title: "📱 Navegación",
-    description: "Navega entre Operar, Contar, Calcular y Reportes.",
+    id: "quick-trade",
+    target: "[data-tour='quick-trade']",
+    title: "⚡ Sistema Touch POS",
+    description:
+      "Activa el Modo Rápido para registrar transacciones con solo 2 toques ágiles. Precalcula tus CUP sin usar el teclado.",
     position: "bottom",
   },
   {
     id: "operar",
     target: "[data-tour='operar']",
-    title: "💱 Registrar Operaciones",
+    title: "💱 Movimientos Limpios",
     description:
-      "Registra compras y ventas. ¡Tu inventario se actualiza automáticamente!",
+      "Registra ventas, compras e intercambios. Cada registro actualiza automáticamente tu capital e inventario general.",
     position: "top",
   },
   {
-    id: "counter",
+    id: "contar",
     target: "[data-tour='contar']",
-    title: "💵 Contador de Billetes",
+    title: "💵 Contador de Efectivo",
     description:
-      "Cuenta billetes CUP rápidamente. Toca 'Fajo' para agregar 100.",
+      "Agiliza fardos de billetes agrupándolos rápido con el toque 'Fajo'. Toca 'Compartir' para enviar el desglose detallado.",
     position: "top",
   },
   {
-    id: "reports",
+    id: "reportes",
     target: "[data-tour='reportes']",
-    title: "📈 Reportes",
-    description: "Revisa tu capital, ganancias y el estado de tu inventario.",
+    title: "📈 Control y Cierre",
+    description:
+      "Supervisa tus ganancias, audita tu almacén general monetario y extrae tu Ticket de Cierre con el nuevo visualizador.",
     position: "top",
   },
 ];
