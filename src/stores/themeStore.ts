@@ -1,9 +1,10 @@
 import { atom } from "nanostores";
+import { getSunTimes } from "../lib/solar";
 
 // ============================================
 // Theme Store
 // Manages theme state (dark/sunlight) with persistence
-// Auto-switches based on time: dark 6PM-7:30AM, sunlight otherwise
+// Auto-switches based on real sunrise/sunset for Cuba
 // ============================================
 
 export type Theme = "dark" | "sunlight";
@@ -12,26 +13,29 @@ export type ThemeMode = "auto" | "manual";
 const STORAGE_KEY = "fulean2-theme";
 const MODE_KEY = "fulean2-theme-mode";
 
+// Twilight buffers (minutes)
+const SUNSET_BUFFER = 30; // Dark mode starts 30min after sunset (twilight)
+const SUNRISE_BUFFER = 20; // Light mode starts 20min before sunrise (pre-dawn)
+
 // Theme atom - defaults to dark
 export const $theme = atom<Theme>("dark");
 // Theme mode - auto (time-based) or manual (user-set)
 export const $themeMode = atom<ThemeMode>("auto");
 
 /**
- * Check if current time is in dark mode hours (6PM to 7:30AM)
+ * Check if current time is in dark mode hours
+ * Uses real sunrise/sunset calculation for Cuba
  */
 function isDarkModeTime(): boolean {
   const now = new Date();
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  const currentTime = hours * 60 + minutes; // Convert to minutes for easier comparison
+  const { sunrise, sunset } = getSunTimes(now);
 
-  const darkStart = 18 * 60; // 6:00 PM = 18:00 = 1080 minutes
-  const darkEnd = 7 * 60 + 30; // 7:30 AM = 450 minutes
+  // Add twilight buffers
+  const darkStart = new Date(sunset.getTime() + SUNSET_BUFFER * 60000);
+  const lightStart = new Date(sunrise.getTime() - SUNRISE_BUFFER * 60000);
 
-  // Dark mode: 6PM (18:00) to 7:30AM
-  // This means: hours >= 18 OR hours < 7.5
-  return currentTime >= darkStart || currentTime < darkEnd;
+  // Dark mode: after sunset+buffer OR before sunrise-buffer
+  return now >= darkStart || now < lightStart;
 }
 
 /**
