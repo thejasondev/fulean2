@@ -78,6 +78,8 @@ export function CalculatorTab() {
     useState<Currency>("USD");
   const [forexRate, setForexRate] = useState<string>("1.10");
 
+  const [exchangeOperator, setExchangeOperator] = useState<"multiply" | "divide">("multiply");
+
   // === DERIVE STATE ===
   const [baseCurrency, setBaseCurrency] = useState<Currency>("EUR");
   const [targetCurrency, setTargetCurrency] = useState<Currency>("USD");
@@ -128,7 +130,11 @@ export function CalculatorTab() {
     const directRate = sellRates[sourceCurrency] || 0;
     const directCUP = numAmount * directRate;
 
-    const intermediateAmount = numAmount * numForexRate;
+    const intermediateAmount =
+      exchangeOperator === "multiply"
+        ? numAmount * numForexRate
+        : numAmount / numForexRate;
+        
     const intermediateRate = sellRates[intermediateCurrency] || 0;
     const indirectCUP = intermediateAmount * intermediateRate;
 
@@ -154,8 +160,18 @@ export function CalculatorTab() {
     sourceCurrency,
     intermediateCurrency,
     forexRate,
+    exchangeOperator,
     sellRates,
   ]);
+
+  // Auto-detect exchange operator based on CUP values
+  useEffect(() => {
+    if (mode === "COMPARE") {
+      const srcVal = buyRates[sourceCurrency] || 1;
+      const intVal = buyRates[intermediateCurrency] || 1;
+      setExchangeOperator(srcVal >= intVal ? "multiply" : "divide");
+    }
+  }, [sourceCurrency, intermediateCurrency, buyRates, mode]);
 
   // DERIVE calculation
   const deriveResult = useMemo(() => {
@@ -268,6 +284,7 @@ export function CalculatorTab() {
         percentDiff: compareResult?.percentDiff,
         compareAmount: parseFloat(compareAmount) || 0,
         forexRate: parseFloat(forexRate) || 1,
+        exchangeOperator,
       });
     }
   }, [
@@ -279,6 +296,7 @@ export function CalculatorTab() {
     compareResult,
     sourceCurrency,
     intermediateCurrency,
+    exchangeOperator,
   ]);
 
   // Clear calculator state on unmount
@@ -558,19 +576,31 @@ export function CalculatorTab() {
               >
                 <ArrowDownUp size={16} />
               </button>
-              <div className="flex items-center gap-1.5 bg-[var(--bg-primary)] px-2 py-1 rounded-lg border border-[var(--border-primary)]">
-                <span className="text-[10px] text-[var(--text-faint)]">
-                  {sourceCurrency}/{intermediateCurrency}
-                </span>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={forexRate}
-                  onChange={(e) =>
-                    setForexRate(e.target.value.replace(/[^0-9.]/g, ""))
-                  }
-                  className="w-20 text-center text-sm font-bold py-0.5 h-7 border-0 bg-transparent"
-                />
+              <div className="flex flex-col gap-1.5 items-center">
+                <button
+                  onClick={() => {
+                    haptic.light();
+                    setExchangeOperator((p) => (p === "multiply" ? "divide" : "multiply"));
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[10px] font-bold border border-[var(--border-primary)] hover:border-[var(--blue)]/50 transition-colors"
+                >
+                  {exchangeOperator === "multiply" ? "× Mult." : "÷ Div."}
+                  <RefreshCw size={10} className="ml-0.5 opacity-50" />
+                </button>
+                <div className="flex items-center gap-1.5 bg-[var(--bg-primary)] px-2 py-1 rounded-lg border border-[var(--border-primary)]">
+                  <span className="text-[10px] text-[var(--text-faint)]">
+                    {sourceCurrency}/{intermediateCurrency}
+                  </span>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={forexRate}
+                    onChange={(e) =>
+                      setForexRate(e.target.value.replace(/[^0-9.]/g, ""))
+                    }
+                    className="w-20 text-center text-sm font-bold py-0.5 h-7 border-0 bg-transparent"
+                  />
+                </div>
               </div>
               <div className="flex-1 h-px bg-[var(--border-primary)]" />
             </div>
@@ -762,7 +792,7 @@ export function CalculatorTab() {
                     <div className="flex flex-col text-xs text-[var(--text-muted)]">
                       <span>Costo derivado:</span>
                       <span className="opacity-50 font-mono">
-                        {buyRates[sourceCurrency] || 0} ÷ {forexRate}
+                        {buyRates[sourceCurrency] || 0} {exchangeOperator === "multiply" ? "÷" : "×"} {forexRate}
                       </span>
                     </div>
                     <div className="text-right">
@@ -772,8 +802,9 @@ export function CalculatorTab() {
                       <span className="text-lg font-bold text-[var(--blue)]">
                         {formatNumber(
                           Math.round(
-                            (buyRates[sourceCurrency] || 0) /
-                              parseFloat(forexRate || "1"),
+                            exchangeOperator === "multiply"
+                              ? (buyRates[sourceCurrency] || 0) / parseFloat(forexRate || "1")
+                              : (buyRates[sourceCurrency] || 0) * parseFloat(forexRate || "1"),
                           ),
                         )}{" "}
                         CUP

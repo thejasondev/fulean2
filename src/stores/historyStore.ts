@@ -64,6 +64,7 @@ export interface Transaction {
   fromCurrency?: TransactionCurrency; // Source currency (what you gave)
   toCurrency?: TransactionCurrency; // Target currency (what you received)
   exchangeRate?: number; // e.g., 1.13 EUR->USD
+  exchangeOperator?: "multiply" | "divide"; // Operation used
   amountReceived?: number; // Amount of target currency received
   derivedCostRate?: number; // Cost rate for target: sourceCostRate / exchangeRate
   // Legacy fields (still supported)
@@ -332,11 +333,14 @@ export function saveExchangeTransaction(
   toCurrency: TransactionCurrency,
   amountFrom: number, // Amount of source currency given
   exchangeRate: number, // e.g., 1.13 EUR->USD means 1 EUR = 1.13 USD
+  exchangeOperator: "multiply" | "divide", // Calculation direction
   walletId?: string, // Target wallet ID
   note?: string, // Optional note for tracking
 ): Transaction {
   const txnId = generateId();
-  const amountReceived = Math.round(amountFrom * exchangeRate * 100) / 100;
+  
+  const factor = exchangeOperator === "multiply" ? exchangeRate : (1 / exchangeRate);
+  const amountReceived = Math.round(amountFrom * factor * 100) / 100;
 
   let costBasis: number | undefined;
   let lotsConsumed: string[] | undefined;
@@ -362,10 +366,10 @@ export function saveExchangeTransaction(
     }));
 
     // 2. Calculate derived cost rate for target currency
-    // Formula: derivedCostRate = (total cost / amount given) / exchangeRate
-    // Or simplified: costPerSourceUnit / exchangeRate
+    // Formula: derivedCostRate = (total cost / amount given) / factor
+    // Or simplified: costPerSourceUnit / factor
     const sourceCostRate = costBasis / amountFrom;
-    derivedCostRate = Math.round(sourceCostRate / exchangeRate);
+    derivedCostRate = Math.round(sourceCostRate / factor);
 
     // 3. Add to target currency inventory at derived cost rate
     addInventoryLot(
@@ -405,6 +409,7 @@ export function saveExchangeTransaction(
     fromCurrency,
     toCurrency,
     exchangeRate: Math.round(exchangeRate * 10000) / 10000,
+    exchangeOperator, // Include the operator used in the transaction record
     amountReceived,
     derivedCostRate,
     // FIFO tracking

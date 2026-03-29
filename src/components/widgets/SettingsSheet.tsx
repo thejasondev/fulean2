@@ -293,7 +293,7 @@ function VisibilitySection() {
         </div>
         {themeMode === "auto" && (
           <p className="text-[10px] text-[var(--text-faint)] mt-2">
-            🌙 6PM - 7:30AM oscuro • ☀️ 7:30AM - 6PM claro
+            🌗 Se adapta automáticamente al amanecer y atardecer real en Cuba
           </p>
         )}
       </div>

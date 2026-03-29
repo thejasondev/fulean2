@@ -79,6 +79,7 @@ export interface PendingCalculation {
   fromCurrency?: string; // Source currency (e.g., EUR)
   toCurrency?: string; // Target currency (e.g., USD)
   exchangeRate?: number; // e.g., 1.13 EUR→USD
+  exchangeOperator?: "multiply" | "divide"; // Calculation direction
 }
 
 export const $pendingCalculation = atom<PendingCalculation | null>(null);

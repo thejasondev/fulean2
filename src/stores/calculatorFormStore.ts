@@ -23,6 +23,7 @@ export interface CalculatorFormState {
   percentDiff?: number;
   compareAmount?: number; // Amount being compared
   forexRate?: number; // Exchange rate used (e.g., EUR→USD)
+  exchangeOperator?: "multiply" | "divide"; // Operation used
 }
 
 // Initial state

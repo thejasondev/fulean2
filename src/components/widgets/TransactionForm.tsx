@@ -85,6 +85,7 @@ export function TransactionForm() {
   const [toCurrency, setToCurrency] = useState<TransactionCurrency>("USD");
   const [exchangeRate, setExchangeRate] = useState<string>("1.10");
   const [exchangeAmount, setExchangeAmount] = useState<string>("");
+  const [exchangeOperator, setExchangeOperator] = useState<"multiply" | "divide">("multiply");
 
   // Wallet selection (for multi-wallet users)
   const activeWallets = useStore($activeWallets);
@@ -165,6 +166,16 @@ export function TransactionForm() {
     }
   }, [operation, currency, buyRates, sellRates]);
 
+  // Auto-detect exchange operator based on CUP values
+  useEffect(() => {
+    if (operation === "EXCHANGE") {
+      const fromVal = buyRates[fromCurrency] || 1;
+      const toVal = buyRates[toCurrency] || 1;
+      // If fromCurrency is stronger (worth more CUP), we multiply. Else divide.
+      setExchangeOperator(fromVal >= toVal ? "multiply" : "divide");
+    }
+  }, [fromCurrency, toCurrency, buyRates, operation]);
+
   // Sync form state to transactionFormStore for footer integration
   useEffect(() => {
     const foreignAmount = parseFloat(amountForeign) || 0;
@@ -172,7 +183,10 @@ export function TransactionForm() {
     const cupAmount = parseFloat(totalCUP) || 0;
     const exchRate = parseFloat(exchangeRate) || 0;
     const exchAmount = parseFloat(exchangeAmount) || 0;
-    const amountReceived = Math.round(exchAmount * exchRate * 100) / 100;
+    const amountReceived =
+      exchangeOperator === "multiply"
+        ? Math.round(exchAmount * exchRate * 100) / 100
+        : Math.round((exchAmount / exchRate) * 100) / 100;
 
     setTransactionFormState({
       operation,
@@ -202,6 +216,7 @@ export function TransactionForm() {
     toCurrency,
     exchangeRate,
     exchangeAmount,
+    exchangeOperator,
   ]);
 
   // Register submit callback for footer button
@@ -220,6 +235,7 @@ export function TransactionForm() {
     fromCurrency,
     toCurrency,
     transactionNote,
+    exchangeOperator,
   ]);
 
   // Clear form state when unmounting
@@ -281,11 +297,14 @@ export function TransactionForm() {
         toCurrency,
         amount,
         exchRate,
+        exchangeOperator,
         targetWalletId,
         transactionNote,
       );
+      
+      const received = exchangeOperator === "multiply" ? amount * exchRate : amount / exchRate;
       toast.success(
-        `Cambio registrado: ${amount} ${fromCurrency} → ${(amount * exchRate).toFixed(2)} ${toCurrency}`,
+        `Cambio registrado: ${amount} ${fromCurrency} → ${received.toFixed(2)} ${toCurrency}`,
       );
 
       // Reset form
@@ -572,9 +591,21 @@ export function TransactionForm() {
 
           {/* Exchange Rate Input */}
           <div>
-            <label className="block text-sm text-[var(--text-faint)] mb-2 font-medium">
-              Tasa de cambio (1 {fromCurrency} = X {toCurrency})
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm text-[var(--text-faint)] font-medium">
+                Tasa de cambio (1 {fromCurrency} = X {toCurrency})
+              </label>
+              <button
+                onClick={() => {
+                  haptic.light();
+                  setExchangeOperator(prev => prev === "multiply" ? "divide" : "multiply");
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-secondary)] text-[var(--text-primary)] text-[11px] font-bold border border-[var(--border-primary)] hover:border-[var(--blue)]/50 transition-colors"
+              >
+                {exchangeOperator === "multiply" ? "× Multiplicar" : "÷ Dividir"}
+                <RefreshCw size={10} className="ml-0.5 opacity-50" />
+              </button>
+            </div>
             <Input
               type="text"
               inputMode="decimal"
@@ -615,7 +646,9 @@ export function TransactionForm() {
                 </p>
                 <p className="text-3xl font-bold text-[var(--blue)]">
                   {(
-                    parseFloat(exchangeAmount) * parseFloat(exchangeRate)
+                    exchangeOperator === "multiply"
+                      ? parseFloat(exchangeAmount) * parseFloat(exchangeRate)
+                      : parseFloat(exchangeAmount) / parseFloat(exchangeRate)
                   ).toFixed(2)}{" "}
                   {toCurrency}
                 </p>
@@ -636,7 +669,7 @@ export function TransactionForm() {
                   <p>
                     El costo del {toCurrency} será:{" "}
                     <span className="text-[var(--blue)] font-bold">
-                      X ÷ {exchangeRate} CUP
+                      X {exchangeOperator === "multiply" ? "÷" : "×"} {exchangeRate} CUP
                     </span>
                   </p>
                 </div>

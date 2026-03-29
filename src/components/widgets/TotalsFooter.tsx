@@ -552,6 +552,7 @@ export function TotalsFooter() {
                     toCurrency: calcState.intermediateCurrency,
                     amount: calcState.compareAmount,
                     exchangeRate: calcState.forexRate,
+                    exchangeOperator: calcState.exchangeOperator,
                   });
                 } else {
                   // BUY/SELL → Pre-fill transaction form
