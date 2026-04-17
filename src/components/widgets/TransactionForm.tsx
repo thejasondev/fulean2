@@ -86,6 +86,8 @@ export function TransactionForm() {
   const [exchangeRate, setExchangeRate] = useState<string>("1.10");
   const [exchangeAmount, setExchangeAmount] = useState<string>("");
   const [exchangeOperator, setExchangeOperator] = useState<"multiply" | "divide">("multiply");
+  const [isManualExchange, setIsManualExchange] = useState<boolean>(false);
+  const [manualAmountReceivedInput, setManualAmountReceivedInput] = useState<string>("");
 
   // Wallet selection (for multi-wallet users)
   const activeWallets = useStore($activeWallets);
@@ -137,7 +139,13 @@ export function TransactionForm() {
           (pendingCalculation.toCurrency as TransactionCurrency) || "USD",
         );
         setExchangeAmount(pendingCalculation.amount?.toString() || "");
-        setExchangeRate(pendingCalculation.exchangeRate?.toFixed(2) || "1.00");
+        if (pendingCalculation.isManualExchange && pendingCalculation.manualAmountReceived) {
+          setIsManualExchange(true);
+          setManualAmountReceivedInput(pendingCalculation.manualAmountReceived.toString());
+        } else {
+          setIsManualExchange(false);
+          setExchangeRate(pendingCalculation.exchangeRate?.toFixed(2) || "1.00");
+        }
       } else {
         // BUY/SELL: Pre-fill transaction form
         setOperation(pendingCalculation.operation);
@@ -183,10 +191,12 @@ export function TransactionForm() {
     const cupAmount = parseFloat(totalCUP) || 0;
     const exchRate = parseFloat(exchangeRate) || 0;
     const exchAmount = parseFloat(exchangeAmount) || 0;
-    const amountReceived =
+    const manualRcvd = parseFloat(manualAmountReceivedInput) || 0;
+    const amountReceived = isManualExchange ? manualRcvd : (
       exchangeOperator === "multiply"
         ? Math.round(exchAmount * exchRate * 100) / 100
-        : Math.round((exchAmount / exchRate) * 100) / 100;
+        : Math.round((exchAmount / exchRate) * 100) / 100
+    );
 
     setTransactionFormState({
       operation,
@@ -196,14 +206,16 @@ export function TransactionForm() {
       totalCUP: cupAmount,
       isValid:
         operation === "EXCHANGE"
-          ? exchAmount > 0 && exchRate > 0 && fromCurrency !== toCurrency
+          ? exchAmount > 0 && fromCurrency !== toCurrency && (isManualExchange ? manualRcvd > 0 : exchRate > 0)
           : foreignAmount > 0 && rateNum > 0 && cupAmount > 0,
       walletId: targetWalletId,
       // Exchange-specific
       fromCurrency: operation === "EXCHANGE" ? fromCurrency : undefined,
       toCurrency: operation === "EXCHANGE" ? toCurrency : undefined,
-      exchangeRate: operation === "EXCHANGE" ? exchRate : undefined,
+      exchangeRate: operation === "EXCHANGE" ? (isManualExchange ? manualRcvd / exchAmount : exchRate) : undefined,
       amountReceived: operation === "EXCHANGE" ? amountReceived : undefined,
+      isManualExchange: operation === "EXCHANGE" ? isManualExchange : undefined,
+      manualAmountReceived: operation === "EXCHANGE" ? manualRcvd : undefined,
     });
   }, [
     operation,
@@ -217,6 +229,8 @@ export function TransactionForm() {
     exchangeRate,
     exchangeAmount,
     exchangeOperator,
+    isManualExchange,
+    manualAmountReceivedInput,
   ]);
 
   // Register submit callback for footer button
@@ -236,6 +250,8 @@ export function TransactionForm() {
     toCurrency,
     transactionNote,
     exchangeOperator,
+    isManualExchange,
+    manualAmountReceivedInput,
   ]);
 
   // Clear form state when unmounting
@@ -280,11 +296,21 @@ export function TransactionForm() {
     // Handle EXCHANGE operation
     if (operation === "EXCHANGE") {
       const amount = parseFloat(exchangeAmount);
-      const exchRate = parseFloat(exchangeRate);
+      let exchRate = parseFloat(exchangeRate);
+      let manualAmount: number | undefined = undefined;
 
-      if (!amount || !exchRate) {
-        toast.warning("Complete todos los campos");
-        return;
+      if (isManualExchange) {
+        manualAmount = parseFloat(manualAmountReceivedInput);
+        if (!amount || !manualAmount) {
+          toast.warning("Complete la cantidad entregada y recibida");
+          return;
+        }
+        exchRate = manualAmount / amount;
+      } else {
+        if (!amount || !exchRate) {
+          toast.warning("Complete todos los campos");
+          return;
+        }
       }
 
       if (fromCurrency === toCurrency) {
@@ -297,18 +323,21 @@ export function TransactionForm() {
         toCurrency,
         amount,
         exchRate,
-        exchangeOperator,
+        exchangeOperator, // Used mainly if not manual
         targetWalletId,
         transactionNote,
+        isManualExchange,
+        manualAmount
       );
       
-      const received = exchangeOperator === "multiply" ? amount * exchRate : amount / exchRate;
+      const received = isManualExchange ? manualAmount! : (exchangeOperator === "multiply" ? amount * exchRate : amount / exchRate);
       toast.success(
         `Cambio registrado: ${amount} ${fromCurrency} → ${received.toFixed(2)} ${toCurrency}`,
       );
 
       // Reset form
       setExchangeAmount("");
+      setManualAmountReceivedInput("");
       setTransactionNote("");
       goToOperar();
       return;
@@ -589,7 +618,45 @@ export function TransactionForm() {
             </div>
           </div>
 
+          {/* Mode switch exact vs calculated */}
+          <div className="flex items-center justify-between mt-2">
+            <label className="text-sm text-[var(--text-faint)] font-medium">
+              Modo de Cálculo
+            </label>
+            <div className="flex bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-1">
+              <button
+                onClick={() => {
+                  haptic.light();
+                  setIsManualExchange(false);
+                }}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200",
+                  !isManualExchange
+                    ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-faint)]"
+                )}
+              >
+                Por Tasa
+              </button>
+              <button
+                onClick={() => {
+                  haptic.light();
+                  setIsManualExchange(true);
+                }}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-semibold rounded-md transition-all duration-200",
+                  isManualExchange
+                    ? "bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-faint)]"
+                )}
+              >
+                Ingreso Manual
+              </button>
+            </div>
+          </div>
+
           {/* Exchange Rate Input */}
+          {!isManualExchange && (
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm text-[var(--text-faint)] font-medium">
@@ -618,6 +685,7 @@ export function TransactionForm() {
               className="text-center text-lg font-bold text-[var(--blue)]"
             />
           </div>
+          )}
 
           {/* Amount to Exchange */}
           <div>
@@ -638,46 +706,71 @@ export function TransactionForm() {
           </div>
 
           {/* Exchange Result & Derived Cost */}
-          {parseFloat(exchangeAmount) > 0 && parseFloat(exchangeRate) > 0 && (
+          {parseFloat(exchangeAmount) > 0 && (
             <div className="bg-[var(--bg-primary)] rounded-xl p-4 border border-[var(--border-primary)] space-y-3">
               <div className="text-center">
                 <p className="text-sm text-[var(--text-faint)] mb-1">
                   Recibirás
                 </p>
-                <p className="text-3xl font-bold text-[var(--blue)]">
-                  {(
-                    exchangeOperator === "multiply"
-                      ? parseFloat(exchangeAmount) * parseFloat(exchangeRate)
-                      : parseFloat(exchangeAmount) / parseFloat(exchangeRate)
-                  ).toFixed(2)}{" "}
-                  {toCurrency}
-                </p>
+                {isManualExchange ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={manualAmountReceivedInput}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        setManualAmountReceivedInput(val);
+                      }}
+                      placeholder="Ej: 180"
+                      className="w-32 text-center text-3xl font-bold bg-transparent border-0 border-b-2 border-dashed border-[var(--border-primary)] focus-visible:ring-0 focus-visible:border-[var(--blue)] rounded-none px-1 py-0 h-auto"
+                      style={{ fontSize: '1.875rem', lineHeight: '2.25rem' }}
+                    />
+                    <span className="text-3xl font-bold text-[var(--blue)]">
+                      {toCurrency}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-3xl font-bold text-[var(--blue)]">
+                    {(
+                      exchangeOperator === "multiply"
+                        ? parseFloat(exchangeAmount) * (parseFloat(exchangeRate) || 0)
+                        : parseFloat(exchangeAmount) / (parseFloat(exchangeRate) || 1)
+                    ).toFixed(2)}{" "}
+                    {toCurrency}
+                  </p>
+                )}
               </div>
 
               {/* Derived Cost Calculation Info */}
-              <div className="border-t border-[var(--border-primary)] pt-3">
-                <p className="text-xs text-[var(--text-faint)] mb-2">
-                  Cálculo de costo derivado
-                </p>
-                <div className="text-sm text-[var(--text-muted)] space-y-1">
-                  <p>
-                    Si compraste {fromCurrency} a{" "}
-                    <span className="text-[var(--text-primary)] font-medium">
-                      X CUP
-                    </span>
+              {(!isManualExchange && parseFloat(exchangeRate) > 0) || (isManualExchange && parseFloat(manualAmountReceivedInput) > 0) ? (
+                <div className="border-t border-[var(--border-primary)] pt-3">
+                  <p className="text-xs text-[var(--text-faint)] mb-2">
+                    Cálculo de costo derivado
                   </p>
-                  <p>
-                    El costo del {toCurrency} será:{" "}
-                    <span className="text-[var(--blue)] font-bold">
-                      X {exchangeOperator === "multiply" ? "÷" : "×"} {exchangeRate} CUP
-                    </span>
+                  <div className="text-sm text-[var(--text-muted)] space-y-1">
+                    <p>
+                      Si compraste {fromCurrency} a{" "}
+                      <span className="text-[var(--text-primary)] font-medium">
+                        X CUP
+                      </span>
+                    </p>
+                    <p>
+                      El costo del {toCurrency} será:{" "}
+                      <span className="text-[var(--blue)] font-bold">
+                        {isManualExchange ? `X ÷ ${(parseFloat(manualAmountReceivedInput) / parseFloat(exchangeAmount)).toFixed(4)}` : `X ${exchangeOperator === "multiply" ? "÷" : "×"} ${exchangeRate}`} CUP
+                      </span>
+                    </p>
+                  </div>
+                  <p className="text-xs text-[var(--text-faint)] mt-2">
+                    Ejemplo: 520 {isManualExchange ? "Tasa implícita" : `÷ ${exchangeRate}`} ={" "}
+                    {isManualExchange 
+                      ? (520 / (parseFloat(manualAmountReceivedInput) / parseFloat(exchangeAmount))).toFixed(0) 
+                      : (exchangeOperator === "multiply" ? 520 / parseFloat(exchangeRate) : 520 * parseFloat(exchangeRate)).toFixed(0)}{" "}
+                    CUP/{toCurrency}
                   </p>
                 </div>
-                <p className="text-xs text-[var(--text-faint)] mt-2">
-                  Ejemplo: 520 ÷ {exchangeRate} ={" "}
-                  {(520 / parseFloat(exchangeRate)).toFixed(0)} CUP/{toCurrency}
-                </p>
-              </div>
+              ) : null}
             </div>
           )}
           {/* Optional Note for Exchange */}

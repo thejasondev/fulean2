@@ -67,6 +67,8 @@ export interface Transaction {
   exchangeOperator?: "multiply" | "divide"; // Operation used
   amountReceived?: number; // Amount of target currency received
   derivedCostRate?: number; // Cost rate for target: sourceCostRate / exchangeRate
+  isManualExchange?: boolean; // True if exact amount entered by user
+  manualAmountReceived?: number; // The exact target amount user set
   // Legacy fields (still supported)
   profitCUP?: number; // Old: Spread × amountForeign (estimate)
   cupImpact?: number; // + for SELL (CUP received), - for BUY (CUP paid)
@@ -336,11 +338,21 @@ export function saveExchangeTransaction(
   exchangeOperator: "multiply" | "divide", // Calculation direction
   walletId?: string, // Target wallet ID
   note?: string, // Optional note for tracking
+  isManualExchange?: boolean,
+  manualAmountReceived?: number,
 ): Transaction {
   const txnId = generateId();
   
-  const factor = exchangeOperator === "multiply" ? exchangeRate : (1 / exchangeRate);
-  const amountReceived = Math.round(amountFrom * factor * 100) / 100;
+  let amountReceived: number;
+  let factor: number;
+
+  if (isManualExchange && manualAmountReceived !== undefined) {
+    amountReceived = manualAmountReceived;
+    factor = amountReceived / amountFrom; 
+  } else {
+    factor = exchangeOperator === "multiply" ? exchangeRate : (1 / exchangeRate);
+    amountReceived = Math.round(amountFrom * factor * 100) / 100;
+  }
 
   let costBasis: number | undefined;
   let lotsConsumed: string[] | undefined;
@@ -408,10 +420,12 @@ export function saveExchangeTransaction(
     // EXCHANGE-specific fields
     fromCurrency,
     toCurrency,
-    exchangeRate: Math.round(exchangeRate * 10000) / 10000,
+    exchangeRate: isManualExchange ? factor : Math.round(exchangeRate * 10000) / 10000,
     exchangeOperator, // Include the operator used in the transaction record
     amountReceived,
     derivedCostRate,
+    isManualExchange,
+    manualAmountReceived,
     // FIFO tracking
     costBasis,
     lotsConsumed,

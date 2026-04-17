@@ -20,6 +20,8 @@ export interface TransactionFormState {
   toCurrency?: TransactionCurrency;
   exchangeRate?: number;
   amountReceived?: number;
+  isManualExchange?: boolean;
+  manualAmountReceived?: number;
 }
 
 // Initial state

@@ -472,7 +472,10 @@ export function TotalsFooter() {
                     formState.exchangeRate ? (
                       <>
                         <RefreshCw size={11} className="text-[var(--blue)]" />
-                        <span>@{formState.exchangeRate} • Tasa de cambio</span>
+                        <span>
+                          @{formState.isManualExchange ? formState.exchangeRate.toFixed(4) : formState.exchangeRate} •{" "}
+                          {formState.isManualExchange ? "Tasa implícita" : "Tasa de cambio"}
+                        </span>
                       </>
                     ) : (
                       <span className="opacity-50">Ingrese monto y tasa</span>
