@@ -278,6 +278,9 @@ export function deleteWallet(id: string): boolean {
     try {
       localStorage.removeItem(`fulean2_transactions_${id}`);
       localStorage.removeItem(`fulean2_inventory_${id}`);
+      localStorage.removeItem(`fulean2_capital_${id}`);
+      localStorage.removeItem(`fulean2_expenses_${id}`);
+      localStorage.removeItem(`fulean2_savings_${id}`);
     } catch {
       // Ignore
     }

@@ -4,6 +4,7 @@ import {
   consumeInventoryLots,
   addInventoryLot,
   getAvailableQuantity,
+  restoreLotsFromBreakdown,
 } from "./inventoryStore";
 import type { Currency } from "../lib/constants";
 
@@ -25,6 +26,11 @@ export interface SavingsEntry {
   totalCUP: number; // Total CUP cost basis (amount × costRate)
   note?: string;
   walletId?: string;
+  consumptionBreakdown?: {
+    lotId: string;
+    quantity: number;
+    costRate: number;
+  }[];
 }
 
 // ============================================
@@ -166,6 +172,7 @@ export function addSaving(
     totalCUP,
     note,
     walletId,
+    consumptionBreakdown: consumed.breakdown,
   };
 
   $savings.set([entry, ...$savings.get()]);
@@ -233,11 +240,27 @@ export function withdrawSaving(
 }
 
 /**
- * Delete a savings entry without returning to inventory (for corrections).
- * This is a data correction — the inventory is NOT restored.
+ * Delete a savings entry and return the money to inventory (for corrections).
+ * This is a data correction — the inventory is restored exactly as it was consumed.
  */
 export function deleteSaving(savingId: string): void {
   const entries = $savings.get();
+  const entry = entries.find((e) => e.id === savingId);
+  if (!entry) return;
+
+  // Restore the consumed inventory lots
+  if (entry.consumptionBreakdown && entry.consumptionBreakdown.length > 0) {
+    restoreLotsFromBreakdown(entry.consumptionBreakdown);
+  } else {
+    // Fallback for older entries without breakdown
+    addInventoryLot(
+      entry.currency,
+      entry.amount,
+      entry.costRate,
+      `delete_fallback_${savingId}`,
+    );
+  }
+
   $savings.set(entries.filter((e) => e.id !== savingId));
 }
 

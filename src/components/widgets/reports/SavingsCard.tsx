@@ -114,7 +114,7 @@ export function SavingsCard() {
   const handleDelete = async (entry: (typeof savings)[0]) => {
     const confirmed = await confirm({
       title: "Eliminar Registro",
-      message: `¿Eliminar ${entry.amount} ${entry.currency} de ahorros?\n\nEsto NO devuelve la moneda al portafolio (corrección de datos).`,
+      message: `¿Eliminar ${entry.amount} ${entry.currency} de ahorros?\n\nLa moneda se devolverá al inventario como corrección de datos.`,
       confirmLabel: "Eliminar",
       variant: "danger",
     });
