@@ -34,6 +34,10 @@ import {
   type OperationType,
   type TransactionCurrency,
 } from "../../stores/historyStore";
+import {
+  simulateFIFO,
+  getAvailableQuantity,
+} from "../../stores/inventoryStore";
 import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -742,35 +746,87 @@ export function TransactionForm() {
                 )}
               </div>
 
-              {/* Derived Cost Calculation Info */}
-              {(!isManualExchange && parseFloat(exchangeRate) > 0) || (isManualExchange && parseFloat(manualAmountReceivedInput) > 0) ? (
-                <div className="border-t border-[var(--border-primary)] pt-3">
-                  <p className="text-xs text-[var(--text-faint)] mb-2">
-                    Cálculo de costo derivado
-                  </p>
-                  <div className="text-sm text-[var(--text-muted)] space-y-1">
-                    <p>
-                      Si compraste {fromCurrency} a{" "}
-                      <span className="text-[var(--text-primary)] font-medium">
-                        X CUP
-                      </span>
+              {/* Derived Cost Calculation Info — Real FIFO Preview */}
+              {(() => {
+                const exchAmt = parseFloat(exchangeAmount) || 0;
+                const rcvd = isManualExchange
+                  ? (parseFloat(manualAmountReceivedInput) || 0)
+                  : (exchangeOperator === "multiply"
+                    ? exchAmt * (parseFloat(exchangeRate) || 0)
+                    : exchAmt / (parseFloat(exchangeRate) || 1));
+                if (exchAmt <= 0 || rcvd <= 0) return null;
+
+                const available = getAvailableQuantity(fromCurrency as Currency);
+                const fifo = simulateFIFO(fromCurrency as Currency, exchAmt);
+
+                if (!fifo || available < exchAmt) {
+                  return (
+                    <div className="border-t border-[var(--border-primary)] pt-3">
+                      <p className="text-xs text-[var(--status-error)]">
+                        {available < exchAmt
+                          ? `Inventario insuficiente: solo tienes ${available} ${fromCurrency}`
+                          : "Sin inventario para calcular costo derivado"}
+                      </p>
+                    </div>
+                  );
+                }
+
+                const costBasis = fifo.totalCost;
+                const avgSourceCost = fifo.avgCost;
+                const derivedCostRate = Math.round(costBasis / rcvd);
+                const sellRate = sellRates[toCurrency as Currency] || 0;
+                const projectedSellValue = Math.round(rcvd * sellRate);
+                const estimatedProfit = projectedSellValue - costBasis;
+
+                return (
+                  <div className="border-t border-[var(--border-primary)] pt-3 space-y-2">
+                    <p className="text-xs text-[var(--text-faint)] font-medium">
+                      Costo derivado real (FIFO)
                     </p>
-                    <p>
-                      El costo del {toCurrency} será:{" "}
-                      <span className="text-[var(--blue)] font-bold">
-                        {isManualExchange ? `X ÷ ${(parseFloat(manualAmountReceivedInput) / parseFloat(exchangeAmount)).toFixed(4)}` : `X ${exchangeOperator === "multiply" ? "÷" : "×"} ${exchangeRate}`} CUP
-                      </span>
-                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div className="bg-[var(--bg-secondary)] rounded-lg p-2">
+                        <div className="text-[10px] text-[var(--text-faint)] uppercase">Costo {fromCurrency}</div>
+                        <div className="text-sm font-bold text-[var(--text-primary)] tabular-nums">
+                          @{formatNumber(avgSourceCost)} CUP
+                        </div>
+                      </div>
+                      <div className="bg-[var(--bg-secondary)] rounded-lg p-2">
+                        <div className="text-[10px] text-[var(--text-faint)] uppercase">Costo {toCurrency}</div>
+                        <div className="text-sm font-bold text-[var(--blue)] tabular-nums">
+                          @{formatNumber(derivedCostRate)} CUP
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-[var(--text-muted)] space-y-1 bg-[var(--bg-secondary)] rounded-lg p-2.5">
+                      <div className="flex justify-between">
+                        <span>Inversión total:</span>
+                        <span className="font-bold text-[var(--text-primary)] tabular-nums">{formatNumber(costBasis)} CUP</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Fórmula:</span>
+                        <span className="font-medium tabular-nums">{formatNumber(costBasis)} ÷ {rcvd.toFixed(2)} = @{formatNumber(derivedCostRate)}</span>
+                      </div>
+                      {sellRate > 0 && (
+                        <>
+                          <div className="border-t border-[var(--border-primary)]/50 pt-1 flex justify-between">
+                            <span>Valor venta ({toCurrency} @{formatNumber(sellRate)}):</span>
+                            <span className="font-bold tabular-nums">{formatNumber(projectedSellValue)} CUP</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Ganancia estimada:</span>
+                            <span className={cn(
+                              "font-bold tabular-nums",
+                              estimatedProfit >= 0 ? "text-[var(--status-success)]" : "text-[var(--status-error)]"
+                            )}>
+                              {estimatedProfit >= 0 ? "+" : ""}{formatNumber(estimatedProfit)} CUP
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-[var(--text-faint)] mt-2">
-                    Ejemplo: 520 {isManualExchange ? "Tasa implícita" : `÷ ${exchangeRate}`} ={" "}
-                    {isManualExchange 
-                      ? (520 / (parseFloat(manualAmountReceivedInput) / parseFloat(exchangeAmount))).toFixed(0) 
-                      : (exchangeOperator === "multiply" ? 520 / parseFloat(exchangeRate) : 520 * parseFloat(exchangeRate)).toFixed(0)}{" "}
-                    CUP/{toCurrency}
-                  </p>
-                </div>
-              ) : null}
+                );
+              })()}
             </div>
           )}
           {/* Optional Note for Exchange */}

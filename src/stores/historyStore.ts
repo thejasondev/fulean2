@@ -325,10 +325,12 @@ export function saveTransaction(
  * Handles lateral currency-to-currency exchange:
  * - Consumes inventory from source currency (FIFO)
  * - Adds inventory to target currency with derived cost rate
- * - Formula: derivedCostRate = sourceCostRate / exchangeRate
+ * - Formula: derivedCostRate = totalCostCUP / amountReceived
  *
- * Example: 100 EUR (bought at 520 CUP/EUR) → 113 USD at 1.13 rate
- * - Derived USD cost rate: 520 / 1.13 = 460 CUP/USD
+ * Example: 220 USD (bought at 530 CUP/USD) → 200 EUR
+ * - costBasis = 220 × 530 = 116,600 CUP
+ * - Derived EUR cost rate: 116,600 / 200 = 583 CUP/EUR
+ * - If EUR sells at 600 → profit = (600 - 583) × 200 = 3,400 CUP
  */
 export function saveExchangeTransaction(
   fromCurrency: TransactionCurrency,
@@ -378,10 +380,11 @@ export function saveExchangeTransaction(
     }));
 
     // 2. Calculate derived cost rate for target currency
-    // Formula: derivedCostRate = (total cost / amount given) / factor
-    // Or simplified: costPerSourceUnit / factor
-    const sourceCostRate = costBasis / amountFrom;
-    derivedCostRate = Math.round(sourceCostRate / factor);
+    // Direct formula: derivedCostRate = totalCostCUP / amountReceived
+    // This answers: "¿Cuántos CUP me costó cada unidad de la moneda que recibí?"
+    // Example: 220 USD bought at 530 → costBasis = 116,600 CUP
+    //          Changed 220 USD → 200 EUR → derivedCostRate = 116,600 / 200 = 583 CUP/EUR
+    derivedCostRate = Math.round(costBasis / amountReceived);
 
     // 3. Add to target currency inventory at derived cost rate
     addInventoryLot(
@@ -395,7 +398,8 @@ export function saveExchangeTransaction(
     const avgCost = getAverageCost(fromCurrency as Currency);
     if (avgCost > 0) {
       costBasis = Math.round(amountFrom * avgCost);
-      derivedCostRate = Math.round(avgCost / exchangeRate);
+      // Same direct formula for consistency
+      derivedCostRate = Math.round(costBasis / amountReceived);
 
       // Add to target inventory at derived cost
       addInventoryLot(
