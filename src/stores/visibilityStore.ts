@@ -35,9 +35,18 @@ function loadFromStorage(): VisibilityState {
     if (stored) {
       const parsed = JSON.parse(stored);
       // Validate denominations
-      const validDenoms = (parsed.denominations || []).filter((d: number) =>
+      const storedDenoms = (parsed.denominations || []).filter((d: number) =>
         DENOMINATIONS.includes(d as Denomination),
       );
+      // Migrate: add newly introduced denominations (e.g. 2000/5000/10000/20000)
+      // for existing users, keeping any denomination they had visible.
+      const migratedDenoms = [
+        ...new Set<number>([...storedDenoms, ...DENOMINATIONS]),
+      ];
+      // Keep descending order so new bills appear first
+      const validDenoms = migratedDenoms
+        .filter((d) => DENOMINATIONS.includes(d as Denomination))
+        .sort((a, b) => b - a);
       // Validate currencies
       const validCurrencies = (parsed.currencies || []).filter((c: string) =>
         CURRENCIES.includes(c as Currency),

@@ -17,6 +17,26 @@ const BILL_STYLES: Record<
   Denomination,
   { bg: string; border: string; text: string }
 > = {
+  20000: {
+    bg: "bg-rose-950",
+    border: "border-rose-400",
+    text: "text-rose-400",
+  },
+  10000: {
+    bg: "bg-indigo-950",
+    border: "border-indigo-400",
+    text: "text-indigo-400",
+  },
+  5000: {
+    bg: "bg-pink-950",
+    border: "border-pink-400",
+    text: "text-pink-400",
+  },
+  2000: {
+    bg: "bg-teal-950",
+    border: "border-teal-400",
+    text: "text-teal-400",
+  },
   1000: { bg: "bg-blue-950", border: "border-blue-400", text: "text-blue-400" },
   500: {
     bg: "bg-fuchsia-950",
@@ -37,11 +57,6 @@ const BILL_STYLES: Record<
     bg: "bg-green-950",
     border: "border-green-400",
     text: "text-green-400",
-  },
-  20: {
-    bg: "bg-amber-950",
-    border: "border-amber-400",
-    text: "text-amber-400",
   },
 };
 

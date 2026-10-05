@@ -3,7 +3,9 @@
 // ============================================
 
 // Bill denominations available in Cuban Peso (CUP)
-export const DENOMINATIONS = [1000, 500, 200, 100, 50, 20] as const;
+export const DENOMINATIONS = [
+  20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50,
+] as const;
 
 export type Denomination = (typeof DENOMINATIONS)[number];
 
@@ -114,6 +116,8 @@ export const DIGITAL_CURRENCIES = CURRENCIES.filter(
 );
 
 // Default exchange rates (CUP per 1 unit of currency)
+// NOTE: Key must match CURRENCIES exactly (USDT_TRC20, not USDT) or
+// rate persistence validation in ratesStore fails and wipes user data.
 export const DEFAULT_RATES: Record<Currency, number> = {
   USD: 450,
   EUR: 500,
@@ -122,8 +126,11 @@ export const DEFAULT_RATES: Record<Currency, number> = {
   CLASICA: 350,
   ZELLE: 400,
   BTC: 450,
-  USDT: 500,
+  USDT_TRC20: 500,
 };
+
+// Legacy alias for code that still references ".USDT"
+export const LEGACY_USDT_RATE = DEFAULT_RATES.USDT_TRC20;
 
 // Number of bills in a "Fajo" (bundle)
 export const FAJO_COUNT = 100;

@@ -52,7 +52,7 @@ function getOfflineRates(): ElToqueRates {
   // Return constants disguised as ElToqueRates
   return {
     ...DEFAULT_RATES,
-    USDT_TRC20: DEFAULT_RATES.USDT,
+    USDT_TRC20: DEFAULT_RATES.USDT_TRC20,
     lastUpdate: new Date(), // This might mislead slightly but functionally works
   } as unknown as ElToqueRates;
 }

@@ -122,22 +122,53 @@ function loadFromStorage(): {
       if (data.marketRates && !data.buyRates) {
         const legacy = data.marketRates;
         return {
-          buyRates: legacy,
-          sellRates: legacy,
+          buyRates: { ...DEFAULT_RATES, ...legacy },
+          sellRates: { ...DEFAULT_RATES, ...legacy },
         };
       }
 
+      // Normalize legacy USDT key -> USDT_TRC20
+      const normalize = (rates: Record<string, number>) => {
+        const next = { ...rates };
+        if (next.USDT !== undefined) {
+          next.USDT_TRC20 = next.USDT_TRC20 ?? next.USDT;
+          delete next.USDT;
+        }
+        return next;
+      };
+
+      if (data.buyRates) {
+        data.buyRates = normalize(data.buyRates);
+      }
+      if (data.sellRates) {
+        data.sellRates = normalize(data.sellRates);
+      }
+
+      // Merge stored rates over defaults so missing/new currencies
+      // never cause validation failure (which would wipe saved data).
+      const buyRates: Record<Currency, number> = {
+        ...DEFAULT_RATES,
+        ...(data.buyRates || {}),
+      };
+      const sellRates: Record<Currency, number> = {
+        ...DEFAULT_RATES,
+        ...(data.sellRates || {}),
+      };
+
+      // Accept stored data as long as it has at least one valid rate.
+      // Missing currencies are backfilled from defaults, so this never fails
+      // due to a renamed/new currency (prevents wiping saved data).
       const hasBuyRates =
         data.buyRates &&
-        CURRENCIES.every((c) => typeof data.buyRates[c] === "number");
+        CURRENCIES.some((c) => typeof data.buyRates[c] === "number");
       const hasSellRates =
         data.sellRates &&
-        CURRENCIES.every((c) => typeof data.sellRates[c] === "number");
+        CURRENCIES.some((c) => typeof data.sellRates[c] === "number");
 
       if (hasBuyRates && hasSellRates) {
         return {
-          buyRates: data.buyRates,
-          sellRates: data.sellRates,
+          buyRates,
+          sellRates,
           timestamp: data.timestamp,
         };
       }
